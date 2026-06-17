@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>團購分帳機</title>
+<meta name="theme-color" content="#014f86">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="分帳機">
+<link rel="manifest" id="pwaManifest">
+<style>
+  :root{
+    --bg:#f4f1ec; --card:#fff; --ink:#1a1a1a; --muted:#7a7268;
+    --line:#e6dfd4; --accent:#2a6f97; --accent2:#1f6f54;
+    --accent-glow:rgba(42, 111, 151, 0.14);
+    --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.07);
+    --shadow-lift:0 4px 16px rgba(0,0,0,.1),0 1px 3px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased;
+  }
+
+  /* ── header ── */
+  header{
+    position:sticky; top:0; z-index:20; color:#fff; padding:14px 16px;
+    background:
+      radial-gradient(circle,rgba(255,255,255,.1) 1px,transparent 1px) 0 0/14px 14px,
+      linear-gradient(150deg,#2a6f97 0%,#014f86 100%);
+    box-shadow:0 2px 20px rgba(1, 79, 134, 0.4);
+  }
+  header h1{margin:0; font-size:18px; letter-spacing:.3px; display:flex; align-items:center; gap:8px}
+  .header-row{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; max-width:760px; margin:0 auto}
+  .tabs{display:flex; gap:8px; margin-top:10px}
+  .tab{
+    flex:1; padding:9px 12px; border:none; border-radius:10px; cursor:pointer;
+    background:rgba(255,255,255,.18); color:#fff; font-weight:600; font-size:14px; transition:.15s;
+  }
+  .tab.active{background:#fff; color:var(--accent)}
+
+  /* ── layout ── */
+  .wrap{max-width:760px; margin:0 auto; padding:16px}
+  .panel{display:none}
+  .panel.active{display:block}
+
+  /* ── cards ── */
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:14px; margin-bottom:14px; box-shadow:var(--shadow);
+  }
+  .card h2{margin:0 0 10px; font-size:15px; display:flex; align-items:center; gap:7px; color:var(--ink)}
+  .card h2 .ico{font-size:16px; line-height:1}
+  .muted{color:var(--muted); font-size:13px}
+
+  /* ── people header ── */
+  .people-pick{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .people-pick .pnum{font-size:20px; font-weight:900; margin-right:8px; color:var(--accent)}
+
+  /* ── person card ── */
+  .person-head{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+  .person-avatar{
+    width:28px; height:28px; border-radius:50%; flex-shrink:0;
+    background:var(--accent); color:#fff; font-size:13px; font-weight:800;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .person-head input{
+    flex:1; font-size:16px; font-weight:700; border:none; border-bottom:2px dashed var(--line);
+    background:transparent; padding:3px 2px; color:var(--ink); min-width:0;
+  }
+  .person-head input:focus{outline:none; border-bottom-color:var(--accent)}
+  .ptotal{text-align:right; white-space:nowrap; line-height:1.3; flex-shrink:0}
+  .ptotal .calc{display:block; font-size:11px; color:var(--muted); font-weight:500}
+  .ptotal .calc b{color:var(--accent2); font-weight:700}
+  .ptotal .calc b.disc-val{color:#c8102e}
+  .ptotal .calc b.ship-val{color:#e65c00}
+  .ptotal .big{font-size:19px; font-weight:900; letter-spacing:-.5px}
+
+  /* ── item grid ── */
+  .dishgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:8px}
+  @media(min-width:700px){.dishgrid{grid-template-columns:repeat(5,1fr)}}
+  .dish{
+    display:flex; flex-direction:column; align-items:center; text-align:center; gap:5px;
+    padding:13px 8px 11px; border:1.5px solid var(--line); border-radius:12px; background:#fafaf8;
+    cursor:pointer; transition:transform .14s,box-shadow .14s,border-color .14s,background .14s;
+    min-width:0; overflow:hidden;
+    user-select: none;
+  }
+  .dish:hover{border-color:#bfb8ae; box-shadow:var(--shadow-lift); transform:translateY(-1px)}
+  .dish.active{
+    border-color:var(--accent); background:#f4f9fc;
+    box-shadow:0 0 0 3px var(--accent-glow),var(--shadow);
+  }
+  .dish.active:hover{transform:translateY(-1px); box-shadow:0 0 0 3px var(--accent-glow),var(--shadow-lift)}
+  .ic{height:48px; display:flex; align-items:center; justify-content:center; position:relative}
+  .ic img{width:46px; height:46px; object-fit:cover; border-radius:8px; border:1px solid var(--line)}
+  .ic-fallback{width:46px; height:46px; background:#e9ecef; color:#495057; border-radius:8px; border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; text-transform:uppercase;
+    padding:2px; box-sizing:border-box; word-break:break-all; overflow:hidden; line-height:1.1}
+  .qty-badge{
+    position:absolute; top:-5px; right:-5px;
+    background:var(--accent); color:#fff; font-size:11px; font-weight:800;
+    min-width:20px; height:20px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; padding:0 4px;
+    box-shadow:0 2px 6px rgba(42, 111, 151, .45); pointer-events:none;
+  }
+  .dish .nm{min-width:0; width:100%}
+  .dish .nm .t{font-weight:700; font-size:14px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .dish .nm .p{font-size:13px; color:var(--muted); font-weight:500; margin-bottom:1px;}
+  .dish .nm .w{font-size:11px; color:#c18c5d; font-weight:600;}
+  .stepper{display:flex; align-items:center; justify-content:space-between; width:100%; margin-top:2px}
+  .stepper button{
+    width:34px; height:34px; flex-shrink:0; border-radius:9px; border:1.5px solid var(--line);
+    background:var(--card); font-size:18px; font-weight:700; cursor:pointer; color:var(--ink);
+    display:flex; align-items:center; justify-content:center; line-height:1; transition:.1s;
+    position: relative; z-index: 2;
+  }
+  .stepper button:active{transform:scale(.88)}
+  .stepper .qty{flex:1; text-align:center; font-weight:800; font-size:17px}
+  .qty.has{color:var(--accent)}
+  @media(max-width:380px){.dishgrid{gap:8px}}
+
+  /* ── grand bar ── */
+  .grand{
+    position:sticky; bottom:0; background:rgba(255,255,255,.97); backdrop-filter:blur(8px);
+    border-top:1px solid var(--line);
+    box-shadow:0 -6px 28px rgba(0,0,0,.09); padding:12px 16px; z-index:15;
+  }
+  .grand .row{max-width:760px; margin:0 auto; display:flex; justify-content:space-between; align-items:center}
+  .grand .g{font-size:22px; font-weight:900; letter-spacing:-.5px; color:var(--ink)}
+  .grand .sub{font-size:12px; color:var(--muted)}
+
+  /* ── settings rows ── */
+  .srow{display:flex; align-items:center; gap:10px; padding:9px 4px; border-top:1px solid var(--line)}
+  .srow:first-of-type{border-top:none}
+  .srow .nm{flex:1; font-size:14px}
+  input.price, input.text{
+    border:1.5px solid var(--line); border-radius:10px; padding:9px 10px;
+    font-size:15px; background:#fff; color:var(--ink); transition:.12s;
+  }
+  input.price:focus, input.text:focus{outline:none; border-color:var(--accent)}
+  input.text{width:100%}
+  .pricewrap{position:relative; display:inline-flex; align-items:center}
+  .pricewrap span{position:absolute; left:8px; color:var(--muted); font-size:13px; pointer-events:none}
+  .pricewrap input{padding-left:22px; width:90px}
+  .seas{display:flex; gap:8px; align-items:center; padding:9px 4px; border-top:1px solid var(--line)}
+
+  /* ── File Upload & Presets Style ── */
+  .file-label {
+    display: inline-flex; align-items:center; justify-content:center;
+    border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px;
+    font-size: 13px; font-weight: 600; background: #fafaf8; cursor: pointer; transition: .12s;
+    height:36px;
+  }
+  .file-label:hover { border-color: var(--accent); background: #f4f9fc; }
+  .file-label input[type="file"] { display: none; }
+  .img-preview-thumb { width:36px; height:36px; border-radius:6px; object-fit:cover; border:1px solid var(--line); display:none; }
+
+  .preset-row { display:flex; gap:6px; align-items:center; margin:6px 0; flex-wrap:wrap; }
+  .preset-btn {
+    width: 36px; height: 36px; border: 1.5px solid var(--line); border-radius: 8px;
+    cursor: pointer; background: #fff; padding: 2px; display: inline-flex; align-items: center; justify-content: center;
+    transition: .1s;
+  }
+  .preset-btn:hover { border-color: #999; }
+  .preset-btn.selected { border-color: var(--accent); background: var(--accent-glow); box-shadow: 0 0 4px rgba(42,111,151,0.3); }
+  .preset-btn img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+
+  /* ── buttons ── */
+  .btn{border:none; border-radius:10px; padding:10px 14px; font-weight:700; font-size:14px; cursor:pointer; transition:.12s}
+  .btn.primary{background:var(--accent); color:#fff; box-shadow:0 2px 8px rgba(42, 111, 151, .3)}
+  .btn.primary:active{transform:scale(.96)}
+  .btn.ghost{background:#ede8e0; color:var(--ink)}
+  .btn.ghost:active{background:#e2dcd4}
+  .btn.danger{background:#ffebee; color:#c62828; border:1px solid #ffcdd2;}
+  .btn.danger:active{background:#ffcdd2;}
+  .btn.sm{padding:7px 11px; font-size:13px}
+  .del{background:none; border:none; color:#c8102e; font-size:20px; cursor:pointer; line-height:1; padding:4px 8px; border-radius:6px;}
+  .del:hover{background:rgba(200,16,46,.1);}
+  .addrow{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; align-items:center}
+  .footer-actions{display:flex; gap:8px; margin:4px 0 90px}
+
+  /* ── toast ── */
+  .toast{
+    position:fixed; left:50%; bottom:90px; transform:translateX(-50%) translateY(20px);
+    background:#1a1a1a; color:#fff; padding:10px 18px; border-radius:24px;
+    font-size:13px; font-weight:600; opacity:0; pointer-events:none;
+    transition:.22s; z-index:50; white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  /* ── toggle switch ── */
+  .toggle{position:relative; width:44px; height:24px; flex-shrink:0; cursor:pointer}
+  .toggle input{opacity:0; width:0; height:0; position:absolute}
+  .toggle-slider{
+    position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0;
+    background:#ccc; border-radius:12px; transition:.2s;
+  }
+  .toggle-slider:before{
+    content:''; position:absolute; height:18px; width:18px;
+    left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.2s;
+    box-shadow:0 1px 3px rgba(0,0,0,.22);
+  }
+  .toggle input:checked + .toggle-slider{background:var(--accent)}
+  .toggle input:checked + .toggle-slider:before{transform:translateX(20px)}
+
+  /* ── radio groups ── */
+  .radio-group{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .radio-group label{display:flex; align-items:center; gap:5px; font-size:14px; cursor:pointer; font-weight:500}
+  .radio-group input[type=radio]{accent-color:var(--accent); width:16px; height:16px; cursor:pointer}
+  .amt-wrap{display:flex; align-items:center; gap:6px}
+  .amt-wrap .unit{font-size:14px; font-weight:700; color:var(--muted); min-width:16px}
+  #discountFields, #shippingFields, #serviceFields, #exchangeFields{display:none}
+  #discountFields.open, #shippingFields.open, #serviceFields.open, #exchangeFields.open{display:block}
+  .dish .nm .loc{font-size:11px; color:var(--accent); font-weight:700;}
+  .ptotal .loc-eq{display:block; font-size:12px; color:var(--accent); font-weight:800;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <div>
+      <h1 id="lblHeaderTitle">📦 團購合購 — 分帳機</h1>
+      <div class="tabs">
+        <button class="tab active" data-tab="tally"    id="lblTabTally">計帳分配</button>
+        <button class="tab"        data-tab="settings" id="lblTabSettings">品項與設定</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+      <button id="pwaInstallBtn" style="display:none;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);padding:7px 12px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer">📲 安裝 App</button>
+      <button id="langToggleBtn" style="background:rgba(255,255,255,.2);color:#fff;border:none;padding:8px 14px;border-radius:9px;font-weight:700;font-size:14px;cursor:pointer">EN</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section id="tally" class="panel active">
+    <div class="card">
+      <h2 id="lblWhosEating">今天有幾位購買者？</h2>
+      <div class="people-pick">
+        <span class="muted" id="lblPeople">人數：</span>
+        <span class="pnum" id="peopleNum">1</span>
+        <button class="btn ghost sm" id="addPersonBtn">+ 新增購買者</button>
+        <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn ghost sm" id="exportExcel">匯出 Excel</button>
+          <button class="btn ghost sm" id="saveSession">💾 儲存</button>
+          <label class="btn ghost sm" style="display:inline-flex;align-items:center;margin:0;cursor:pointer;">
+            <span id="lblLoadSession">📂 載入</span>
+            <input type="file" id="loadSessionFile" accept=".json" style="display:none;">
+          </label>
+          <button class="btn ghost sm" id="copyBill">複製明細</button>
+          <button class="btn ghost sm" id="newBill">清除分配</button>
+        </div>
+      </div>
+    </div>
+    <div id="peopleContainer"></div>
+  </section>
+
+  <section id="settings" class="panel">
+
+    <div class="card">
+      <h2><span class="ico">⚙️</span> <span id="lblBillSettings">帳單基礎設定</span></h2>
+      <div class="srow" style="border-top:none">
+        <div class="nm" id="lblSvcCharge">服務費 / 附加代購費</div>
+        <label class="toggle"><input type="checkbox" id="svcToggle"><span class="toggle-slider"></span></label>
+      </div>
+      <div id="serviceFields">
+        <div class="srow">
+          <div class="nm" id="lblSvcRate">服務費比例</div>
+          <div class="amt-wrap">
+            <input class="price" id="serviceRate" type="number" step="0.5" min="0" placeholder="10" inputmode="decimal" style="width:88px;padding-left:10px">
+            <span class="unit">%</span>
+          </div>
+        </div>
+      </div>
+      <div class="srow">
+        <div class="nm" id="lblRounding">總額四捨五入至整數</div>
+        <label class="toggle"><input type="checkbox" id="roundToggle" checked><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="ico">💱</span> <span id="lblExchangeTitle">匯率換算</span></h2>
+      <div class="srow" style="border-top:none">
+        <div class="nm" id="lblExchangeToggle">啟用外幣換算</div>
+        <label class="toggle"><input type="checkbox" id="exchangeToggle"><span class="toggle-slider"></span></label>
+      </div>
+      <div id="exchangeFields">
+        <div class="srow">
+          <div class="nm" id="lblCcyPrice">外幣價</div>
+          <div class="amt-wrap">
+            <input class="price" id="ccyPrice" type="number" step="0.01" min="0" placeholder="0" inputmode="decimal" style="width:104px;padding-left:10px">
+            <input class="text" id="ccyCode" maxlength="6" placeholder="JPY" style="width:66px">
+          </div>
+        </div>
+        <div class="srow">
+          <div class="nm" id="lblLocalPrice">本地價</div>
+          <div class="amt-wrap">
+            <input class="price" id="localPrice" type="number" step="0.01" min="0" placeholder="0" inputmode="decimal" style="width:104px;padding-left:10px">
+            <input class="text" id="localCode" maxlength="6" placeholder="TWD" style="width:66px">
+          </div>
+        </div>
+        <p class="muted" style="margin:4px 4px 0" id="lblExchangeMuted">輸入一組對應金額即可設定匯率（例如 外幣價 1000 = 本地價 210）。商品價格以外幣輸入，所有金額會換算成本地價。</p>
+        <p style="margin:6px 4px 0;font-weight:700;color:var(--accent);font-size:13px" id="lblExchangeRate"></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="ico">🚚</span> <span id="lblShippingTitle">分攤運費</span></h2>
+      <div class="srow" style="border-top:none">
+        <div class="nm" id="lblShippingToggle">計算分攤運費</div>
+        <label class="toggle"><input type="checkbox" id="shippingToggle"><span class="toggle-slider"></span></label>
+      </div>
+      <div id="shippingFields">
+        <div class="srow">
+          <div class="nm" id="lblShipOversea">海外運費<span class="muted" style="display:block;font-size:11px" id="lblShipOverseaHint">廠商 → 海外倉（外幣）</span></div>
+          <div class="amt-wrap">
+            <span class="muted" id="shipOverseaSym" style="font-size:13px">$</span>
+            <input class="price" id="overseaAmount" type="number" step="0.5" min="0" placeholder="0" inputmode="decimal" style="width:104px">
+          </div>
+        </div>
+        <div class="srow">
+          <div class="nm" id="lblShipIntl">國際運費<span class="muted" style="display:block;font-size:11px" id="lblShipIntlHint">海外倉 → 你（本地）</span></div>
+          <div class="amt-wrap">
+            <span class="muted" id="shipIntlSym" style="font-size:13px">$</span>
+            <input class="price" id="intlAmount" type="number" step="0.5" min="0" placeholder="0" inputmode="decimal" style="width:104px">
+          </div>
+        </div>
+        <div class="srow">
+          <div class="nm" id="lblShippingBasis">分攤權重基準</div>
+          <div class="radio-group">
+            <label><input type="radio" name="shipBasis" id="shipBasisPrice" value="price" checked> <span id="lblBasisPrice">依金額比例</span></label>
+            <label><input type="radio" name="shipBasis" id="shipBasisWeight" value="weight"> <span id="lblBasisWeight">依重量比例</span></label>
+          </div>
+        </div>
+        <p class="muted" style="margin:4px 4px 0" id="lblShippingMuted">海外運費以外幣計、國際運費以本地幣計，兩者皆依上方基準（金額或重量）分攤給每位團員。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="ico">🏷️</span> <span id="lblDiscountTitle">總體折扣</span></h2>
+      <div class="srow" style="border-top:none">
+        <div class="nm" id="lblDiscountToggle">套用折扣</div>
+        <label class="toggle"><input type="checkbox" id="discountToggle"><span class="toggle-slider"></span></label>
+      </div>
+      <div id="discountFields">
+        <div class="srow">
+          <div class="nm" id="lblDiscountType">類型</div>
+          <div class="radio-group">
+            <label><input type="radio" name="discType" id="discTypePct"   value="pct"   checked> <span id="lblDiscPct">百分比（%）</span></label>
+            <label><input type="radio" name="discType" id="discTypeFixed" value="fixed">          <span id="lblDiscFixed">固定整筆金額（$）</span></label>
+          </div>
+        </div>
+        <div class="srow">
+          <div class="nm" id="lblDiscountAmt">折扣數據</div>
+          <div class="amt-wrap">
+            <input class="price" id="discountAmount" type="number" step="0.5" min="0" placeholder="0" inputmode="decimal" style="width:88px;padding-left:10px">
+            <span class="unit" id="discAmtUnit">%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="ico">🛍️</span> <span id="lblStandardDishes">商品項目管理</span></h2>
+      <p class="muted" style="margin-top:-4px" id="lblEditPricesMuted">建立團購商品。在此可輸入價格與單件重量，並可自由上傳圖片或直接選用下方的精美簡約內建圖標。</p>
+      
+      <div class="addrow" style="background:#fafaf8; padding:12px; border-radius:12px; border:1px solid var(--line); margin-bottom:14px;">
+        <input class="text" id="itemName" placeholder="商品名稱（例如：熊玩偶、短Tee）" style="flex:1; min-width:200px; margin-bottom:6px;">
+        
+        <div style="display:flex; gap:8px; width:100%; flex-wrap:wrap; margin-bottom:6px;">
+          <div class="pricewrap"><span>$</span><input class="price" id="itemPrice" type="number" step="0.1" placeholder="單價" inputmode="decimal"></div>
+          <div class="pricewrap"><span>⚖️</span><input class="price" id="itemWeight" type="number" step="0.01" placeholder="重量/權重" value="1" inputmode="decimal"></div>
+          
+          <label class="file-label">
+            <span id="lblUploadBtn">📷 上傳照片</span>
+            <input type="file" id="itemFile" accept="image/*">
+          </label>
+          <img id="itemFilePreview" class="img-preview-thumb" alt="Preview">
+        </div>
+
+        <div style="width:100%;">
+          <div class="muted" style="font-weight:600; margin-bottom:2px;" id="lblDefaultIcons">或快速選用預設圖標：</div>
+          <div class="preset-row" id="presetBar"></div>
+        </div>
+        
+        <button class="btn primary sm" id="addItem" style="margin-top:8px; margin-left:auto;">新增商品</button>
+      </div>
+
+      <div id="itemList"></div>
+    </div>
+
+    <div class="footer-actions">
+      <button class="btn danger sm" id="resetPrices">清空所有商品清單</button>
+    </div>
+  </section>
+</div>
+
+<div class="grand" id="grandBar">
+  <div class="row">
+    <div><div class="sub" id="grandSub">總計金額</div></div>
+    <div class="g" id="grandTotal">$0</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// --- Configuration Constants ---
+const LS_SETTINGS = 'group_split_settings';
+const LS_TALLY    = 'group_split_tally';
+const LS_LANG     = 'group_split_lang';
+
+const MAX_PEOPLE  = 16;
+const DEFAULT_SERVICE_RATE = 10;  
+const DEFAULT_CCY_CODE   = 'JPY'; 
+const DEFAULT_LOCAL_CODE = 'HKD'; 
+const THUMB_SIZE = 96;
+const TOAST_TIMEOUT = 1900;
+
+/* Safe storage wrapper. Catches QuotaExceeded errors to prevent app crashing. */
+const safeStorage = (() => {
+  let backing = null;
+  try {
+    const k = '__gs_probe__';
+    window.localStorage.setItem(k, '1');
+    window.localStorage.removeItem(k);
+    backing = window.localStorage;
+  } catch (e) {
+    backing = null;
+  }
+  const mem = {};
+  return {
+    persistent: !!backing,
+    getItem(key) {
+      try { return backing ? backing.getItem(key) : (key in mem ? mem[key] : null); }
+      catch (e) { return key in mem ? mem[key] : null; }
+    },
+    setItem(key, val) {
+      try { 
+        if (backing) { backing.setItem(key, val); return; } 
+      } catch (e) {
+        if (window.toast && window.i18n && window.currentLang) {
+          window.toast(window.i18n[window.currentLang].msgStorageFull);
+        }
+      }
+      mem[key] = String(val);
+    },
+    removeItem(key) {
+      try { if (backing) { backing.removeItem(key); return; } } catch (e) {}
+      delete mem[key];
+    }
+  };
+})();
+
+let currentSelectedIconBase64 = null;
+
+// Safe, flawless URL-encoded SVG vectors
+const PRESET_ICONS = {
+  bear_0: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23f8f9fa%22/%3E%3Cg%20fill%3D%22%231a636b%22%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%2213.5%22%20r%3D%225.5%22/%3E%3Ccircle%20cx%3D%2232.5%22%20cy%3D%2213.5%22%20r%3D%225.5%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2220%22%20r%3D%229.5%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2233%22%20r%3D%2211%22/%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%2229%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2235%22%20cy%3D%2229%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2239%22%20r%3D%225%22/%3E%3Ccircle%20cx%3D%2233%22%20cy%3D%2239%22%20r%3D%225%22/%3E%3C/g%3E%3Cpath%20d%3D%22M%2024%2C24%20L%2025.5%2C28.5%20L%2030.5%2C28.5%20L%2026.5%2C31.5%20L%2028%2C36%20L%2024%2C33.5%20L%2020%2C36%20L%2021.5%2C31.5%20L%2017.5%2C28.5%20L%2022.5%2C28.5%20Z%22%20fill%3D%22%23f8f9fa%22/%3E%3C/svg%3E',
+  bear_1: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23f8f9fa%22/%3E%3Cg%20fill%3D%22%23f3a7c4%22%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%2213.5%22%20r%3D%225.5%22/%3E%3Ccircle%20cx%3D%2232.5%22%20cy%3D%2213.5%22%20r%3D%225.5%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2220%22%20r%3D%229.5%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2233%22%20r%3D%2211%22/%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%2229%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2235%22%20cy%3D%2229%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2239%22%20r%3D%225%22/%3E%3Ccircle%20cx%3D%2233%22%20cy%3D%2239%22%20r%3D%225%22/%3E%3C/g%3E%3Cpath%20d%3D%22M%2024%2C24%20L%2025.5%2C28.5%20L%2030.5%2C28.5%20L%2026.5%2C31.5%20L%2028%2C36%20L%2024%2C33.5%20L%2020%2C36%20L%2021.5%2C31.5%20L%2017.5%2C28.5%20L%2022.5%2C28.5%20Z%22%20fill%3D%22%23f8f9fa%22/%3E%3C/svg%3E',
+  bear_2: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23f8f9fa%22/%3E%3Cg%20fill%3D%22%2390e0ef%22%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%2213.5%22%20r%3D%225.5%22/%3E%3Ccircle%20cx%3D%2232.5%22%20cy%3D%2213.5%22%20r%3D%225.5%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2220%22%20r%3D%229.5%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2233%22%20r%3D%2211%22/%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%2229%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2235%22%20cy%3D%2229%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2239%22%20r%3D%225%22/%3E%3Ccircle%20cx%3D%2233%22%20cy%3D%2239%22%20r%3D%225%22/%3E%3C/g%3E%3Cpath%20d%3D%22M%2024%2C24%20L%2025.5%2C28.5%20L%2030.5%2C28.5%20L%2026.5%2C31.5%20L%2028%2C36%20L%2024%2C33.5%20L%2020%2C36%20L%2021.5%2C31.5%20L%2017.5%2C28.5%20L%2022.5%2C28.5%20Z%22%20fill%3D%22%23f8f9fa%22/%3E%3C/svg%3E',
+  bear_3: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23f8f9fa%22/%3E%3Cg%20fill%3D%22%23e9d8a6%22%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%2213.5%22%20r%3D%225.5%22/%3E%3Ccircle%20cx%3D%2232.5%22%20cy%3D%2213.5%22%20r%3D%225.5%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2220%22%20r%3D%229.5%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2233%22%20r%3D%2211%22/%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%2229%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2235%22%20cy%3D%2229%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2239%22%20r%3D%225%22/%3E%3Ccircle%20cx%3D%2233%22%20cy%3D%2239%22%20r%3D%225%22/%3E%3C/g%3E%3Cpath%20d%3D%22M%2024%2C24%20L%2025.5%2C28.5%20L%2030.5%2C28.5%20L%2026.5%2C31.5%20L%2028%2C36%20L%2024%2C33.5%20L%2020%2C36%20L%2021.5%2C31.5%20L%2017.5%2C28.5%20L%2022.5%2C28.5%20Z%22%20fill%3D%22%23f8f9fa%22/%3E%3C/svg%3E',
+  bear_4: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23f8f9fa%22/%3E%3Cg%20fill%3D%22%2394d2bd%22%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%2213.5%22%20r%3D%225.5%22/%3E%3Ccircle%20cx%3D%2232.5%22%20cy%3D%2213.5%22%20r%3D%225.5%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2220%22%20r%3D%229.5%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2233%22%20r%3D%2211%22/%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%2229%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2235%22%20cy%3D%2229%22%20r%3D%224.5%22/%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2239%22%20r%3D%225%22/%3E%3Ccircle%20cx%3D%2233%22%20cy%3D%2239%22%20r%3D%225%22/%3E%3C/g%3E%3Cpath%20d%3D%22M%2024%2C24%20L%2025.5%2C28.5%20L%2030.5%2C28.5%20L%2026.5%2C31.5%20L%2028%2C36%20L%2024%2C33.5%20L%2020%2C36%20L%2021.5%2C31.5%20L%2017.5%2C28.5%20L%2022.5%2C28.5%20Z%22%20fill%3D%22%23f8f9fa%22/%3E%3C/svg%3E',
+  polaroid_0: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%23dee2e6%22%20stroke-width%3D%222%22/%3E%3Crect%20x%3D%226%22%20y%3D%226%22%20width%3D%2236%22%20height%3D%2228%22%20rx%3D%222%22%20fill%3D%22%23d8bbff%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.9%22/%3E%3Cpath%20d%3D%22M14%2031c0-4%204-6.5%2010-6.5s10%202.5%2010%206.5z%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.9%22/%3E%3C/svg%3E',
+  polaroid_1: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%23dee2e6%22%20stroke-width%3D%222%22/%3E%3Crect%20x%3D%226%22%20y%3D%226%22%20width%3D%2236%22%20height%3D%2228%22%20rx%3D%222%22%20fill%3D%22%232a9d8f%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.9%22/%3E%3Cpath%20d%3D%22M14%2031c0-4%204-6.5%2010-6.5s10%202.5%2010%206.5z%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.9%22/%3E%3C/svg%3E',
+  polaroid_2: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%23dee2e6%22%20stroke-width%3D%222%22/%3E%3Crect%20x%3D%226%22%20y%3D%226%22%20width%3D%2236%22%20height%3D%2228%22%20rx%3D%222%22%20fill%3D%22%23f4a261%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.9%22/%3E%3Cpath%20d%3D%22M14%2031c0-4%204-6.5%2010-6.5s10%202.5%2010%206.5z%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.9%22/%3E%3C/svg%3E',
+  polaroid_3: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%23dee2e6%22%20stroke-width%3D%222%22/%3E%3Crect%20x%3D%226%22%20y%3D%226%22%20width%3D%2236%22%20height%3D%2228%22%20rx%3D%222%22%20fill%3D%22%23e76f51%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.9%22/%3E%3Cpath%20d%3D%22M14%2031c0-4%204-6.5%2010-6.5s10%202.5%2010%206.5z%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.9%22/%3E%3C/svg%3E',
+  polaroid_4: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%226%22%20fill%3D%22%23ffffff%22%20stroke%3D%22%23dee2e6%22%20stroke-width%3D%222%22/%3E%3Crect%20x%3D%226%22%20y%3D%226%22%20width%3D%2236%22%20height%3D%2228%22%20rx%3D%222%22%20fill%3D%22%23e9c46a%22/%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2216%22%20r%3D%225%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.9%22/%3E%3Cpath%20d%3D%22M14%2031c0-4%204-6.5%2010-6.5s10%202.5%2010%206.5z%22%20fill%3D%22%23ffffff%22%20opacity%3D%220.9%22/%3E%3C/svg%3E',
+  tshirt_0: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23fdf0ed%22/%3E%3Cpath%20d%3D%22M14%2012l-5%203.5%202.5%205%204.5-2.5v18h16v-18l4.5%202.5%202.5-5-5-3.5c-2%201.5-5%201.5-7%200l-1-1-1%201c-2%201.5-5%201.5-7%200z%22%20fill%3D%22%23e63946%22/%3E%3C/svg%3E',
+  tshirt_1: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23edf2fb%22/%3E%3Cpath%20d%3D%22M14%2012l-5%203.5%202.5%205%204.5-2.5v18h16v-18l4.5%202.5%202.5-5-5-3.5c-2%201.5-5%201.5-7%200l-1-1-1%201c-2%201.5-5%201.5-7%200z%22%20fill%3D%22%2300b4d8%22/%3E%3C/svg%3E',
+  tshirt_2: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23f0f7f4%22/%3E%3Cpath%20d%3D%22M14%2012l-5%203.5%202.5%205%204.5-2.5v18h16v-18l4.5%202.5%202.5-5-5-3.5c-2%201.5-5%201.5-7%200l-1-1-1%201c-2%201.5-5%201.5-7%200z%22%20fill%3D%22%232a9d8f%22/%3E%3C/svg%3E',
+  tshirt_3: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23fffdf0%22/%3E%3Cpath%20d%3D%22M14%2012l-5%203.5%202.5%205%204.5-2.5v18h16v-18l4.5%202.5%202.5-5-5-3.5c-2%201.5-5%201.5-7%200l-1-1-1%201c-2%201.5-5%201.5-7%200z%22%20fill%3D%22%23ffb703%22/%3E%3C/svg%3E',
+  tshirt_4: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23f8f9fa%22/%3E%3Cpath%20d%3D%22M14%2012l-5%203.5%202.5%205%204.5-2.5v18h16v-18l4.5%202.5%202.5-5-5-3.5c-2%201.5-5%201.5-7%200l-1-1-1%201c-2%201.5-5%201.5-7%200z%22%20fill%3D%22%23212529%22/%3E%3C/svg%3E',
+  star_yellow: 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%228%22%20fill%3D%22%23fffdf0%22/%3E%3Cpath%20d%3D%22M%2024%2C10%20L%2028%2C19%20L%2038%2C19%20L%2030%2C25%20L%2033%2C35%20L%2024%2C29%20L%2015%2C35%20L%2018%2C25%20L%2010%2C19%20L%2020%2C19%20Z%22%20fill%3D%22%23ffb703%22/%3E%3C/svg%3E'
+};
+
+const DEFAULT_ITEMS = [
+  {id:'def_1', name:'熊玩偶', price:300, weight: 0.45, img: PRESET_ICONS.bear_0},
+  {id:'def_2', name:'潮流外套', price:1200, weight: 0.85, img: PRESET_ICONS.polaroid_1},
+  {id:'def_3', name:'素面短Tee', price:390, weight: 0.20, img: PRESET_ICONS.tshirt_1}
+];
+
+const i18n = {
+  en: {
+    title:'Group Order Splitter Pro', headerTitle:'📦 Group Order — Splitter Pro',
+    tabTally:'Tally Split', tabSettings:'Catalog & Fees',
+    whosEating:"How many buyers?", people:'Buyers:', addPerson: '+ Add Shopper', removePerson: 'Remove Shopper', confirmRemoveShopper: '"{name}" has items tallied. Remove this shopper anyway?',
+    newBill:'Clear Tallies', copyBill:'Copy Summary',
+    exportExcel:'Export Excel', exportToast:'Downloading CSV spreadsheet...',
+    billSettings:'Base Surcharges', svcChargeLabel:'Service / handling charge', svcRateLabel:'Service fee rate',
+    roundingLabel:'Round final individual total to integer',
+    discountTitle:'Overall Campaign Discount', discountToggle:'Apply store coupon discount',
+    discountType:'Discount Type', discPct:'Percentage (%)', discFixed:'Fixed bundle deduction ($)',
+    discountAmt:'Value',
+    shippingTitle:'Logistics Shipping Fee Distribution', shippingToggle:'Calculate shipping fees',
+    shipOverseaLabel:'Overseas shipping', shipOverseaHint:'vendor → warehouse (CCY)',
+    shipIntlLabel:'International shipping', shipIntlHint:'warehouse → you (local)',
+    shippingBasis: 'Distribution Metric Base', lblBasisPrice:'By Price Ratio', lblBasisWeight:'By Weight Ratio',
+    shippingMuted:'Overseas shipping is in the foreign currency (vendor → warehouse); international shipping is in your local currency (warehouse → you). Both split across buyers by the chosen basis.',
+    exchangeTitle:'Currency Conversion', exchangeToggle:'Convert from a foreign currency',
+    ccyPriceLabel:'CCY Price', localPriceLabel:'Local Price',
+    ccyCodePlaceholder:'JPY', localCodePlaceholder:'HKD',
+    exchangeMuted:'Enter one matching pair to set the rate (e.g. CCY Price 1000 = Local Price 210). Item prices are entered in the foreign currency; every amount is shown converted to your local currency.',
+    copyRate:'Rate', copyLocalPayable:'Local payable', copyCcyPayable:'Overseas total (CCY)', csvLocalTotal:'Local Total',
+    csvOverseaShip:'Overseas Ship', csvIntlShip:'Intl Ship',
+    standardDishes:'Merchandise Item Inventory', editPricesMuted:'Configure items. The weight field can be actual kg or a relative weight (1 = normal, 3 = heavier) — only the ratio between items matters for splitting shipping. Upload a picture or pick a preset icon.',
+    itemNamePlaceholder:'Item description (e.g., Toy, Shirt)', itemPricePlaceholder:'Price', itemWeightPlaceholder:'Weight', addBtn:'Add Product',
+    resetPricesBtn:'Clear entire item list',
+    personDefault:'Shopper ',
+    svc:'fee', disc:'disc', shipOversea:'overseas', shipIntl:'intl', wtUnit:'pt',
+    emptyCatalog:'⚠️ Catalog is empty. Click here to add items under the "Catalog & Fees" tab.',
+    copyTitle:'📦 Group Order Split — {n} buyer(s) ({basis})',
+    copyBasisWeight:'shipping split by weight', copyBasisPrice:'shipping split by price',
+    basisShortWeight:'weight', basisShortPrice:'price',
+    totalWeightLabel:'Total weight', grandPayable:'Total payable',
+    totalBillBase:'Grand Total', countPrefix:'', inclOpen:' (', inclClose:')', inclSep:', ', noteSvc:'incl. {rate}% service fee', noteDisc:'discount subtracted', noteShip:'incl. distributed logistics',
+    unitPerson:' person', unitPeople:' people',
+    msgEnterName:'Please enter an item title', msgEnterPrice:'Please type a valid item price (>=0)', msgEnterWeight:'Please enter a valid weight (>=0)',
+    msgAdded:'Catalog added "{name}"',
+    confirmNewBill:'Reset all shoppers quantity counters to 0? (Items & weights configurations will stay.)',
+    msgNewBillStarted:'All shopper baskets emptied.',
+    confirmResetPrices:'Wipe out all items in the system catalog?',
+    confirmItemDel:'Are you sure you want to delete this item? It will be permanently removed from all shoppers.',
+    msgPricesReset:'Item inventory completely wiped clean.', msgPriceUpdated:'Pricing parameters updated.',
+    msgStorageFull: 'Storage limit reached! Cannot save more images/data.',
+    copiedToast:'Detailed spreadsheet summary report copied!', langBtn:'中',
+    plates: ' unit(s)', totalPlates: 'Total Quantity', uploadBtn: '📷 Photo',
+    lblDefaultIcons: 'Or select a quick template icon asset:',
+    ccy: 'CCY', local: 'Local', shopper: 'Shopper', itemsSubtotal: 'Items Subtotal', weightTotal: 'Weight', grandTotalCsv: 'Grand Total',
+    saveSession: '💾 Save',
+    loadSession: '📂 Load',
+    pwaInstall: '📲 Install App',
+    confirmLoadSession: 'Load session from file? This replaces all items, tallies, and fee settings.',
+    msgSessionSaved: 'Session file saved.',
+    msgSessionLoaded: 'Session loaded successfully.',
+    msgSessionError: 'Could not read file — was it saved from this app?'
+  },
+  zh: {
+    title:'團購合購分帳機', headerTitle:'📦 團購合購 — 分帳機',
+    tabTally:'計帳分配', tabSettings:'品項與設定',
+    whosEating:'今天有幾位購買者？', people:'人數：', addPerson: '+ 新增購買者', removePerson: '移除購買者', confirmRemoveShopper: '「{name}」已有購買紀錄，確定要移除嗎？',
+    newBill:'清除分配', copyBill:'複製明細',
+    exportExcel:'匯出 Excel', exportToast:'已開始下載 CSV 表單！',
+    billSettings:'帳單設定', svcChargeLabel:'服務費 / 附加代購費', svcRateLabel:'服務費比例',
+    roundingLabel:'總額四捨五入至整數',
+    discountTitle:'總體折扣', discountToggle:'套用折扣',
+    discountType:'類型', discPct:'百分比（%）', discFixed:'固定整筆金額（$）',
+    discountAmt:'折扣數據',
+    shippingTitle:'分攤運費', shippingToggle:'計算分攤運費',
+    shipOverseaLabel:'海外運費', shipOverseaHint:'廠商 → 海外倉（外幣）',
+    shipIntlLabel:'國際運費', shipIntlHint:'海外倉 → 你（本地）',
+    shippingBasis: '分攤權重基準', lblBasisPrice:'依金額比例分攤', lblBasisWeight:'依總重量比例分攤',
+    shippingMuted:'海外運費以外幣計、國際運費以本地幣計，兩者皆依上方基準（金額或重量）分攤給每位團員。',
+    exchangeTitle:'匯率換算', exchangeToggle:'啟用外幣換算',
+    ccyPriceLabel:'外幣價', localPriceLabel:'本地價',
+    ccyCodePlaceholder:'JPY', localCodePlaceholder:'HKD',
+    exchangeMuted:'輸入一組對應金額即可設定匯率（例如 外幣價 1000 = 本地價 210）。商品價格以外幣輸入，所有金額會換算成本地價顯示。',
+    copyRate:'匯率', copyLocalPayable:'本地應付', copyCcyPayable:'海外應付（外幣）', csvLocalTotal:'本地總計 (Local Total)',
+    csvOverseaShip:'海外運費 (Overseas Ship)', csvIntlShip:'國際運費 (Intl Ship)',
+    standardDishes:'商品項目管理', editPricesMuted:'建立團購商品。重量欄可填實際公斤數，或填相對權重（1＝普通、3＝較重）——分攤運費時只看品項之間的比例。可自由上傳圖片或選用下方內建圖標。',
+    itemNamePlaceholder:'商品名稱（例如：熊玩偶、短Tee）', itemPricePlaceholder:'單價', itemWeightPlaceholder:'重量/權重', addBtn:'新增商品',
+    resetPricesBtn:'清空所有商品清單',
+    personDefault:'購買者 ',
+    svc:'服務費', disc:'折扣', shipOversea:'海外運費', shipIntl:'國際運費', wtUnit:'點',
+    emptyCatalog:'⚠️ 尚無商品，請先到「品項與設定」新增商品。點此前往 ➔',
+    copyTitle:'📦 團購合購分配明細表 — 共 {n} 位團員（{basis}）',
+    copyBasisWeight:'依重量分攤運費', copyBasisPrice:'依金額分攤運費',
+    basisShortWeight:'重量比', basisShortPrice:'金額比',
+    totalWeightLabel:'總重', grandPayable:'總計應付',
+    totalBillBase:'總計金額', countPrefix:'共 ', inclOpen:'（', inclClose:'）', inclSep:'、', noteSvc:'含 {rate}% 服務費', noteDisc:'已扣折價', noteShip:'含分攤運費',
+    unitPerson:' 人', unitPeople:' 人',
+    msgEnterName:'請輸入商品名稱', msgEnterPrice:'請輸入大於或等於 0 的單價', msgEnterWeight:'請輸入大於或等於 0 的重量/權重',
+    msgAdded:'已新增「{name}」',
+    confirmNewBill:'確定要清除所有成員的勾選數量並重新開始嗎？（商品清單與重量設定會被保留）',
+    msgNewBillStarted:'已清空所有點單紀錄',
+    confirmResetPrices:'確定要清空所有的商品項目嗎？（清空後需自行重新新增）',
+    confirmItemDel:'確定要刪除此商品嗎？所有購買者的勾選紀錄也會被移除。',
+    msgPricesReset:'商品列表已完全清空', msgPriceUpdated:'單價與參數已更新',
+    msgStorageFull: '儲存空間已滿！無法儲存更多圖片或資料，請刪除部分項目。',
+    copiedToast:'已複製分帳報表到剪貼板！', langBtn:'EN',
+    plates: ' 件', totalPlates: '總商品件數', uploadBtn: '📷 上傳照片',
+    lblDefaultIcons: '或快速選用預設圖標：',
+    ccy: '外幣', local: '本地', shopper: '購買者 (Shopper)', itemsSubtotal: '商品小計 (Items Subtotal)', weightTotal: '總重量 (Weight)', grandTotalCsv: '總計應付 (Grand Total)',
+    saveSession: '💾 儲存',
+    loadSession: '📂 載入',
+    pwaInstall: '📲 安裝 App',
+    confirmLoadSession: '確定要從檔案載入工作階段？這將覆蓋所有商品、計帳紀錄與費用設定。',
+    msgSessionSaved: '工作階段已儲存。',
+    msgSessionLoaded: '工作階段載入成功。',
+    msgSessionError: '無法讀取檔案，請確認是否為本程式儲存的工作階段。'
+  }
+};
+
+let currentLang = safeStorage.getItem(LS_LANG) || 'zh';
+let settings = loadSettings();
+let tally    = loadTally();
+
+function renderPresetBar() {
+  const bar = document.getElementById('presetBar');
+  bar.innerHTML = '';
+  Object.keys(PRESET_ICONS).forEach(key => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.type = 'button';
+    btn.innerHTML = `<img src="${PRESET_ICONS[key]}" alt="${key}">`;
+    btn.onclick = () => {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      currentSelectedIconBase64 = PRESET_ICONS[key];
+      document.getElementById('itemFile').value = '';
+      document.getElementById('itemFilePreview').style.display = 'none';
+    };
+    bar.appendChild(btn);
+  });
+}
+
+document.getElementById('itemFile').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = THUMB_SIZE; canvas.height = THUMB_SIZE;
+      let srcX = 0, srcY = 0, srcW = img.width, srcH = img.height;
+      if (img.width > img.height) {
+        srcW = img.height; srcX = (img.width - img.height) / 2;
+      } else {
+        srcH = img.width; srcY = (img.height - img.width) / 2;
+      }
+      ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, THUMB_SIZE, THUMB_SIZE);
+      currentSelectedIconBase64 = canvas.toDataURL('image/jpeg', 0.75);
+      const thumb = document.getElementById('itemFilePreview');
+      thumb.src = currentSelectedIconBase64;
+      thumb.style.display = 'inline-block';
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+function loadSettings() {
+  let s;
+  try { s = JSON.parse(safeStorage.getItem(LS_SETTINGS)); } catch(e) {}
+  if (!s || !s.items) return fresh();
+  if (s.serviceCharge === undefined) s.serviceCharge = false;
+  if (s.serviceRate   === undefined) s.serviceRate   = DEFAULT_SERVICE_RATE;
+  if (s.rounding      === undefined) s.rounding      = true;
+  if (!s.discount) s.discount = { enabled:false, type:'pct', amount:0 };
+  if (s.discount.type === undefined)   s.discount.type   = 'pct';
+  if (s.discount.amount === undefined) s.discount.amount = 0;
+  if (!s.shipping) s.shipping = { enabled:false, basis:'price', overseaAmount:0, intlAmount:0 };
+  if (s.shipping.basis === undefined)  s.shipping.basis  = 'price';
+  if (s.shipping.overseaAmount === undefined) s.shipping.overseaAmount = (s.shipping.amount !== undefined ? s.shipping.amount : 0);
+  if (s.shipping.intlAmount === undefined) s.shipping.intlAmount = 0;
+  if (!s.exchange) s.exchange = { enabled:false, ccyPrice:0, localPrice:0, ccyCode:DEFAULT_CCY_CODE, localCode:DEFAULT_LOCAL_CODE };
+  else {
+    if (s.exchange.ccyPrice  === undefined) s.exchange.ccyPrice  = 0;
+    if (s.exchange.localPrice=== undefined) s.exchange.localPrice= 0;
+    if (!s.exchange.ccyCode)   s.exchange.ccyCode   = DEFAULT_CCY_CODE;
+    if (!s.exchange.localCode) s.exchange.localCode = DEFAULT_LOCAL_CODE;
+  }
+  s.items.forEach(item => { if(item.weight === undefined) item.weight = 1.0; });
+  return s;
+}
+function fresh() {
+  return {
+    items: structuredClone(DEFAULT_ITEMS),
+    serviceCharge:false, serviceRate:DEFAULT_SERVICE_RATE, rounding:true,
+    discount:{enabled:false, type:'pct', amount:0},
+    shipping:{enabled:false, basis:'price', overseaAmount:0, intlAmount:0},
+    exchange:{enabled:false, ccyPrice:0, localPrice:0, ccyCode:DEFAULT_CCY_CODE, localCode:DEFAULT_LOCAL_CODE}
+  };
+}
+function saveSettings() { safeStorage.setItem(LS_SETTINGS, JSON.stringify(settings)); }
+function loadTally() {
+  try {
+    const t = JSON.parse(safeStorage.getItem(LS_TALLY));
+    if (t && t.people && t.people.length) {
+      t.people.forEach(p => { if (!p.counts || typeof p.counts !== 'object') p.counts = {}; });
+      return t;
+    }
+  } catch(e) {}
+  return { people:[{name:'', counts:{}}] };
+}
+function saveTally() { safeStorage.setItem(LS_TALLY, JSON.stringify(tally)); }
+
+function updateStaticLabels() {
+  const t = i18n[currentLang];
+  document.documentElement.lang = currentLang === 'zh' ? 'zh-Hant' : 'en';
+  document.title = t.title;
+  document.getElementById('lblHeaderTitle').textContent     = t.headerTitle;
+  document.getElementById('lblTabTally').textContent        = t.tabTally;
+  document.getElementById('lblTabSettings').textContent     = t.tabSettings;
+  document.getElementById('lblWhosEating').textContent      = t.whosEating;
+  document.getElementById('lblPeople').textContent          = t.people;
+  document.getElementById('newBill').textContent            = t.newBill;
+  document.getElementById('copyBill').textContent           = t.copyBill;
+  document.getElementById('exportExcel').textContent        = t.exportExcel;
+  document.getElementById('saveSession').textContent        = t.saveSession;
+  document.getElementById('lblLoadSession').textContent     = t.loadSession;
+  document.getElementById('pwaInstallBtn').textContent      = t.pwaInstall;
+  document.getElementById('lblBillSettings').textContent    = t.billSettings;
+  document.getElementById('lblSvcCharge').textContent       = t.svcChargeLabel;
+  document.getElementById('lblSvcRate').textContent         = t.svcRateLabel;
+  document.getElementById('lblRounding').textContent        = t.roundingLabel;
+  document.getElementById('lblDiscountTitle').textContent   = t.discountTitle;
+  document.getElementById('lblDiscountToggle').textContent  = t.discountToggle;
+  document.getElementById('lblDiscountType').textContent    = t.discountType;
+  document.getElementById('lblDiscPct').textContent         = t.discPct;
+  document.getElementById('lblDiscFixed').textContent       = t.discFixed;
+  document.getElementById('lblDiscountAmt').textContent     = t.discountAmt;
+  
+  document.getElementById('lblShippingTitle').textContent   = t.shippingTitle;
+  document.getElementById('lblShippingToggle').textContent  = t.shippingToggle;
+  document.getElementById('lblShipOversea').childNodes[0].nodeValue = t.shipOverseaLabel;
+  document.getElementById('lblShipOverseaHint').textContent = t.shipOverseaHint;
+  document.getElementById('lblShipIntl').childNodes[0].nodeValue = t.shipIntlLabel;
+  document.getElementById('lblShipIntlHint').textContent   = t.shipIntlHint;
+  document.getElementById('lblShippingBasis').textContent   = t.shippingBasis;
+  document.getElementById('lblBasisPrice').textContent      = t.lblBasisPrice;
+  document.getElementById('lblBasisWeight').textContent     = t.lblBasisWeight;
+  document.getElementById('lblShippingMuted').textContent   = t.shippingMuted;
+
+  document.getElementById('lblExchangeTitle').textContent   = t.exchangeTitle;
+  document.getElementById('lblExchangeToggle').textContent  = t.exchangeToggle;
+  document.getElementById('lblCcyPrice').textContent        = t.ccyPriceLabel;
+  document.getElementById('lblLocalPrice').textContent      = t.localPriceLabel;
+  document.getElementById('lblExchangeMuted').textContent   = t.exchangeMuted;
+  document.getElementById('ccyCode').placeholder            = t.ccyCodePlaceholder;
+  document.getElementById('localCode').placeholder          = t.localCodePlaceholder;
+  updateRateHint();
+
+  document.getElementById('lblStandardDishes').textContent  = t.standardDishes;
+  document.getElementById('lblEditPricesMuted').textContent = t.editPricesMuted;
+  document.getElementById('itemName').placeholder           = t.itemNamePlaceholder;
+  document.getElementById('itemPrice').placeholder          = t.itemPricePlaceholder;
+  document.getElementById('itemWeight').placeholder         = t.itemWeightPlaceholder;
+  document.getElementById('addItem').textContent            = t.addBtn;
+  document.getElementById('resetPrices').textContent        = t.resetPricesBtn;
+  document.getElementById('langToggleBtn').textContent      = t.langBtn;
+  document.getElementById('lblUploadBtn').textContent       = t.uploadBtn;
+  document.getElementById('lblDefaultIcons').textContent    = t.lblDefaultIcons;
+  document.getElementById('addPersonBtn').textContent       = t.addPerson;
+}
+
+function setLanguage(lang) {
+  currentLang = lang; safeStorage.setItem(LS_LANG, lang);
+  updateStaticLabels(); renderTally(); renderSettings();
+  if (window._pwaRefreshManifest) window._pwaRefreshManifest();
+}
+
+function iconFor(d) {
+  if (d.img) return `<img src="${escapeHtml(d.img)}" alt="thumb">`;
+  const fallbackText = d.name ? d.name.trim().substring(0, 2) : '??';
+  return `<div class="ic-fallback">${escapeHtml(fallbackText)}</div>`;
+}
+
+let curBaseSym = '$';   
+function fmtAmount(n, sym) {
+  return (n < 0 ? '-' : '') + sym +
+    Math.abs(n).toLocaleString(undefined, {
+      minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+      maximumFractionDigits: 2
+    });
+}
+const money = n => fmtAmount(n, curBaseSym);
+
+function exchangeRate() {
+  const e = settings.exchange;
+  if (!e || !e.enabled) return 0;
+  const c = Number(e.ccyPrice), l = Number(e.localPrice);
+  return (c > 0 && l > 0) ? l / c : 0;
+}
+function localSymbol() {
+  const code = settings.exchange && settings.exchange.localCode ? settings.exchange.localCode.trim() : '';
+  return code ? code + ' ' : '$';
+}
+function baseSymbol() {
+  const code = settings.exchange && settings.exchange.enabled && settings.exchange.ccyCode ? settings.exchange.ccyCode.trim() : '';
+  return code ? code + ' ' : '$';
+}
+function applyCurrencyContext() { curBaseSym = baseSymbol(); }
+
+function localEq(ccyAmount) {
+  const r = exchangeRate();
+  if (!r) return '';
+  return '≈ ' + fmtAmount(ccyAmount * r, localSymbol());
+}
+function fmtSettle(n) { return fmtAmount(n, exchangeRate() > 0 ? localSymbol() : curBaseSym); }
+function fmtLocal(n)  { return fmtAmount(n, exchangeRate() > 0 ? localSymbol() : curBaseSym); }
+function updateRateHint() {
+  const el = document.getElementById('lblExchangeRate');
+  if (!el) return;
+  const r = exchangeRate();
+  if (!r) { el.textContent = ''; return; }
+  const t = i18n[currentLang];
+  const cc = (settings.exchange.ccyCode || '').trim()   || t.ccy;
+  const lc = (settings.exchange.localCode || '').trim() || t.local;
+  el.textContent = `1 ${cc} ≈ ${r.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${lc}`;
+}
+
+function dishById(id) { return settings.items.find(d => d.id === id); }
+function personPriceSubtotal(p) {
+  let t = 0;
+  for (const id in p.counts) { const d = dishById(id); if (d) t += d.price * p.counts[id]; }
+  return t;
+}
+function personWeightSubtotal(p) {
+  let w = 0;
+  for (const id in p.counts) { const d = dishById(id); if (d) w += (d.weight || 0) * p.counts[id]; }
+  return w;
+}
+
+const round2 = n => Math.round(n * 100) / 100;
+
+function allocate(total, weights) {
+  const out = new Array(weights.length).fill(0);
+  const cents = Math.round(total * 100);
+  const sumW  = weights.reduce((a, b) => a + b, 0);
+  if (cents <= 0 || sumW <= 0) return out;
+
+  const exact  = weights.map(w => (w / sumW) * cents);
+  const floors = exact.map(Math.floor);
+  let remainder = cents - floors.reduce((a, b) => a + b, 0);
+
+  const order = exact
+    .map((v, i) => ({ i, frac: v - Math.floor(v), w: weights[i] }))
+    .sort((a, b) => b.frac - a.frac || b.w - a.w || a.i - b.i);
+  for (let k = 0; k < order.length && remainder > 0; k++, remainder--) floors[order[k].i]++;
+
+  return floors.map(c => c / 100);
+}
+
+function computeBill() {
+  const svcRate    = settings.serviceCharge ? (Number(settings.serviceRate) || 0) / 100 : 0;
+  const subPrices  = tally.people.map(personPriceSubtotal);
+  const subWeights = tally.people.map(personWeightSubtotal);
+  const grandRawPrice  = subPrices.reduce((a, b) => a + b, 0);
+  const grandRawWeight = subWeights.reduce((a, b) => a + b, 0);
+
+  let discTotal = 0;
+  if (settings.discount.enabled && settings.discount.amount > 0) {
+    discTotal = settings.discount.type === 'pct'
+      ? grandRawPrice * (settings.discount.amount / 100)
+      : Math.min(settings.discount.amount, grandRawPrice);
+  }
+
+  const sh = settings.shipping;
+  const overseaTotal = (sh.enabled && sh.overseaAmount > 0) ? sh.overseaAmount : 0;
+  const intlTotal    = (sh.enabled && sh.intlAmount   > 0) ? sh.intlAmount   : 0;
+
+  let shipWeights = sh.basis === 'weight' ? subWeights : subPrices;
+  if (shipWeights.reduce((a, b) => a + b, 0) <= 0) shipWeights = subPrices;
+  if (shipWeights.reduce((a, b) => a + b, 0) <= 0) shipWeights = tally.people.map(() => 1);
+
+  const discShares     = allocate(discTotal, subPrices);
+  const overseaShares  = allocate(overseaTotal, shipWeights);
+  const intlShares     = allocate(intlTotal, shipWeights);
+
+  const r = exchangeRate();
+  const conv = r > 0 ? r : 1;
+
+  const people = tally.people.map((p, i) => {
+    const subPrice    = subPrices[i];
+    const subWeight   = subWeights[i];
+    const fee         = svcRate > 0 ? round2(subPrice * svcRate) : 0;
+    const disc        = discShares[i];
+    const shipOversea = overseaShares[i];
+    const shipIntl    = intlShares[i];
+    const ccySide     = round2(subPrice + fee - disc + shipOversea);
+    let total = ccySide * conv + shipIntl;
+    if (settings.rounding) total = Math.round(total); else total = round2(total);
+    let plates = 0;
+    for (const id in p.counts) plates += p.counts[id];
+    return { name: p.name, subPrice, subWeight, fee, disc, shipOversea, shipIntl, ccySide, total, plates };
+  });
+
+  const totals = {
+    subPrice:    grandRawPrice,
+    subWeight:   grandRawWeight,
+    fee:         round2(people.reduce((a, b) => a + b.fee, 0)),
+    disc:        round2(people.reduce((a, b) => a + b.disc, 0)),
+    shipOversea: round2(people.reduce((a, b) => a + b.shipOversea, 0)),
+    shipIntl:    round2(people.reduce((a, b) => a + b.shipIntl, 0)),
+    ccySide:     round2(people.reduce((a, b) => a + b.ccySide, 0)),
+    total:       round2(people.reduce((a, b) => a + b.total, 0)),
+    plates:      people.reduce((a, b) => a + b.plates, 0),
+  };
+  return { people, totals, overseaTotal, intlTotal, rate: r, converting: r > 0 };
+}
+
+function renderPeopleCount() {
+  document.getElementById('peopleNum').textContent  = tally.people.length;
+  document.getElementById('addPersonBtn').disabled  = tally.people.length >= MAX_PEOPLE;
+}
+function addPerson() {
+  if (tally.people.length >= MAX_PEOPLE) return;
+  tally.people.push({name:'', counts:{}});
+  saveTally(); renderTally();
+}
+
+function renderTally() {
+  applyCurrencyContext();
+  renderPeopleCount();
+  const cont = document.getElementById('peopleContainer'); 
+  cont.innerHTML = '';
+  
+  const frag = document.createDocumentFragment();
+
+  if (settings.items.length === 0) {
+    const banner = document.createElement('div');
+    banner.className = 'card muted';
+    banner.style.cssText = 'text-align:center; padding:20px; cursor:pointer; transition:0.2s;';
+    banner.textContent = i18n[currentLang].emptyCatalog;
+    banner.onclick = () => document.querySelector('[data-tab="settings"]').click();
+    banner.onmouseover = () => { banner.style.background = '#f4f9fc'; };
+    banner.onmouseout  = () => { banner.style.background = 'var(--card)'; };
+    frag.appendChild(banner);
+  }
+
+  tally.people.forEach((p, idx) => {
+    const card = document.createElement('div'); card.className = 'card';
+    const head = document.createElement('div'); head.className = 'person-head';
+    const av = document.createElement('div'); av.className = 'person-avatar'; av.textContent = idx + 1;
+
+    const inp = document.createElement('input');
+    inp.value   = p.name || (i18n[currentLang].personDefault + (idx + 1));
+    inp.onfocus = () => inp.select();
+    inp.oninput = () => { p.name = inp.value; saveTally(); };
+
+    const tot = document.createElement('div'); tot.className = 'ptotal'; tot.id = 'ptot' + idx;
+    head.append(av, inp, tot); 
+    
+    // Individual Shopper Removal Button
+    if (tally.people.length > 1) {
+      const delShopper = document.createElement('button');
+      delShopper.className = 'del';
+      delShopper.innerHTML = '&times;';
+      delShopper.title = i18n[currentLang].removePerson;
+      delShopper.onclick = () => {
+        const hasOrders = Object.values(p.counts).some(v => v > 0);
+        if (hasOrders) {
+          const displayName = p.name || (i18n[currentLang].personDefault + (idx + 1));
+          if (!confirm(i18n[currentLang].confirmRemoveShopper.replace('{name}', displayName))) return;
+        }
+        tally.people.splice(idx, 1);
+        saveTally(); renderTally();
+      };
+      head.appendChild(delShopper);
+    }
+    card.appendChild(head);
+
+    const grid = document.createElement('div'); grid.className = 'dishgrid';
+    settings.items.forEach(d => {
+      const cell = document.createElement('div'); cell.className = 'dish';
+      const ic   = document.createElement('div'); ic.className = 'ic';
+      const badge = document.createElement('span'); badge.className = 'qty-badge'; badge.style.display = 'none';
+      
+      ic.innerHTML = iconFor(d);
+      ic.appendChild(badge);
+
+      const nm = document.createElement('div'); nm.className = 'nm';
+      const dLoc = localEq(d.price);
+      nm.innerHTML = `<div class="t" title="${escapeHtml(d.name)}">${escapeHtml(d.name)}</div>
+                      <div class="p">${money(d.price)}</div>
+                      ${dLoc ? `<div class="loc">${dLoc}</div>` : ''}
+                      <div class="w">⚖️ ${d.weight}${i18n[currentLang].wtUnit}</div>`;
+
+      const stp   = document.createElement('div'); stp.className = 'stepper';
+      const minus = document.createElement('button'); minus.textContent = '–';
+      const qty   = document.createElement('span');  qty.className = 'qty';
+      const plus  = document.createElement('button'); plus.textContent = '+';
+
+      const refresh = () => {
+        const q = p.counts[d.id] || 0;
+        qty.textContent = q; qty.className = 'qty' + (q ? ' has' : '');
+        cell.classList.toggle('active', !!q);
+        badge.textContent = q; badge.style.display = q ? 'flex' : 'none';
+      };
+      minus.onclick = (e) => {
+        e.stopPropagation();
+        p.counts[d.id] = Math.max(0, (p.counts[d.id] || 0) - 1);
+        if (!p.counts[d.id]) delete p.counts[d.id];
+        refresh(); recalc(); saveTally();
+      };
+      plus.onclick = (e) => {
+        e.stopPropagation();
+        p.counts[d.id] = (p.counts[d.id] || 0) + 1; refresh(); recalc(); saveTally();
+      };
+      cell.onclick = (e) => {
+        if(e.target.tagName === 'BUTTON') return;
+        p.counts[d.id] = (p.counts[d.id] || 0) + 1; refresh(); recalc(); saveTally();
+      };
+      
+      refresh();
+      stp.append(minus, qty, plus); cell.append(ic, nm, stp); grid.appendChild(cell);
+    });
+    card.appendChild(grid); frag.appendChild(card);
+  });
+  
+  cont.appendChild(frag);
+  recalc();
+}
+
+function recalc() {
+  applyCurrencyContext();
+  const t = i18n[currentLang];
+  const { people, totals, converting } = computeBill();
+
+  people.forEach((row, idx) => {
+    const el = document.getElementById('ptot' + idx);
+    if (!el) return;
+    let html = money(row.subPrice);
+    if (row.fee  > 0) html += ` + <b>${money(row.fee)}</b> ${t.svc}`;
+    if (row.disc > 0) html += ` − <b class="disc-val">${money(row.disc)}</b> ${t.disc}`;
+    if (row.shipOversea > 0) html += ` + <b class="ship-val">${money(row.shipOversea)}</b> ${t.shipOversea}`;
+    if (!converting && row.shipIntl > 0) html += ` + <b class="ship-val">${money(row.shipIntl)}</b> ${t.shipIntl}`;
+    const meta = `(${row.plates}${t.plates} · ⚖️${row.subWeight.toFixed(2)}${t.wtUnit})`;
+    el.innerHTML = `<span class="calc">${html} ${meta}</span>${buildSecondLine(row, converting, t)}<span class="big">${fmtSettle(row.total)}</span>`;
+  });
+
+  const unit  = tally.people.length > 1 ? t.unitPeople : t.unitPerson;
+  document.getElementById('grandTotal').textContent = fmtSettle(totals.total);
+  const notes = [];
+  if (settings.serviceCharge) notes.push(t.noteSvc.replace('{rate}', String(Number(settings.serviceRate) || 0)));
+  if (settings.discount.enabled && settings.discount.amount > 0) notes.push(t.noteDisc);
+  if (settings.shipping.enabled && (settings.shipping.overseaAmount > 0 || settings.shipping.intlAmount > 0)) notes.push(t.noteShip);
+  const noteStr = notes.length ? t.inclOpen + notes.join(t.inclSep) + t.inclClose : '';
+
+  document.getElementById('grandSub').textContent = `${t.totalBillBase}${noteStr} · ${t.countPrefix}${tally.people.length}${unit} · ${t.totalPlates}: ${totals.plates}${t.plates} · 📦 ${t.totalWeightLabel}: ${totals.subWeight.toFixed(2)}${t.wtUnit}`;
+}
+
+function buildSecondLine(row, converting, t) {
+  if (!converting) return '';
+  const r = exchangeRate();
+  const parts = [`≈ ${fmtAmount(round2(row.ccySide * r), localSymbol())}`];
+  if (row.shipIntl > 0) parts.push(`+ ${fmtAmount(row.shipIntl, localSymbol())} ${t.shipIntl}`);
+  return `<span class="loc-eq">${parts.join(' ')}</span>`;
+}
+
+function renderSettings() {
+  document.getElementById('svcToggle').checked      = settings.serviceCharge;
+  document.getElementById('serviceRate').value      = settings.serviceRate ?? '';
+  document.getElementById('serviceFields').classList.toggle('open', settings.serviceCharge);
+  document.getElementById('roundToggle').checked    = settings.rounding;
+  document.getElementById('discountToggle').checked = settings.discount.enabled;
+  document.getElementById('discTypePct').checked    = settings.discount.type === 'pct';
+  document.getElementById('discTypeFixed').checked  = settings.discount.type === 'fixed';
+  document.getElementById('discountAmount').value   = settings.discount.amount || '';
+  document.getElementById('discAmtUnit').textContent= settings.discount.type === 'pct' ? '%' : '$';
+  document.getElementById('discountFields').classList.toggle('open', settings.discount.enabled);
+  
+  document.getElementById('shippingToggle').checked = settings.shipping.enabled;
+  document.getElementById('overseaAmount').value    = settings.shipping.overseaAmount || '';
+  document.getElementById('intlAmount').value        = settings.shipping.intlAmount    || '';
+  document.getElementById('shippingFields').classList.toggle('open', settings.shipping.enabled);
+  document.getElementById('shipBasisPrice').checked = settings.shipping.basis !== 'weight';
+  document.getElementById('shipBasisWeight').checked = settings.shipping.basis === 'weight';
+  document.getElementById('shipOverseaSym').textContent = (settings.exchange.enabled && settings.exchange.ccyCode) ? settings.exchange.ccyCode.trim() : '$';
+  document.getElementById('shipIntlSym').textContent    = (settings.exchange.enabled && settings.exchange.localCode) ? settings.exchange.localCode.trim() : '$';
+
+  document.getElementById('exchangeToggle').checked = settings.exchange.enabled;
+  document.getElementById('ccyPrice').value   = settings.exchange.ccyPrice   || '';
+  document.getElementById('localPrice').value = settings.exchange.localPrice || '';
+  document.getElementById('ccyCode').value    = settings.exchange.ccyCode    || '';
+  document.getElementById('localCode').value  = settings.exchange.localCode  || '';
+  document.getElementById('exchangeFields').classList.toggle('open', settings.exchange.enabled);
+  updateRateHint();
+
+  const baseSym = settings.exchange.enabled && settings.exchange.ccyCode ? settings.exchange.ccyCode.trim() : '$';
+  const sl = document.getElementById('itemList'); sl.innerHTML = '';
+  const frag = document.createDocumentFragment();
+
+  settings.items.forEach(d => {
+    const row = document.createElement('div'); row.className = 'srow';
+    const ic  = document.createElement('div'); ic.className = 'ic'; ic.style.flex = '0 0 38px'; ic.innerHTML = iconFor(d);
+    const nm  = document.createElement('div'); nm.className = 'nm';
+    nm.innerHTML = `<div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">${escapeHtml(d.name)}</div>`;
+    
+    const pw  = document.createElement('div'); pw.className = 'pricewrap';
+    const sym = document.createElement('span'); sym.textContent = baseSym; sym.style.fontSize = '12px';
+    const inp = document.createElement('input'); inp.className = 'price'; inp.type = 'number'; inp.step = '0.1'; inp.value = d.price;
+    inp.inputMode = 'decimal';
+    inp.onchange = () => {
+      const v = parseFloat(inp.value); d.price = (isNaN(v) || v < 0) ? 0 : v;
+      saveSettings(); renderTally(); toast(i18n[currentLang].msgPriceUpdated);
+    };
+    pw.append(sym, inp);
+
+    const ww  = document.createElement('div'); ww.className = 'pricewrap'; ww.style.marginLeft = "4px";
+    const wsym = document.createElement('span'); wsym.textContent = '⚖️';
+    const winp = document.createElement('input'); winp.className = 'price'; winp.type = 'number'; winp.step = '0.01'; winp.value = d.weight || 0;
+    winp.inputMode = 'decimal'; winp.style.width = "75px"; winp.style.paddingLeft = "22px";
+    winp.onchange = () => {
+      const v = parseFloat(winp.value); d.weight = (isNaN(v) || v < 0) ? 0 : v;
+      saveSettings(); renderTally(); toast(i18n[currentLang].msgPriceUpdated);
+    };
+    ww.append(wsym, winp);
+    
+    const del = document.createElement('button'); del.className = 'del'; del.innerHTML = '&times;';
+    del.onclick = () => {
+      if (!confirm(i18n[currentLang].confirmItemDel)) return;
+      settings.items = settings.items.filter(x => x.id !== d.id);
+      tally.people.forEach(p => delete p.counts[d.id]);
+      saveSettings(); saveTally(); renderSettings(); renderTally();
+    };
+    
+    row.append(ic, nm, pw, ww, del); frag.appendChild(row);
+  });
+  
+  sl.appendChild(frag);
+}
+
+function copyBillSummary() {
+  applyCurrencyContext();
+  const t = i18n[currentLang];
+  const { people, totals, overseaTotal, intlTotal, rate, converting } = computeBill();
+  const n = tally.people.length;
+  const basisLabel = settings.shipping.basis === 'weight' ? t.copyBasisWeight : t.copyBasisPrice;
+
+  const lines = [
+    t.copyTitle.replace('{n}', n).replace('{basis}', basisLabel),
+    '─'.repeat(42)
+  ];
+  if (rate) {
+    const cc = (settings.exchange.ccyCode || '').trim()   || t.ccy;
+    const lc = (settings.exchange.localCode || '').trim() || t.local;
+    lines.push(`${t.copyRate}: 1 ${cc} ≈ ${rate.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${lc}`);
+  }
+
+  people.forEach((row, idx) => {
+    const name  = row.name || (t.personDefault + (idx + 1));
+    const parts = [money(row.subPrice)];
+    if (row.fee  > 0) parts.push(`+ ${money(row.fee)} ${t.svc}`);
+    if (row.disc > 0) parts.push(`- ${money(row.disc)} ${t.disc}`);
+    if (row.shipOversea > 0) parts.push(`+ ${money(row.shipOversea)} ${t.shipOversea}`);
+    if (converting) {
+      parts.push(`≈ ${fmtAmount(round2(row.ccySide * rate), localSymbol())}`);
+      if (row.shipIntl > 0) parts.push(`+ ${fmtAmount(row.shipIntl, localSymbol())} ${t.shipIntl}`);
+    } else if (row.shipIntl > 0) {
+      parts.push(`+ ${money(row.shipIntl)} ${t.shipIntl}`);
+    }
+    parts.push(`= ${fmtSettle(row.total)} (${row.plates}${t.plates} · ⚖️${row.subWeight.toFixed(2)}${t.wtUnit})`);
+    lines.push(`${name}: ${parts.join(' ')}`);
+  });
+
+  lines.push('─'.repeat(42));
+  lines.push(`${t.totalPlates}: ${totals.plates}${t.plates} · ${t.totalWeightLabel}: ${totals.subWeight.toFixed(2)}${t.wtUnit}`);
+  if (settings.shipping.enabled) {
+    const basisShort = settings.shipping.basis === 'weight' ? t.basisShortWeight : t.basisShortPrice;
+    if (overseaTotal > 0) lines.push(`${t.shipOverseaLabel}: ${money(overseaTotal)} (${basisShort})`);
+    if (intlTotal > 0)    lines.push(`${t.shipIntlLabel}: ${fmtLocal(intlTotal)} (${basisShort})`);
+  }
+  if (converting) {
+    lines.push(`${t.copyCcyPayable}: ${money(totals.ccySide)}`);
+    lines.push(`${t.copyLocalPayable}: ${fmtSettle(totals.total)}`);
+  } else {
+    lines.push(`${t.grandPayable}: ${fmtSettle(totals.total)}`);
+  }
+  const text = lines.join('\n');
+
+  navigator.clipboard.writeText(text).then(() => toast(t.copiedToast)).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); toast(t.copiedToast);
+  });
+}
+
+function escapeCSV(val) {
+  if (val === null || val === undefined) return '';
+  let str = String(val);
+  let needsQuotes = str.includes(',') || str.includes('"') || str.includes('\n');
+  if (needsQuotes) {
+    str = '"' + str.replace(/"/g, '""') + '"';
+  }
+  if (/^[=+\-@\t\r]/.test(str)) {
+    if (!needsQuotes) str = "'" + str; 
+  }
+  return str;
+}
+
+function exportToExcel() {
+  applyCurrencyContext();
+  const t = i18n[currentLang];
+  const { people, totals, converting, rate } = computeBill();
+  const ccyTag   = (converting && settings.exchange.ccyCode)   ? ' (' + settings.exchange.ccyCode.trim()   + ')' : '';
+  const localTag = (converting && settings.exchange.localCode) ? ' (' + settings.exchange.localCode.trim() + ')' : '';
+
+  let headers = [ t.shopper ];
+  settings.items.forEach(d => {
+    headers.push(`${d.name} (${money(d.price)})`);
+  });
+  headers.push(t.itemsSubtotal + ccyTag);
+  headers.push(`${t.svc} (Fee)${ccyTag}`);
+  headers.push(`${t.disc} (Discount)${ccyTag}`);
+  headers.push(`${t.csvOverseaShip}${ccyTag}`);
+  headers.push(`${t.csvIntlShip}${localTag}`);
+  headers.push(`${t.weightTotal} (${t.wtUnit})`);
+  headers.push(t.grandTotalCsv + localTag);
+
+  let rows = [headers];
+  let itemTotals = {};
+  settings.items.forEach(d => itemTotals[d.id] = 0);
+
+  people.forEach((person, idx) => {
+    const counts = tally.people[idx].counts || {};
+    const name   = person.name || (t.personDefault + (idx + 1));
+    let row = [name];
+
+    settings.items.forEach(d => {
+      const q = counts[d.id] || 0;
+      row.push(q);
+      itemTotals[d.id] += q;
+    });
+
+    row.push(round2(person.subPrice));
+    row.push(person.fee);
+    row.push(-person.disc);
+    row.push(person.shipOversea);
+    row.push(person.shipIntl);
+    row.push(person.subWeight.toFixed(2));
+    row.push(person.total);
+
+    rows.push(row);
+  });
+
+  let totalRow = [currentLang === 'zh' ? '總計 (TOTAL)' : 'TOTAL'];
+  settings.items.forEach(d => {
+    totalRow.push(itemTotals[d.id]);
+  });
+  totalRow.push(round2(totals.subPrice));
+  totalRow.push(totals.fee);
+  totalRow.push(-totals.disc);
+  totalRow.push(totals.shipOversea);
+  totalRow.push(totals.shipIntl);
+  totalRow.push(totals.subWeight.toFixed(2));
+  totalRow.push(totals.total);
+  rows.push(totalRow);
+
+  let csvContent = "\uFEFF" + rows.map(e => e.map(escapeCSV).join(",")).join("\n");
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `Group_Order_Report_${Date.now()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  toast(t.exportToast);
+}
+
+function addCustomItem() {
+  const t     = i18n[currentLang];
+  const name  = document.getElementById('itemName').value.trim();
+  const priceInput = document.getElementById('itemPrice').value;
+  const weightInput = document.getElementById('itemWeight').value;
+  const price = parseFloat(priceInput);
+  let weight  = parseFloat(weightInput);
+  
+  if (!name) { toast(t.msgEnterName); return; }
+  if (isNaN(price) || price < 0 || priceInput === '') { toast(t.msgEnterPrice); return; }
+  if (isNaN(weight) || weight < 0 || weightInput === '') { toast(t.msgEnterWeight); return; }
+  
+  settings.items.push({
+    id: 'item_' + Date.now(),
+    name: name, price: price, weight: weight,
+    img: currentSelectedIconBase64
+  });
+  
+  document.getElementById('itemName').value  = '';
+  document.getElementById('itemPrice').value = '';
+  document.getElementById('itemWeight').value = '1';
+  document.getElementById('itemFile').value = '';
+  document.getElementById('itemFilePreview').style.display = 'none';
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
+  currentSelectedIconBase64 = null;
+  
+  saveSettings(); renderSettings(); renderTally();
+  toast(t.msgAdded.replace('{name}', name));
+}
+
+function newBill() {
+  if (!confirm(i18n[currentLang].confirmNewBill)) return;
+  tally.people.forEach(p => p.counts = {});
+  saveTally(); renderTally(); toast(i18n[currentLang].msgNewBillStarted);
+}
+
+function resetPrices() {
+  if (!confirm(i18n[currentLang].confirmResetPrices)) return;
+  settings.items = [];
+  tally.people.forEach(p => p.counts = {});
+  saveSettings(); saveTally(); renderSettings(); renderTally(); toast(i18n[currentLang].msgPricesReset);
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), TOAST_TIMEOUT);
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
+}
+
+/* ── DOM input listeners ── */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.tab,.panel').forEach(x => x.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+    document.getElementById('grandBar').style.display = tab.dataset.tab === 'tally' ? 'block' : 'none';
+  };
+});
+
+document.getElementById('addPersonBtn').onclick = addPerson;
+
+document.getElementById('svcToggle').onchange = e => {
+  settings.serviceCharge = e.target.checked;
+  document.getElementById('serviceFields').classList.toggle('open', e.target.checked);
+  saveSettings(); recalc();
+};
+document.getElementById('serviceRate').onchange = e => {
+  let v = parseFloat(e.target.value); if (isNaN(v) || v < 0) v = 0;
+  settings.serviceRate = v; e.target.value = v; saveSettings(); recalc();
+};
+document.getElementById('roundToggle').onchange = e => { settings.rounding = e.target.checked; saveSettings(); recalc(); };
+document.getElementById('discountToggle').onchange = e => {
+  settings.discount.enabled = e.target.checked;
+  document.getElementById('discountFields').classList.toggle('open', e.target.checked); saveSettings(); recalc();
+};
+document.getElementById('shippingToggle').onchange = e => {
+  settings.shipping.enabled = e.target.checked;
+  document.getElementById('shippingFields').classList.toggle('open', e.target.checked); saveSettings(); recalc();
+};
+
+document.querySelectorAll('input[name=shipBasis]').forEach(r => {
+  r.onchange = () => { settings.shipping.basis = r.value; saveSettings(); recalc(); };
+});
+
+document.querySelectorAll('input[name=discType]').forEach(r => {
+  r.onchange = () => {
+    settings.discount.type = r.value; settings.discount.amount = 0;
+    document.getElementById('discountAmount').value = '';
+    document.getElementById('discAmtUnit').textContent = r.value === 'pct' ? '%' : '$';
+    saveSettings(); recalc();
+  };
+});
+
+document.getElementById('discountAmount').onchange = e => {
+  let v = parseFloat(e.target.value); if (isNaN(v) || v < 0) v = 0;
+  if (settings.discount.type === 'pct' && v > 100) v = 100;
+  settings.discount.amount = v; e.target.value = v; saveSettings(); recalc();
+};
+
+document.getElementById('overseaAmount').onchange = e => {
+  let v = parseFloat(e.target.value); if (isNaN(v) || v < 0) v = 0;
+  settings.shipping.overseaAmount = v; e.target.value = v || ''; saveSettings(); recalc();
+};
+document.getElementById('intlAmount').onchange = e => {
+  let v = parseFloat(e.target.value); if (isNaN(v) || v < 0) v = 0;
+  settings.shipping.intlAmount = v; e.target.value = v || ''; saveSettings(); recalc();
+};
+
+document.getElementById('exchangeToggle').onchange = e => {
+  settings.exchange.enabled = e.target.checked;
+  document.getElementById('exchangeFields').classList.toggle('open', e.target.checked);
+  saveSettings(); updateRateHint(); renderSettings(); renderTally();
+};
+document.getElementById('ccyPrice').onchange = e => {
+  let v = parseFloat(e.target.value); if (isNaN(v) || v < 0) v = 0;
+  settings.exchange.ccyPrice = v; e.target.value = v || ''; saveSettings(); updateRateHint(); renderSettings(); renderTally();
+};
+document.getElementById('localPrice').onchange = e => {
+  let v = parseFloat(e.target.value); if (isNaN(v) || v < 0) v = 0;
+  settings.exchange.localPrice = v; e.target.value = v || ''; saveSettings(); updateRateHint(); renderSettings(); renderTally();
+};
+document.getElementById('ccyCode').oninput = e => {
+  settings.exchange.ccyCode = e.target.value; saveSettings(); renderSettings(); renderTally();
+};
+document.getElementById('localCode').oninput = e => {
+  settings.exchange.localCode = e.target.value; saveSettings(); renderSettings(); renderTally();
+};
+
+document.getElementById('addItem').onclick     = addCustomItem;
+document.getElementById('itemName').addEventListener('keydown',  e => { if (e.key==='Enter') addCustomItem(); });
+document.getElementById('itemPrice').addEventListener('keydown', e => { if (e.key==='Enter') addCustomItem(); });
+document.getElementById('newBill').onclick     = newBill;
+document.getElementById('copyBill').onclick    = copyBillSummary;
+document.getElementById('exportExcel').onclick = exportToExcel;
+document.getElementById('resetPrices').onclick = resetPrices;
+document.getElementById('langToggleBtn').onclick = () => setLanguage(currentLang === 'en' ? 'zh' : 'en');
+
+/* ── Session Save / Load ── */
+function saveSession() {
+  const t = i18n[currentLang];
+  const payload = JSON.stringify({ version: 1, savedAt: new Date().toISOString(), settings, tally }, null, 2);
+  const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'groupbuy_session_' + Date.now() + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(t.msgSessionSaved);
+}
+
+document.getElementById('saveSession').addEventListener('click', saveSession);
+
+document.getElementById('loadSessionFile').addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    e.target.value = '';
+    const t = i18n[currentLang];
+    let s;
+    try { s = JSON.parse(ev.target.result); } catch { toast(t.msgSessionError); return; }
+    if (!s?.settings?.items || !s?.tally?.people) { toast(t.msgSessionError); return; }
+    if (!confirm(t.confirmLoadSession)) return;
+    settings = s.settings;
+    tally    = s.tally;
+    // Forward-compat normalization
+    settings.items.forEach(it  => { if (it.weight == null) it.weight = 1; });
+    tally.people.forEach(p     => { if (!p.counts) p.counts = {}; });
+    if (!settings.discount) settings.discount = { enabled: false, type: 'pct', amount: 0 };
+    if (!settings.shipping) settings.shipping = { enabled: false, basis: 'price', overseaAmount: 0, intlAmount: 0 };
+    if (!settings.exchange) settings.exchange = { enabled: false, ccyPrice: 0, localPrice: 0, ccyCode: DEFAULT_CCY_CODE, localCode: DEFAULT_LOCAL_CODE };
+    saveSettings(); saveTally(); renderSettings(); renderTally();
+    toast(t.msgSessionLoaded);
+  };
+  reader.readAsText(file, 'utf-8');
+});
+
+/* ── PWA ── */
+(function() {
+  const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <rect width="512" height="512" rx="96" fill="#014f86"/>
+    <rect x="88" y="228" width="336" height="226" rx="20" fill="white"/>
+    <polygon points="88,266 256,172 424,266" fill="white" opacity=".88"/>
+    <circle cx="256" cy="284" r="22" fill="#014f86"/>
+    <rect x="136" y="320" width="240" height="22" rx="11" fill="#014f86"/>
+    <circle cx="256" cy="378" r="22" fill="#014f86"/>
+  </svg>`;
+
+  let _manifestUrl = null;
+  function refreshManifest() {
+    if (_manifestUrl) URL.revokeObjectURL(_manifestUrl);
+    const isZh = currentLang !== 'en';
+    const manifest = {
+      name:             isZh ? '團購合購分帳機'           : 'Group Order Splitter',
+      short_name:       isZh ? '分帳機'                  : 'GroupSplit',
+      description:      isZh ? '多人團購分帳計算工具'      : 'Split group orders among multiple buyers',
+      start_url:        '.',
+      display:          'standalone',
+      orientation:      'portrait',
+      background_color: '#f4f1ec',
+      theme_color:      '#014f86',
+      icons: [{
+        src:     'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(ICON))),
+        sizes:   'any',
+        type:    'image/svg+xml',
+        purpose: 'any maskable'
+      }]
+    };
+    _manifestUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }));
+    document.getElementById('pwaManifest').href = _manifestUrl;
+  }
+  refreshManifest();
+  window._pwaRefreshManifest = refreshManifest;
+
+  // Service Worker — network-first with cache fallback (requires HTTP/HTTPS, not file://)
+  if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
+    const SW = `
+const CV = 'gb-v1';
+self.addEventListener('install',  ()  => self.skipWaiting());
+self.addEventListener('activate', e   => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CV).map(k => caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET' || !e.request.url.startsWith('http')) return;
+  e.respondWith(
+    fetch(e.request)
+      .then(r => { const c = r.clone(); caches.open(CV).then(cache => cache.put(e.request, c)); return r; })
+      .catch(()  => caches.match(e.request))
+  );
+});`;
+    const swUrl = URL.createObjectURL(new Blob([SW], { type: 'text/javascript' }));
+    navigator.serviceWorker.register(swUrl).catch(() => {});
+  }
+
+  // Install prompt (Chrome/Edge desktop + Android)
+  let deferred = null;
+  const btn = document.getElementById('pwaInstallBtn');
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); deferred = e; btn.style.display = '';
+  });
+  window.addEventListener('appinstalled', () => {
+    btn.style.display = 'none'; deferred = null;
+  });
+  btn.addEventListener('click', () => {
+    if (!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.then(() => { deferred = null; btn.style.display = 'none'; });
+  });
+})();
+
+/* ── initialization trigger ── */
+updateStaticLabels();
+renderPresetBar();
+renderSettings();
+renderTally();
+</script>
+</body>
+</html>
