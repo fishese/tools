@@ -462,15 +462,41 @@ $('#modeManual').onclick=()=>setMode('manual');
 
 /* ---------- OCR ---------- */
 $('#drop').onclick=()=>$('#file').click();
+
+/* grayscale + contrast boost + upscale small images — dramatically improves Tesseract accuracy */
+async function preprocessImage(file){
+  return new Promise(resolve=>{
+    const img=new Image();const src=URL.createObjectURL(file);
+    img.onload=()=>{
+      const MAX=2400;
+      const scale=img.naturalWidth<MAX?Math.min(MAX/img.naturalWidth,3):1;
+      const w=Math.round(img.naturalWidth*scale),h=Math.round(img.naturalHeight*scale);
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      const ctx=cv.getContext('2d');ctx.drawImage(img,0,0,w,h);
+      const id=ctx.getImageData(0,0,w,h);const px=id.data;
+      for(let i=0;i<px.length;i+=4){
+        const g=0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
+        const v=Math.min(255,Math.max(0,(g-128)*1.5+128));
+        px[i]=px[i+1]=px[i+2]=v;
+      }
+      ctx.putImageData(id,0,0);
+      URL.revokeObjectURL(src);
+      cv.toBlob(b=>resolve(b||file),'image/png');
+    };
+    img.onerror=()=>{URL.revokeObjectURL(src);resolve(file);};
+    img.src=src;
+  });
+}
 $('#file').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
   const url=URL.createObjectURL(f);
   $('#preview').src=url;$('#preview').style.display='block';
   $('#progwrap').classList.add('show');$('#ocrStatus').classList.add('show');
-  $('#ocrStatus').textContent='Reading image…';
+  $('#ocrStatus').textContent='Enhancing image…';
   const langs=(settings.langs&&settings.langs.length?settings.langs:['eng']).join('+');
   try{
-    const {data}=await Tesseract.recognize(f,langs,{logger:m=>{
+    const processed=await preprocessImage(f);
+    const {data}=await Tesseract.recognize(processed,langs,{logger:m=>{
       if(m.status==='recognizing text'){$('#progbar').style.width=Math.round(m.progress*100)+'%';
         $('#ocrStatus').textContent='Reading text… '+Math.round(m.progress*100)+'%';}
       else if(m.status&&m.status.indexOf('language')>=0){$('#ocrStatus').textContent='Downloading language data (one time)…';}
@@ -486,51 +512,97 @@ $('#file').addEventListener('change',async e=>{
   }finally{$('#progwrap').classList.remove('show');}
 });
 
+function inferCategory(text){
+  const t=text.toLowerCase();
+  const rules=[
+    [/\b(groceries|grocery|supermarket|mart|fresh\s+food|food\s+market|超市|食品|食材)/,'Groceries'],
+    [/\b(restaurant|dining|cafe|café|coffee|eatery|takeaway|takeout|food\s+delivery|pizza|burger|sushi|boba|milk\s+tea|餐廳|飲食|咖啡|レストラン|カフェ)/,'Dining'],
+    [/\b(fashion|clothing|clothes|apparel|outfit|shoes|footwear|sneakers|handbag|衣服|時裝|ファッション)/,'Fashion'],
+    [/\b(pharmacy|drugstore|medicine|vitamin|supplement|wellness|health\s+product|藥房|薬局)/,'Health'],
+    [/\b(electronics|gadget|computer|laptop|smartphone|mobile\s+phone|tablet|camera|電器|テクノロジー)/,'Electronics'],
+    [/\b(beauty|cosmetic|makeup|skincare|moistur|serum|lipstick|salon|spa|美妝|美容|コスメ)/,'Beauty'],
+    [/\b(hotel|flight|airline|travel|tour|booking|accommodation|旅行|旅遊|ホテル)/,'Travel'],
+    [/\b(cinema|movie|theatre|theater|concert|ticket|gym|fitness|sport|娛樂|映画|スポーツ)/,'Entertainment'],
+    [/\b(book|stationery|office\s+supply|school\s+supply|文具|書籍)/,'Books & Office'],
+    [/\b(furniture|home\s+d[eé]cor|kitchenware|appliance|household|家具|家居|家電)/,'Home'],
+    [/\b(baby|infant|toddler|kids|children|toy|おもちゃ|玩具|兒童|童裝)/,'Kids'],
+    [/\b(pet|dog|cat|puppy|kitten|ペット|寵物)/,'Pets'],
+  ];
+  for(const [re,cat] of rules)if(re.test(t))return cat;
+  return '';
+}
 function detectAmount(t){
-  // tolerant currency/value detector. Handles OCR reading '$' as 'S'.
   let m;
-  m=t.match(/\b(HK|US|NT|SG|AU|CA|RM)\s?[S$＄]\s?(\d{1,5}(?:\.\d{2})?)/i);
+  m=t.match(/\b(HK|US|NT|SG|AU|CA|NZ|RM)\s?[S$＄]\s?(\d{1,5}(?:\.\d{2})?)/i);
   if(m)return m[1].toUpperCase()+'$'+m[2];
   m=t.match(/[¥￥]\s?(\d{1,6})/);if(m)return '¥'+m[1];
   m=t.match(/(\d{1,6})\s*円/);if(m)return m[1]+'円';
   m=t.match(/(\d{1,6})\s*[元圓]/);if(m)return m[1]+'元';
+  m=t.match(/£\s?(\d{1,5}(?:\.\d{2})?)/);if(m)return '£'+m[1];
+  m=t.match(/€\s?(\d{1,5}(?:\.\d{2})?)/);if(m)return '€'+m[1];
+  m=t.match(/₩\s?(\d{1,7})/);if(m)return '₩'+m[1];
+  m=t.match(/฿\s?(\d{1,5}(?:\.\d{2})?)/);if(m)return '฿'+m[1];
+  m=t.match(/₹\s?(\d{1,6}(?:\.\d{2})?)/);if(m)return '₹'+m[1];
   m=t.match(/(?<![A-Za-z0-9])[$＄]\s?(\d{1,5}(?:\.\d{2})?)/);if(m)return '$'+m[1];
   return '';
 }
 function fillFromText(text){
   const t=text.replace(/ /g,' ');
   const lines=t.split('\n').map(l=>l.trim()).filter(Boolean);
-  // value
+  let m,mm;
+  // value — ordered from most specific to least specific
   let value='';
-  let m=t.match(/\b(\d{1,3})\s*%\s*(off|discount)?/i);
+  // "X% off" with optional qualifier prefix
+  m=t.match(/(?:up\s+to\s+|extra\s+|additional\s+)?\b(\d{1,3})\s*(?:%|％)\s*off/i);
   if(m)value=m[1]+'% off';
-  if(!value){m=t.match(/\$\s?(\d{1,4}(?:\.\d{2})?)\s*(off|back)/i);if(m)value='$'+m[1]+' off';}
-  // CJK: 满X减Y / 滿X減Y  (spend X get Y off)
+  // bare % without "off" keyword (1-2 digits only to avoid false matches like "100% organic")
+  if(!value){m=t.match(/(?<!\d)(\d{1,2})\s*(?:%|％)(?!\s*(?:done|complete|full|left|remaining|charge|battery|vol|more|increase))/i);if(m&&+m[1]>0)value=m[1]+'% off';}
+  // "$X off" / "£X off" / "€X off" etc.
+  if(!value){m=t.match(/([£€$＄₩฿₹])\s?(\d{1,5}(?:\.\d{2})?)\s*(?:off|back)/i);if(m)value=m[1]+m[2]+' off';}
+  // "save $X" / "save £X" etc.
+  if(!value){m=t.match(/save\s+([£€$＄¥₩฿₹])\s?(\d{1,5}(?:\.\d{2})?)/i);if(m)value=m[1]+m[2]+' off';}
+  // CJK: 满X减Y / 滿X減Y
   if(!value){m=t.match(/[满滿]\s*(\d{1,5})\s*[减減]\s*(\d{1,5})/);if(m){value='-¥'+m[2]+' (满'+m[1]+')';}}
-  // CJK: X折 / X.X折  discount multiplier (8折 = 20% off)
+  // CJK: X折 / X.X折
   if(!value){m=t.match(/([0-9](?:\.[0-9])?)\s*折/);if(m){const n=parseFloat(m[1]);value=m[1]+'折 ('+Math.round((1-n/10)*100)+'% off)';}}
-  // JP: X円オフ / X円引 ; X% off written with 오프/オフ
+  // JP: X円オフ / X円引
   if(!value){m=t.match(/(\d{1,5})\s*円\s*(?:off|オフ|引)/i);if(m)value='¥'+m[1]+' off';}
-  if(!value){m=t.match(/(\d{1,3})\s*(?:%|％)\s*(?:off|オフ|オフ|引|引き|割引)/i);if(m)value=m[1]+'% off';}
+  if(!value){m=t.match(/(\d{1,3})\s*(?:%|％)\s*(?:off|オフ|引|引き|割引)/i);if(m)value=m[1]+'% off';}
   if(!value){m=t.match(/(\d{1,2})\s*割(?:引)?/);if(m)value=m[1]+'割 ('+(parseInt(m[1],10)*10)+'% off)';}
   if(!value&&/\bBOGO\b|buy one get one|买一[送赠]一|買一[送贈]一|1\s*つ買うと/i.test(t))value='BOGO';
   if(!value&&/free shipping|免运费|免運費|送料無料/i.test(t))value='Free shipping';
-  // bare amount voucher (e.g. HK$20 eVoucher) — last resort
   if(!value)value=detectAmount(t);
-  // code
+  // code — expanded keyword list; tightened fallback requires keyword proximity or dash format
   let code='';
-  m=t.match(/(?:code|promo|coupon|use|优惠码|優惠碼|兑换码|兌換碼|代码|代碼|序号|序號|クーポンコード|コード)\s*[:#：]?\s*([A-Z0-9]{4,16})\b/i);
+  m=t.match(/(?:code|promo(?:tion)?|coupon|voucher|discount\s+code|offer\s+code|redeem|enter\s+code|apply|use\s+code|优惠码|優惠碼|兑换码|兌換碼|代码|代碼|序号|序號|クーポンコード|コード|バウチャー)\s*[:#：]?\s*([A-Z0-9]{4,20})\b/i);
   if(m)code=m[1].toUpperCase();
-  if(!code){m=t.match(/\b([A-Z0-9]*[A-Z][A-Z0-9]*\d[A-Z0-9]*)\b/);if(m&&m[1].length>=5&&m[1].length<=16&&/\d/.test(m[1])&&/[A-Z]/.test(m[1]))code=m[1];}
-  // min spend
+  if(!code){
+    const NOISE=/^(https?|www|the|and|for|off|use|get|buy|save|you|your|valid|until|after|from|with|this|only|new|free|see|more|shop|here|our|all|any|now|per|app|day|time|item|date|order)$/i;
+    const re=/\b([A-Z][A-Z0-9]{3,15}|[A-Z0-9]{3,8}-[A-Z0-9]{3,8})\b/g;
+    let best=null,bscore=-1;
+    while((mm=re.exec(t))!==null){
+      const s=mm[1];
+      if(!s.includes('-')&&(!/[A-Z]/.test(s)||!/\d/.test(s)))continue;
+      if(NOISE.test(s))continue;
+      const before=t.slice(Math.max(0,mm.index-80),mm.index).toLowerCase();
+      const score=/code|promo|coupon|voucher|redeem|enter|apply/.test(before)?2:s.includes('-')?1:0;
+      if(score>bscore){best=s;bscore=score;}
+    }
+    if(best&&bscore>0)code=best;
+  }
+  // min spend — accept any currency symbol
   let min='';
-  m=t.match(/(?:orders?\s+(?:over|of)|minimum(?:\s+purchase)?(?:\s+of)?|spend|min\.?)\s*\$?\s?(\d{1,4})/i);
+  m=t.match(/(?:orders?\s+(?:over|of)|minimum(?:\s+purchase)?(?:\s+of)?|spend(?:\s+over)?|min\.?)\s*[£€$＄¥₩฿₹]?\s?(\d{1,5}(?:\.\d{2})?)/i);
   if(m)min='$'+m[1];
   if(!min){m=t.match(/[满滿]\s*(\d{1,5})/);if(m)min='¥'+m[1];}
   if(!min){m=t.match(/(\d{1,5})\s*円\s*以上/);if(m)min='¥'+m[1];}
+  // link — first URL in text
+  let link='';
+  m=t.match(/https?:\/\/[^\s<>"'，。、　]+/i);
+  if(m)link=m[0].replace(/[.,;:!?)]+$/,'');
   // expiration
   let exp=findDate(t);
-  // store: prefer the line holding the amount; take the name before the amount/bracket
+  // store
   let store='';
   const skip=/折|円|年|月|日|有效|有効|期限|[满滿]|[减減]|扫|掃|码|碼|獎賞|奖赏|詳情|详情|領取|领取|前往|請按|请按|二維|二维|eVoucher|Voucher/i;
   const amtLine=lines.find(l=>/(?:HK|US|NT)?\s?[S$＄]\s?\d/i.test(l)&&/[぀-ヿ一-鿿]/.test(l));
@@ -546,7 +618,9 @@ function fillFromText(text){
   if(value)$('#f-value').value=value;
   if(code)$('#f-code').value=code;
   if(min)$('#f-min').value=min;
+  if(link)$('#f-link').value=link;
   if(exp)$('#f-exp').value=exp;
+  const cat=inferCategory(t);if(cat)$('#f-cat').value=cat;
   $('#ocrRaw').textContent=text.trim();
   $('#ocrRawWrap').style.display=text.trim()?'block':'none';
   $('#confirmNote').style.display='block';
@@ -569,11 +643,13 @@ function findDate(t){
   let mm;
   while((mm=patterns[0].exec(t))){cands.push({i:mm.index,iso:toISO(+mm[1],+mm[2]-1,+mm[3])});}
   [patterns[1],patterns[2]].forEach(p=>{while((mm=p.exec(t))){let a=+mm[1],b=+mm[2],y=+mm[3];let mo=a,d=b;if(a>12&&b<=12){mo=b;d=a;}cands.push({i:mm.index,iso:toISO(y,mo-1,d)});}});
-  while((mm=patterns[3].exec(t))){const mo=MONTHS[mm[1].slice(0,3).toLowerCase()];if(mo===undefined)continue;const y=mm[3]?+mm[3]:(new Date().getFullYear());cands.push({i:mm.index,iso:toISO(y,mo,+mm[2])});}
-  while((mm=patterns[4].exec(t))){const mo=MONTHS[mm[2].slice(0,3).toLowerCase()];if(mo===undefined)continue;const y=mm[3]?+mm[3]:(new Date().getFullYear());cands.push({i:mm.index,iso:toISO(y,mo,+mm[1])});}
+  // if no explicit year and date is already past, roll forward to next year
+  function nextYearIf(iso){if(!iso)return iso;const d=parseDate(iso);return d<today()?toISO(d.getFullYear()+1,d.getMonth(),d.getDate()):iso;}
+  while((mm=patterns[3].exec(t))){const mo=MONTHS[mm[1].slice(0,3).toLowerCase()];if(mo===undefined)continue;const hasY=!!mm[3];const iso=toISO(hasY?+mm[3]:new Date().getFullYear(),mo,+mm[2]);cands.push({i:mm.index,iso:hasY?iso:nextYearIf(iso)});}
+  while((mm=patterns[4].exec(t))){const mo=MONTHS[mm[2].slice(0,3).toLowerCase()];if(mo===undefined)continue;const hasY=!!mm[3];const iso=toISO(hasY?+mm[3]:new Date().getFullYear(),mo,+mm[1]);cands.push({i:mm.index,iso:hasY?iso:nextYearIf(iso)});}
   // CJK: 2026年12月31日 (year optional) and 2026/12/31 or 2026.12.31
   let cjk=/(?:(\d{4})\s*年)?\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/g;
-  while((mm=cjk.exec(t))){const y=mm[1]?+mm[1]:(new Date().getFullYear());cands.push({i:mm.index,iso:toISO(y,+mm[2]-1,+mm[3]),cjk:!!mm[1]});}
+  while((mm=cjk.exec(t))){const hasY=!!mm[1];const iso=toISO(hasY?+mm[1]:new Date().getFullYear(),+mm[2]-1,+mm[3]);cands.push({i:mm.index,iso:hasY?iso:nextYearIf(iso),cjk:hasY});}
   let ymd=/(?<!\d)(\d{4})[.\/](\d{1,2})[.\/](\d{1,2})(?!\d)/g;
   while((mm=ymd.exec(t))){cands.push({i:mm.index,iso:toISO(+mm[1],+mm[2]-1,+mm[3]),cjk:true});}
   const valid=cands.filter(c=>c.iso);
