@@ -515,18 +515,18 @@ $('#file').addEventListener('change',async e=>{
 function inferCategory(text){
   const t=text.toLowerCase();
   const rules=[
-    [/\b(groceries|grocery|supermarket|mart|fresh\s+food|food\s+market|超市|食品|食材)/,'Groceries'],
-    [/\b(restaurant|dining|cafe|café|coffee|eatery|takeaway|takeout|food\s+delivery|pizza|burger|sushi|boba|milk\s+tea|餐廳|飲食|咖啡|レストラン|カフェ)/,'Dining'],
-    [/\b(fashion|clothing|clothes|apparel|outfit|shoes|footwear|sneakers|handbag|衣服|時裝|ファッション)/,'Fashion'],
-    [/\b(pharmacy|drugstore|medicine|vitamin|supplement|wellness|health\s+product|藥房|薬局)/,'Health'],
-    [/\b(electronics|gadget|computer|laptop|smartphone|mobile\s+phone|tablet|camera|電器|テクノロジー)/,'Electronics'],
-    [/\b(beauty|cosmetic|makeup|skincare|moistur|serum|lipstick|salon|spa|美妝|美容|コスメ)/,'Beauty'],
-    [/\b(hotel|flight|airline|travel|tour|booking|accommodation|旅行|旅遊|ホテル)/,'Travel'],
-    [/\b(cinema|movie|theatre|theater|concert|ticket|gym|fitness|sport|娛樂|映画|スポーツ)/,'Entertainment'],
-    [/\b(book|stationery|office\s+supply|school\s+supply|文具|書籍)/,'Books & Office'],
-    [/\b(furniture|home\s+d[eé]cor|kitchenware|appliance|household|家具|家居|家電)/,'Home'],
-    [/\b(baby|infant|toddler|kids|children|toy|おもちゃ|玩具|兒童|童裝)/,'Kids'],
-    [/\b(pet|dog|cat|puppy|kitten|ペット|寵物)/,'Pets'],
+    [/\b(groceries|grocery|supermarket|mart|fresh\s+food|food\s+market)|(超市|食料品|生鮮|スーパー|コンビニ|食材|食品)/,'Groceries'],
+    [/\b(restaurant|dining|cafe|café|coffee|eatery|takeaway|takeout|food\s+delivery|pizza|burger|sushi|boba|milk\s+tea)|(餐廳|飲食|咖啡|外食|居酒屋|定食|弁当|ランチ|料理|食堂|レストラン|カフェ|デリバリー)/,'Dining'],
+    [/\b(fashion|clothing|clothes|apparel|outfit|shoes|footwear|sneakers|handbag)|(衣服|時裝|服飾|衣料|鞋|包包|ファッション|洋服|アパレル|ブランド)/,'Fashion'],
+    [/\b(pharmacy|drugstore|medicine|vitamin|supplement|wellness|health\s+product)|(藥房|藥局|保健品|健康食品|醫藥品|薬局|薬|医薬品)/,'Health'],
+    [/\b(electronics|gadget|computer|laptop|smartphone|mobile\s+phone|tablet|camera)|(電器|電腦|手機|家電|電子機器|スマホ|パソコン|テクノロジー)/,'Electronics'],
+    [/\b(beauty|cosmetic|makeup|skincare|moistur|serum|lipstick|salon|spa)|(美妝|美容|護膚|彩妝|美髮|護髮|化粧品|スキンケア|コスメ)/,'Beauty'],
+    [/\b(hotel|flight|airline|travel|tour|booking|accommodation)|(旅行|旅遊|酒店|航空|民宿|宿泊|旅館|ホテル)/,'Travel'],
+    [/\b(cinema|movie|theatre|theater|concert|ticket|gym|fitness|sport)|(娛樂|映画|スポーツ|ゲーム|フィットネス|健身|映画館)/,'Entertainment'],
+    [/\b(book|stationery|office\s+supply|school\s+supply)|(文具|書籍|教材|本|雑誌|辦公)/,'Books & Office'],
+    [/\b(furniture|home\s+d[eé]cor|kitchenware|appliance|household)|(家具|家居|家電|廚具|生活用品|インテリア|家庭用品)/,'Home'],
+    [/\b(baby|infant|toddler|kids|children|toy)|(兒童|童裝|玩具|育兒|子供|キッズ|おもちゃ)/,'Kids'],
+    [/\b(pet|dog|cat|puppy|kitten)|(寵物|ペット|愛犬|愛猫|猫|犬)/,'Pets'],
   ];
   for(const [re,cat] of rules)if(re.test(t))return cat;
   return '';
@@ -570,11 +570,15 @@ function fillFromText(text){
   if(!value){m=t.match(/(\d{1,3})\s*(?:%|％)\s*(?:off|オフ|引|引き|割引)/i);if(m)value=m[1]+'% off';}
   if(!value){m=t.match(/(\d{1,2})\s*割(?:引)?/);if(m)value=m[1]+'割 ('+(parseInt(m[1],10)*10)+'% off)';}
   if(!value&&/\bBOGO\b|buy one get one|买一[送赠]一|買一[送贈]一|1\s*つ買うと/i.test(t))value='BOGO';
-  if(!value&&/free shipping|免运费|免運費|送料無料/i.test(t))value='Free shipping';
+  if(!value&&/free shipping|免运费|免運費|免費運費|包邮|包郵|送料無料|宅配無料/i.test(t))value='Free shipping';
+  // CJK: 立减/立減 X (instant off — SC/TC)
+  if(!value){m=t.match(/立[减減]\s*(\d{1,5})/);if(m)value='-¥'+m[1]+' (立减)';}
+  // CJK: 每满X减Y / 每滿X減Y (tiered — SC/TC); also catches 满减 already via earlier pattern
+  if(!value){m=t.match(/每[满滿]\s*(\d{1,5})\s*[减減]\s*(\d{1,5})/);if(m)value='-¥'+m[2]+' (每满'+m[1]+')';}
   if(!value)value=detectAmount(t);
   // code — expanded keyword list; tightened fallback requires keyword proximity or dash format
   let code='';
-  m=t.match(/(?:code|promo(?:tion)?|coupon|voucher|discount\s+code|offer\s+code|redeem|enter\s+code|apply|use\s+code|优惠码|優惠碼|兑换码|兌換碼|代码|代碼|序号|序號|クーポンコード|コード|バウチャー)\s*[:#：]?\s*([A-Z0-9]{4,20})\b/i);
+  m=t.match(/(?:code|promo(?:tion)?|coupon|voucher|discount\s+code|offer\s+code|redeem|enter\s+code|apply|use\s+code|优惠码|優惠碼|折扣码|折扣碼|促销码|促銷碼|兑换码|兌換碼|代码|代碼|序号|序號|号码|號碼|券码|券碼|番号|券号|クーポンコード|クーポン番号|コード|引換コード|バウチャー)\s*[:#：]?\s*([A-Z0-9]{4,20})\b/i);
   if(m)code=m[1].toUpperCase();
   if(!code){
     const NOISE=/^(https?|www|the|and|for|off|use|get|buy|save|you|your|valid|until|after|from|with|this|only|new|free|see|more|shop|here|our|all|any|now|per|app|day|time|item|date|order)$/i;
@@ -585,7 +589,7 @@ function fillFromText(text){
       if(!s.includes('-')&&(!/[A-Z]/.test(s)||!/\d/.test(s)))continue;
       if(NOISE.test(s))continue;
       const before=t.slice(Math.max(0,mm.index-80),mm.index).toLowerCase();
-      const score=/code|promo|coupon|voucher|redeem|enter|apply/.test(before)?2:s.includes('-')?1:0;
+      const score=/code|promo|coupon|voucher|redeem|enter|apply|号码|號碼|券码|券碼|番号|券号|编号|編號/.test(before)?2:s.includes('-')?1:0;
       if(score>bscore){best=s;bscore=score;}
     }
     if(best&&bscore>0)code=best;
@@ -594,8 +598,10 @@ function fillFromText(text){
   let min='';
   m=t.match(/(?:orders?\s+(?:over|of)|minimum(?:\s+purchase)?(?:\s+of)?|spend(?:\s+over)?|min\.?)\s*[£€$＄¥₩฿₹]?\s?(\d{1,5}(?:\.\d{2})?)/i);
   if(m)min='$'+m[1];
-  if(!min){m=t.match(/[满滿]\s*(\d{1,5})/);if(m)min='¥'+m[1];}
+  if(!min){m=t.match(/[满滿満]\s*(\d{1,5})/);if(m)min='¥'+m[1];}  // 満 = JP, 满 = SC, 滿 = TC
   if(!min){m=t.match(/(\d{1,5})\s*円\s*以上/);if(m)min='¥'+m[1];}
+  if(!min){m=t.match(/(\d{1,5})\s*元\s*以上/);if(m)min='¥'+m[1];}   // SC: X元以上
+  if(!min){m=t.match(/[満滿満]\s*(\d{1,5})\s*円/);if(m)min='¥'+m[1];} // JP: 満X円
   // link — first URL in text
   let link='';
   m=t.match(/https?:\/\/[^\s<>"'，。、　]+/i);
@@ -604,9 +610,9 @@ function fillFromText(text){
   let exp=findDate(t);
   // store
   let store='';
-  const skip=/折|円|年|月|日|有效|有効|期限|[满滿]|[减減]|扫|掃|码|碼|獎賞|奖赏|詳情|详情|領取|领取|前往|請按|请按|二維|二维|eVoucher|Voucher/i;
-  const amtLine=lines.find(l=>/(?:HK|US|NT)?\s?[S$＄]\s?\d/i.test(l)&&/[぀-ヿ一-鿿]/.test(l));
-  if(amtLine){store=amtLine.split(/(?:HK|US|NT)?\s?[S$＄]\s?\d|[\[\(【]/i)[0].replace(/[^\p{L}\p{N} &'.\-]/gu,'').trim();}
+  const skip=/折|円|年|月|日|有效|有効|期限|[满滿]|[减減]|扫|掃|码|碼|獎賞|奖赏|詳情|详情|領取|领取|前往|請按|请按|二維|二维|禮券|礼券|現金券|现金券|電子券|电子券|優惠券|优惠券|eVoucher|Voucher/i;
+  const amtLine=lines.find(l=>(/(?:HK|US|NT)?\s?[S$＄¥￥]\s?\d/i.test(l)||/\d\s*[円元圓]/.test(l))&&/[぀-ヿ一-鿿]/.test(l));
+  if(amtLine){store=amtLine.split(/(?:HK|US|NT)?\s?[S$＄¥￥]\s?\d|\d+\s*[円元圓]|[\[\(【]/i)[0].replace(/[^\p{L}\p{N} &'.\-]/gu,'').trim();}
   if(!store){
     for(const l of lines){
       const cl=l.replace(/[^\p{L}\p{N} &'.\-]/gu,'').trim();
@@ -631,7 +637,7 @@ const MONTHS={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10
 function toISO(y,mo,d){if(y<100)y+=2000;const dt=new Date(y,mo,d);if(isNaN(dt))return'';return dt.getFullYear()+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
 function findDate(t){
   // prefer dates near expire keywords (incl. Chinese/Japanese)
-  const exKw=/(expir\w*|valid\s+(?:thru|through|until|to)|ends?|use\s+by|redeem\s+by|good\s+(?:thru|through|until)|有效期至|有效期限|有效期|截止|到期|期限|有効期限|まで|迄|利用期限)/i;
+  const exKw=/(expir\w*|valid\s+(?:thru|through|until|to)|ends?|use\s+by|redeem\s+by|good\s+(?:thru|through|until)|有效期至|有效期限|有效期|截止|到期|期限|使用截止|活[動动]截止|有効期限|使用期限|ご利用期限|終了日|期間終了|まで|迄|利用期限)/i;
   const patterns=[
     /(?<!\d)(\d{4})-(\d{1,2})-(\d{1,2})(?!\d)/g,             // 2025-12-31
     /(?<!\d)(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?!\d)/g,          // 12/31/2025
