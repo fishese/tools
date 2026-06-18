@@ -180,10 +180,18 @@
       <div id="confirmNote" class="hint" style="display:none;color:var(--accent);margin-top:14px">
         ✓ Read from your screenshot — please check and fix anything before saving.
       </div>
-      <details id="ocrRawWrap" style="display:none;margin-top:10px">
+
+      <details id="imgPreviewWrap" style="display:none;margin-top:10px">
+        <summary style="cursor:pointer;color:var(--muted);font-size:13px">Show uploaded image</summary>
+        <div class="hint" style="margin-top:6px; margin-bottom:4px; color:var(--muted)"><em>Note: This image is only used for checking and is not saved to your device.</em></div>
+        <img id="formImgPreview" alt="Coupon Image" style="max-width:100%; border-radius:8px; border:1px solid var(--line); display:block;">
+      </details>
+
+      <details id="ocrRawWrap" style="display:none;margin-top:10px;margin-bottom:10px">
         <summary style="cursor:pointer;color:var(--muted);font-size:13px">Show all text read from the image</summary>
         <pre id="ocrRaw" style="white-space:pre-wrap;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:12px;color:var(--text);max-height:220px;overflow:auto;margin-top:8px"></pre>
       </details>
+      
       <label>Store / brand *</label>
       <input type="text" id="f-store" placeholder="e.g. Target" required>
 
@@ -271,7 +279,7 @@
       <p><b>Android (Chrome):</b> Tap the <b>⬇ Install</b> button in the header when it appears, or tap ⋮ → <b>Add to Home screen</b>.<br>
       <b>iPhone / iPad (Safari):</b> Tap the Share button (□↑) → <b>Add to Home Screen</b>.</p>
     </div>
-    <div class="hint" style="text-align:center">Coupon Keeper · works offline · v1.6</div>
+    <div class="hint" style="text-align:center">Coupon Keeper · works offline · v1.8</div>
   </section>
 </main>
 
@@ -418,6 +426,7 @@ function refreshCats(){
 function resetForm(){
   $('#form').reset();$('#f-id').value='';
   $('#confirmNote').style.display='none';$('#qrDetected').style.display='none';$('#ocrRawWrap').style.display='none';
+  $('#imgPreviewWrap').style.display='none';$('#imgPreviewWrap').removeAttribute('open');$('#formImgPreview').src='';
   $('#preview').style.display='none';$('#ocrStatus').classList.remove('show');
   setMode('scan');
 }
@@ -426,6 +435,7 @@ function editCoupon(c){
   $('#f-code').value=c.code;$('#f-exp').value=c.exp;$('#f-min').value=c.min;
   $('#f-cat').value=c.cat;$('#f-link').value=c.link;$('#f-qr').value=c.qr||'';$('#f-notes').value=c.notes;
   $('#confirmNote').style.display='none';$('#qrDetected').style.display='none';$('#ocrRawWrap').style.display='none';
+  $('#imgPreviewWrap').style.display='none';$('#imgPreviewWrap').removeAttribute('open');$('#formImgPreview').src='';
   setMode('manual');show('add');
 }
 $('#cancelEdit').onclick=()=>{const wasEdit=!!$('#f-id').value;resetForm();if(wasEdit){renderList();show('list');}};
@@ -488,6 +498,12 @@ $('#file').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
   const url=URL.createObjectURL(f);
   $('#preview').src=url;$('#preview').style.display='block';
+  
+  // Set the temporary image preview for the confirmation form
+  $('#formImgPreview').src=url;
+  $('#imgPreviewWrap').style.display='block';
+  $('#imgPreviewWrap').removeAttribute('open'); // Ensure it is collapsed initially
+  
   $('#progwrap').classList.add('show');$('#ocrStatus').classList.add('show');
   $('#ocrStatus').textContent='Enhancing image…';
   
