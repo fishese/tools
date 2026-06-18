@@ -4,7 +4,10 @@ const CACHE = 'deal-comparator-v2';
 // Same-origin app shell (precached on install).
 const SHELL = [
   './',
-  './index.html'
+  './index.html',
+  './manifest.webmanifest',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 // Cross-origin runtime dependencies (best-effort precache, opaque responses).

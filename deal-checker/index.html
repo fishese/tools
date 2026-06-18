@@ -6,46 +6,14 @@
     <meta name="theme-color" content="#4f46e5">
     <title>貨比N家 · Deal Comparator</title>
 
-    <!-- PWA: icons + manifest are embedded below (no separate files needed) -->
-    <link rel="apple-touch-icon" id="appAppleIcon">
-    <link rel="icon" type="image/png" id="appFavicon">
-    <link rel="manifest" id="appManifest">
+    <!-- PWA -->
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+    <link rel="apple-touch-icon" href="./icon-192.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="貨比N家">
-    <script>
-      // Build the icons + web-app manifest inline so the app ships as a single HTML file.
-      (function () {
-        const ICON_192 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAFUElEQVR4nO3dTXbTSBSA0XIOq+jsB4awVDLs7Ae2AYNuh8TIVkkqSVXv3XtOzxpbjt9XVf4JXMoJvn7+8euM+6VvL6/Pl6Pv85A7NPCscUQQu92BoaelvWJoeqOGniO0jOGp1Q0Zfo7SctY2l2TwOdPW3WDTDmD4OdvWGVxVj8GnR2t2g8U7gOGnV2tmc1EAhp/eLZ3R6gAMP6NYMqtVARh+RlM7s7MBGH5GVTO7DwMw/IxuboabfRIMI7obgNWfKB7N8mQAhp9o7s20IxCp/RWA1Z+opmb7ae5/gEhuZ9wRiNQEQGpvATj+kMX7WbcDkJoASO2pFMcf8rnOvB2A1ARAagIgtYvzP5nZAUhNAKQmAFITAKkJgNQEQGoCIDUBkJoASE0ApCYAUhMAqQmA1ARAagIgNQGQmgBITQCkJgBSEwCpCYDUBEBqAiA1AZCaAEjt09kXcM/3f/9Z9ee+ffnZ+EqIzA5AamEDWLuDkEvIAK7DLwLmhAvA0LNEuABuCYJHwgdQigi4L0UApYiAaWkCgClh/omk2hXeB2W8F2YHqB1sRyHeCxNAKVZ3lgsVQC27AFfhAnAUYolwAZQiAuqFDABqhQ3ALkCNsAGUIgLmhQ6gFG+N8lj4AGrZBXJKEYCjEPeE+S5QDQN+nFGOnil2ALgnVQCjrEocJ1UApYiAj9IFUIoI+KPbvxmOsd2+4dDropNyB4ArAbC7Xlf/UhIH0POTwnG8Bqi0RzBTH8y1up89b/vRfYwm7Q5Qil3gCL3/jFMHsESE1a6lKD+P9AH0vkKxr/QBLBFl1TvKCIuLAFgs0kIggLJspYr05COAkI54C3TOCMefUgTwxi5QJ9pjF8CJpqKLNmC9E8A7o2zbvRvp5yiAlTKu1BEfswBujLR6sZ0ANoi4Im412gIiAKpEjV0AE7wlmocAaGa0408pArhrxCeT5QTQwJZj0AihRT7mCeCBs4ZzxIEbIeQpAmhkxKFFAMyIHrYAZnhLNDYBsNmo5/9SBFBl5Cd4iww7mgAayzA0kQigUtZdYM7oPxcB7CDCLhDhMdQQQAf8auR5BLCAt0Q/Gv34U4oAwmnxV6JkiPdKAAvZBWIRAKtEOP6UIoBVojz5U7LtWgLYWbaBGo0AVoq8C8yJ9NgFcIBRdoFRrrOly9fPP36dfRGjyjgwpdgB+F+kQagV7TELgNQEsFG0FTEbAVAtYuwCaOB2MKIMyrcvP9/+i+rT2RcQSeRBifrY7ACNRB2Q6ARAaj4IIzU7AKl5EXyge1+dOPL1Qw/X0BNHoAPUfmdozyHs4Rp65Ai0syVfmNvry3U9XEOvBLCjNcPUegB7uIaeCWAnW4ao1QD2cA29EwCpCWAHLVbPrbfRwzWMQACkJgBSEwCpCYDUBEBqAthBi68TbL2NHq5hBAIgNQHsZMvq2Wrl7eEaeieAHa0ZotaD18M19EwAO1syTHsNXg/X0Cu/D3CgHn4ZpYdr6IkASM0RiNQEQGoCIDUBkJoASE0ApCYAUhMAqQmA1ARAagIgtaeX1+fL2RcBZ3h5fb7YAUhNAKQmAFJ7KuW/s9DZFwJHus68HYDUBEBqbwE4BpHF+1m3A5CaAEjtQwCOQUR3O+N/7QAiIKqp2XYEIrXJAOwCRHNvpu/uACIgikez7AhEag8DsAswurkZnt0BRMCoama36ggkAkZTO7PVrwFEwCiWzOqiF8EioHdLZ3Txu0AioFdrZnPTMPvXZejBlkV50+cAdgPOtnUGmw2w3YAjtVp8m30SbDfgKC1nbbehtSPQ0l4L7CGrthhY44hTxSnHFkEw5Yxj9G8icK0/4pyeoAAAAABJRU5ErkJggg==";
-        const ICON_512 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAQn0lEQVR4nO3dQZbTWBKGUSeHVVD7gSEslRpS+4Ft0AM6q0zidEqypBfx/nvnffpZGMWnUBb5dGE3nz9+/zn6DAAz+/ufv55Gn2EWLuRKhjxATeJgHRfrDsMeoDdR8DoX5oqBDzA3QfCf+Ath6ANkSo+ByA9v6ANwLTEGoj6wwQ/APUkhMP0HNfQB2GL2GJj2wxn8AOxh1hCY7kMZ/AAcYbYQmObDGPwAnGGWEGj/IQx+AEboHgJtD2/wA1BB1xB4N/oAWxj+AFTRdSa1qpauFxmADJ22AS0OavAD0EmHECj/CsDwB6CbDrOrdAB0uIAAcEv1GVZyRVH9ogHAGhVfCZTbABj+AMym4mwrFQAVLxAA7KHajCuxkqh2UQDgSBVeCQzfABj+AKSpMPuGBkCFCwAAI4yegcMCYPQHB4DRRs7CIQFg+APAL6Nm4ukBYPgDwO9GzMZTA8DwB4Dbzp6RpwWA4Q8A9505K08JAMMfAJY5a2YeHgCGPwCsc8bsPDQADH8A2OboGXpYABj+APCYI2fpIQFg+APAPo6aqcN/FwAAcL7dA8DTPwDs64jZumsAGP4AcIy9Z+xuAWD4A8Cx9py1fgYAAALtEgCe/gHgHHvN3IcDwPAHgHPtMXsfCgDDHwDGeHQG+xkAAAi0OQA8/QPAWI/MYhsAAAi0KQA8/QNADVtn8uoAMPwBoJYts9krAAAItCoAPP0DQE1rZ7QNAAAEWhwAnv4BoLY1s9oGAAACLQoAT/8A0MPSmW0DAACB3gwAT/8A0MuS2W0DAACB7gaAp38A6OmtGW4DAACBBAAABHo1AKz/AaC3e7PcBgAAAt0MAE//ADCH12a6DQAABBIAABDojwCw/geAudya7TYAABBIAABAoN8CwPofAOb0csbbAABAIAEAAIEEAAAE+jcAvP8HgLldz3obAAAIJAAAIJAAAIBAAgAAAr27XPwAIACkeJ75NgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQKAn/wkgAOSxAQCAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJAAAIJAAAIBAAgAAAgkAAAgkAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAK9H30Abvv67cPoI/zhy6cfo48AwE5sAAAgkAAAgEACAAACCQAACCQA2FXFH14E4E8CgN08D38RAFCf/wyQhxn4AP3YAPCQ14a/KACoTQCwyddvH94c8iIAoC4BwGoGO0B/AoDFljz13/rfAFCPAOBwIgCgHgEAAIEEAKewBQCoRQBwGhEAUIcAAIBAAoBT2QIA1CAAOJ0IABhPAABAIAHAELYAAGMJAIYRAQDjCAAACCQAGMoWAGAMAcBwIgDgfO9HH4Dbvnz6MeT/1zAGyGADwG+EB0AGAUAZIgDgPAKAP4zaAgBwHgHATV4FAMxNAFCOCAA4ngDgVV4FAMxLAHCXVwEAcxIAlCUCAI4jAHiTVwEA8xEALOJVAMBcBADliQCA/QkAFvMqAGAeAoBVvAoAmIMAoA0RALAfAcBqXgUA9CcA2MSrAIDeBADtiACAxwkANvMqAKAvAcBDvAoA6EkA0JYIANhOAPAwrwIA+hEA7MKrAIBeBADtiQCA9QQAu/EqAKAPAcCuvAoA6EEAMA0RALCcAGB3XgUA1CcAOIRXAQC1CQCmIwIA3iYAOIxXAQB1CQAO5VUAQE3vRx8AjiIC4Fi2fL3ZAHA4NwmAegQApxABALUIAAAIJAA4jS0AQB0CgFOJAIAaBAAABBIAnM4WAGA8AcAQIgBgLAEAAIEEAMPYAgCMIwAYSgQAjCEAACDQ0+eP33+OPgT4xT3Qm21ePzYAlODmAb19/fZByDfj1wEDsJvrCBD2tXkFQCmeIGBOYqAerwAoxU0C4BwCAIBDCfuaBADluFkAHE8AAEAgAUBJtgAwB3+X6xIAABBIAFCWJweA4wgAAA4h4mvzLwFS2pdPP079x4FmvWE9eg27XpdHPnfXz7yEf3CLy8UGACLMPMyAbQQAXPFkBPsQnfUJAMpzI4H9iFyeCQB4wQ0SSCAAaMEWAPrw97UHAQA32AIwI99rrgkA2vBUMY7BAfMRAPAKQw/WE+p9CABacXPZzrXLJmh5SQAAQCABAHd4aoLlbJl6EQC04yYD6whZbhEA8AY3T2BGAoCWbAGgFn8n+xEAsIAtgGvQlT83XiMAaMsTB8B2AgCCiCaO4HvVkwCgtTNvPFapvTzy5zXLQPOd5R4BAACBBACs4IkKfjfLtiSRAKA9NyD4k1jlLQIAVnJjBWYgAJiCLcA5xA/X/L3rTQDABgYhlfl+soQAYBqeRpZxnYDLRQAAsIGQ7E8AwEbWrFTke8lSAoCpeCoBWEYAwAM8bZFIaM9BADAdNydSCVLWEADwoLSbbtrnhVkJAKZkCwDH8HdrHgIAdtDtqdhNfD7dvoOMJwCYliEH8DoBAMAionouAgB2YgXLKL57bCEAmJonFoDbBADsyJNYDY/8OYjG21yX+QgApufGtT+hU4c/C7YSALAzN2SgAwFABFuAP7kmLOW7MicBAAewBeAMvmc8QgAQw1MMwH8EAACvEs7zEgBwEOtZjuT7xaMEAFE8zQD8IgDgQJ7SOMJZ3yvBPDcBQBw3tX2IG+hNAMDBKg9KMQS5BACRDD66sv5nLwIATlB5CwBkEgDE8oQDt/m7kUEAADRhk8SeBACcxM0bqEQAEM2qE37n70QOAQAnmm0LMNvnqcy1Zm8CgHieeIBEAgBOVu1JTgDxzHchiwCAixvfTB4JrKrfg2rRyBwEAAzghg6MJgDg/6o+/cEZfP/zCACAwmyLOIoAgEHc2IGRBABcsQZdT8j053ufSQDAQIYn9/h+cCQBAC8kPg0lfmZIJwBgME95jCT+cgkAuMFNkdGEIUcTAFCAmz1wNgEAr7AFYHa+49kEAEAxNkKcQQBAEZ1v+p3PDqkEANxhRcqsfLcRAFDIyCdpA6EG2xTOIgDgDQYjMCMBAMV4AuRoopbLRQDAIm6YnEH8cSYBAACBBAAsdOYWwJPgNo9ct5QtT8rn5G0CANiFaHmM68fZBAAUZSAARxIAsMLs69PZP186f75cEwBQmC1ABn/OjCAAYCVPUcAMBAAU5+mQPQhXXhIAsIGbKXsReIwiAAAgkACABro8JXY5ZxobK24RALCRmyqPEkyMJACgibOGhbCBDAIAHmBYUp3vKK8RANCIlfE8/FkymgCAB3nCAjoSANCMJ0eWEqfcIwBgB260rCHiqEAAALsy3KCHp88fv/8cfQiYgcFHJbZSvMUGAHbihgt0IgAAIJAAgB3ZAlCB7yFLCAAACCQAYGeevoAOBADARAQoSwkAOICbMFCdAACAQAIAYBI2T6whAOAgbsZAZQIAAAIJADiQLQBn8V1jLQEAxbiRc7n8+h74LnCk96MPALP78unHot8U6GbPLdffC79xkj0JABjI0GeN5+/LyxDwPWILAQAneLkFcMPmEbYC7EEAwIkMfvbmO8VWfggQTuJGDVQiAAAgkAAAgEACAAACCQAACCQAACCQAACAQE+fP37/OfoQAMC5bAAAIJAAAIBAAgAAAgkAAAjklwHBhJb8hji/m2Ab15ZZ+K8AYAJ7/EpYQ+s215ZZCQBo7IjfBW9Y/eLaMjsBAA0dMZxeSh1Wri0p/BAgNHPGgDrz/6cS15YkAgAaOXtwJA0q15Y0XgFAAxWGxaxra9eWVDYAUFyFAXW51DnHnqp8pirnIIsAAIBAAgAKq/ZkWO08j6j2Waqdh/kJACiq6kCoeq41qn6GqudiTgIACqo+CKqf757qZ69+PuYhAAAgkACAYro8AXY557UuZ+5yTnoTAAAQSABAId2e/Dqdt9NZL5d+56UfAQAAgQQAAAQSAAAQSABAEV3f+XY4d4cz3tL13PQgAAAgkAAAgEACAAACCQAACCQAACCQAACAQAIAAAIJAAAIJACgiC+ffow+wiYdzt3hjLd0PTc9CAAACCQAACCQAACAQAIACun2zrfTeTud9XLpd176EQAAEEgAQDFdnvy6nPNalzN3OSe9CQAACCQAoKDqT4DVz3dP9bNXPx/zEABQVNVBUPVca1T9DFXPxZwEABRWbSBUO88jqn2WaudhfgIAAAIJACiuypNhlXPsqcpnqnIOsjx9/vj95+hDAMt8/fbh9P/PlOHk2pLGBgAaOXtgJA0o15Y0AgCaOWtwJA4o15YkXgFAY0esrQ2nX1xbZicAYAJ7DCvD6TbXllkJAJjQkqFlKG3j2jILAQAAgfwQIAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEEgAAEAgAQAAgQQAAAQSAAAQSAAAQCABAACBBAAABBIAABBIAABAIAEAAIEEAAAEEgAAEOjd3//89TT6EADAef7+568nGwAACCQAACCQAACAQAIAAAIJAAAIJAAAINC7y+XXfw4w+iAAwPGeZ74NAAAEEgAAEEgAAEAgAQAAgf4NAD8ICABzu571NgAAEEgAAEAgAQAAgX4LAD8HAABzejnjbQAAIJAAAIBAfwSA1wAAMJdbs90GAAACCQAACHQzALwGAIA5vDbTbQAAINCrAWALAAC93ZvlNgAAEEgAAECguwHgNQAA9PTWDLcBAIBAbwaALQAA9LJkdtsAAECgRQFgCwAAPSyd2TYAABBocQDYAgBAbWtmtQ0AAARaFQC2AABQ09oZbQMAAIFWB4AtAADUsmU2b9oAiAAAqGHrTPYKAAACbQ4AWwAAGOuRWWwDAACBHgoAWwAAGOPRGfzwBkAEAMC59pi9u7wCEAEAcI69Zq6fAQCAQLsFgC0AABxrz1m76wZABADAMfaesbu/AhABALCvI2arnwEAgECHBIAtAADs46iZetgGQAQAwGOOnKWHvgIQAQCwzdEz9PCfARABALDOGbPzlB8CFAEAsMxZM/O0/wpABADAfWfOylP/M0ARAAC3nT0jT/93AEQAAPxuxGwc8g8BiQAA+GXUTBz2LwGKAADSjZyFQ/8pYBEAQKrRM3D47wIYfQEA4GwVZt/wA1z7/PH7z9FnAICjVBj8z4ZvAK5VujAAsKdqM65UAFwu9S4QADyq4mwrd6BrXgkA0FnFwf+s3AbgWuULBwD3VJ9hpQPgcql/AQHgpQ6zq/wBr3klAEBlHQb/szYHvSYEAKik0+B/Vv4VwC0dLzQAc+o6k1oe+pptAAAjdB38z1of/poQAOAM3Qf/syk+xDUhAMARZhn8z6b6MNeEAAB7mG3wP5vyQ10TAgBsMevgfzb1h3tJDABwz+xD/1rMB70mBAC4ljT4n8V94JfEAECmxKF/LfrDvyQGAOaWPvSvuRB3CAKA3gz817kwK4kCgJoM+3VcrB2JA4BjGfL7+R96Kk6s4E2LMgAAAABJRU5ErkJggg==";
-        const favicon = document.getElementById('appFavicon');
-        favicon.href = ICON_192; favicon.setAttribute('sizes', '192x192');
-        document.getElementById('appAppleIcon').href = ICON_192;
-        // Absolute start_url/scope (relative URLs don't resolve inside a blob manifest).
-        const manifest = {
-          name: "貨比N家 · Deal Comparator",
-          short_name: "貨比N家",
-          description: "Compare price-per-unit across deals, fast.",
-          start_url: new URL('./index.html', location.href).href,
-          scope: new URL('./', location.href).href,
-          display: "standalone",
-          orientation: "portrait-primary",
-          background_color: "#cbd5e1",
-          theme_color: "#4f46e5",
-          lang: "zh-Hant",
-          icons: [
-            { src: ICON_192, sizes: "192x192", type: "image/png", purpose: "any" },
-            { src: ICON_512, sizes: "512x512", type: "image/png", purpose: "any" },
-            { src: ICON_512, sizes: "512x512", type: "image/png", purpose: "maskable" }
-          ]
-        };
-        try {
-          const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-          document.getElementById('appManifest').href = URL.createObjectURL(blob);
-        } catch (e) { /* manifest optional; app still runs */ }
-      })();
-    </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -307,6 +275,7 @@
                 title: "Deal Comparator", clearAll: "Clear all", addOption: "Add option",
                 increaseFont: "Increase size", decreaseFont: "Decrease size", toggleLang: "Switch language",
                 install: "Install",
+                installHint: "To install, open your browser menu (⋮ or the address-bar install icon) and choose “Install app” or “Add to Home screen”. On iPhone/iPad, use Share → Add to Home Screen.",
                 best: "BEST", pending: "Awaiting details...", discountToggle: "Discount", percentOff: "% Off",
                 coupon: "$ Off", finalPrice: "Final", qty: "Qty", size: "Unit", unit: "Measure",
                 addCombined: "Add Item", loadSample: "Load Sample Data", sodaDeals: "Soda Deals", detergentDeals: "Detergent Deals",
@@ -331,6 +300,7 @@
                 title: "貨比N家", clearAll: "清除全部", addOption: "新增選項",
                 increaseFont: "放大字體", decreaseFont: "縮小字體", toggleLang: "切換語言",
                 install: "安裝",
+                installHint: "安裝方法：開啟瀏覽器選單（⋮，或網址列的安裝圖示），選擇「安裝應用程式」或「加到主畫面」。iPhone／iPad 請用「分享」→「加入主畫面」。",
                 best: "最抵", pending: "等待輸入...", discountToggle: "折扣", percentOff: "% 折",
                 coupon: "減 $", finalPrice: "折實", qty: "數量", size: "量", unit: "單位",
                 addCombined: "新增項目", loadSample: "載入範例數據", sodaDeals: "汽水優惠", detergentDeals: "洗衣液套裝",
@@ -384,18 +354,33 @@
 
                 // PWA install prompt
                 const installPromptEvent = ref(null);
-                const canInstall = computed(() => !!installPromptEvent.value);
+                const isStandalone = ref(
+                    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                    window.navigator.standalone === true
+                );
+                const isServed = location.protocol === 'http:' || location.protocol === 'https:';
+                // Offer install whenever we're served over http(s) and not already running as an installed app —
+                // this way the button doesn't disappear just because the browser's prompt event is suppressed.
+                const canInstall = computed(() => isServed && !isStandalone.value);
                 window.addEventListener('beforeinstallprompt', (e) => {
                     e.preventDefault();
                     installPromptEvent.value = e;
                 });
-                window.addEventListener('appinstalled', () => { installPromptEvent.value = null; });
+                window.addEventListener('appinstalled', () => {
+                    installPromptEvent.value = null;
+                    isStandalone.value = true;
+                });
                 const triggerInstall = async () => {
                     const e = installPromptEvent.value;
-                    if (!e) return;
-                    e.prompt();
-                    try { await e.userChoice; } catch (err) {}
-                    installPromptEvent.value = null;
+                    if (e) {
+                        e.prompt();
+                        try { await e.userChoice; } catch (err) {}
+                        installPromptEvent.value = null;
+                        return;
+                    }
+                    // No native prompt available (already attempted, iOS, or browser hasn't offered it yet):
+                    // point the user at the browser's own install entry.
+                    alert(t('installHint'));
                 };
 
                 const generateId = () => Math.random().toString(36).substr(2, 9);
