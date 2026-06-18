@@ -1,1 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4f46e5">
+    <title>貨比N家 · Deal Comparator</title>
 
+    <!-- PWA: icons + manifest are embedded below (no separate files needed) -->
+    <link rel="apple-touch-icon" id="appAppleIcon">
+    <link rel="icon" type="image/png" id="appFavicon">
+    <link rel="manifest" id="appManifest">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="貨比N家">
+    <script>
+      // Build the icons + web-app manifest inline so the app ships as a single HTML file.
+      (function () {
+        const ICON_192 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAFUElEQVR4nO3dTXbTSBSA0XIOq+jsB4awVDLs7Ae2AYNuh8TIVkkqSVXv3XtOzxpbjt9XVf4JXMoJvn7+8euM+6VvL6/Pl6Pv85A7NPCscUQQu92BoaelvWJoeqOGniO0jOGp1Q0Zfo7SctY2l2TwOdPW3WDTDmD4OdvWGVxVj8GnR2t2g8U7gOGnV2tmc1EAhp/eLZ3R6gAMP6NYMqtVARh+RlM7s7MBGH5GVTO7DwMw/IxuboabfRIMI7obgNWfKB7N8mQAhp9o7s20IxCp/RWA1Z+opmb7ae5/gEhuZ9wRiNQEQGpvATj+kMX7WbcDkJoASO2pFMcf8rnOvB2A1ARAagIgtYvzP5nZAUhNAKQmAFITAKkJgNQEQGoCIDUBkJoASE0ApCYAUhMAqQmA1ARAagIgNQGQmgBITQCkJgBSEwCpCYDUBEBqAiA1AZCaAEjt09kXcM/3f/9Z9ee+ffnZ+EqIzA5AamEDWLuDkEvIAK7DLwLmhAvA0LNEuABuCYJHwgdQigi4L0UApYiAaWkCgClh/omk2hXeB2W8F2YHqB1sRyHeCxNAKVZ3lgsVQC27AFfhAnAUYolwAZQiAuqFDABqhQ3ALkCNsAGUIgLmhQ6gFG+N8lj4AGrZBXJKEYCjEPeE+S5QDQN+nFGOnil2ALgnVQCjrEocJ1UApYiAj9IFUIoI+KPbvxmOsd2+4dDropNyB4ArAbC7Xlf/UhIH0POTwnG8Bqi0RzBTH8y1up89b/vRfYwm7Q5Qil3gCL3/jFMHsESE1a6lKD+P9AH0vkKxr/QBLBFl1TvKCIuLAFgs0kIggLJspYr05COAkI54C3TOCMefUgTwxi5QJ9pjF8CJpqKLNmC9E8A7o2zbvRvp5yiAlTKu1BEfswBujLR6sZ0ANoi4Im412gIiAKpEjV0AE7wlmocAaGa0408pArhrxCeT5QTQwJZj0AihRT7mCeCBs4ZzxIEbIeQpAmhkxKFFAMyIHrYAZnhLNDYBsNmo5/9SBFBl5Cd4iww7mgAayzA0kQigUtZdYM7oPxcB7CDCLhDhMdQQQAf8auR5BLCAt0Q/Gv34U4oAwmnxV6JkiPdKAAvZBWIRAKtEOP6UIoBVojz5U7LtWgLYWbaBGo0AVoq8C8yJ9NgFcIBRdoFRrrOly9fPP36dfRGjyjgwpdgB+F+kQagV7TELgNQEsFG0FTEbAVAtYuwCaOB2MKIMyrcvP9/+i+rT2RcQSeRBifrY7ACNRB2Q6ARAaj4IIzU7AKl5EXyge1+dOPL1Qw/X0BNHoAPUfmdozyHs4Rp65Ai0syVfmNvry3U9XEOvBLCjNcPUegB7uIaeCWAnW4ao1QD2cA29EwCpCWAHLVbPrbfRwzWMQACkJgBSEwCpCYDUBEBqAthBi68TbL2NHq5hBAIgNQHsZMvq2Wrl7eEaeieAHa0ZotaD18M19EwAO1syTHsNXg/X0Cu/D3CgHn4ZpYdr6IkASM0RiNQEQGoCIDUBkJoASE0ApCYAUhMAqQmA1ARAagIgtaeX1+fL2RcBZ3h5fb7YAUhNAKQmAFJ7KuW/s9DZFwJHus68HYDUBEBqbwE4BpHF+1m3A5CaAEjtQwCOQUR3O+N/7QAiIKqp2XYEIrXJAOwCRHNvpu/uACIgikez7AhEag8DsAswurkZnt0BRMCoama36ggkAkZTO7PVrwFEwCiWzOqiF8EioHdLZ3Txu0AioFdrZnPTMPvXZejBlkV50+cAdgPOtnUGmw2w3YAjtVp8m30SbDfgKC1nbbehtSPQ0l4L7CGrthhY44hTxSnHFkEw5Yxj9G8icK0/4pyeoAAAAABJRU5ErkJggg==";
+        const ICON_512 = "data:image/png;base64,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";
+        const favicon = document.getElementById('appFavicon');
+        favicon.href = ICON_192; favicon.setAttribute('sizes', '192x192');
+        document.getElementById('appAppleIcon').href = ICON_192;
+        // Absolute start_url/scope (relative URLs don't resolve inside a blob manifest).
+        const manifest = {
+          name: "貨比N家 · Deal Comparator",
+          short_name: "貨比N家",
+          description: "Compare price-per-unit across deals, fast.",
+          start_url: new URL('./index.html', location.href).href,
+          scope: new URL('./', location.href).href,
+          display: "standalone",
+          orientation: "portrait-primary",
+          background_color: "#cbd5e1",
+          theme_color: "#4f46e5",
+          lang: "zh-Hant",
+          icons: [
+            { src: ICON_192, sizes: "192x192", type: "image/png", purpose: "any" },
+            { src: ICON_512, sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: ICON_512, sizes: "512x512", type: "image/png", purpose: "maskable" }
+          ]
+        };
+        try {
+          const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+          document.getElementById('appManifest').href = URL.createObjectURL(blob);
+        } catch (e) { /* manifest optional; app still runs */ }
+      })();
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        [v-cloak] { display: none; }
+        /* Clean number inputs */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        /* Smooth transitions for scaling */
+        html { transition: font-size 0.2s ease-out; }
+        /* Respect reduced-motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            html, * { transition: none !important; }
+        }
+        /* Visible keyboard focus */
+        :focus-visible { outline: 2px solid #4f46e5; outline-offset: 1px; }
+    </style>
+</head>
+<body class="bg-slate-300 min-h-screen p-1.5 md:p-4 text-zinc-800 font-sans flex flex-col antialiased">
+    <div id="app" v-cloak class="max-w-7xl mx-auto w-full space-y-2.5 flex-grow flex flex-col">
+
+        <div class="flex flex-col md:flex-row justify-between items-center gap-2 bg-white p-2.5 rounded-xl shadow-md border-b border-zinc-200">
+            <h1 class="text-lg font-black text-indigo-900 tracking-tight flex items-center gap-1.5 w-full md:w-auto pl-1">
+                🛒 {{ t('title') }}
+            </h1>
+
+            <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto justify-end">
+
+                <div class="flex items-center justify-center bg-zinc-100 rounded px-1 py-1 shadow-inner border border-zinc-200">
+                    <button @click="adjustZoom(-10)" class="px-2 py-0.5 text-zinc-500 hover:text-indigo-700 hover:bg-zinc-200 rounded text-[0.6875rem] font-bold transition-colors" :title="t('decreaseFont')" :aria-label="t('decreaseFont')">A-</button>
+                    <div class="w-[1px] h-3 bg-zinc-300 mx-0.5"></div>
+                    <button @click="adjustZoom(10)" class="px-2 py-0.5 text-zinc-500 hover:text-indigo-700 hover:bg-zinc-200 rounded text-[0.875rem] font-bold transition-colors" :title="t('increaseFont')" :aria-label="t('increaseFont')">A+</button>
+                </div>
+
+                <button v-if="canInstall" @click="triggerInstall" class="flex items-center gap-1 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[0.6875rem] font-bold rounded transition-colors shadow-sm border border-emerald-600" :title="t('install')" :aria-label="t('install')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+                    </svg>
+                    <span class="hidden sm:inline">{{ t('install') }}</span>
+                </button>
+
+                <button @click="toggleNeed" class="flex items-center justify-center px-2 py-1.5 text-[0.6875rem] font-bold rounded transition-colors shadow-sm border" :class="showNeed ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-zinc-200'" :title="t('needToggle')" :aria-label="t('needToggle')" :aria-pressed="showNeed">🎯</button>
+
+                <button @click="toggleLang" class="flex items-center justify-center px-2 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[0.6875rem] font-bold rounded transition-colors shadow-sm border border-zinc-200" :aria-label="t('toggleLang')">
+                    <span :class="{'text-indigo-600': lang === 'en'}">EN</span>
+                    <span class="mx-1 text-zinc-300">/</span>
+                    <span :class="{'text-indigo-600': lang === 'zh'}">繁</span>
+                </button>
+
+                <button @click="clearAll" class="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg transition-colors flex-shrink-0 shadow-sm border border-red-100" :title="t('clearAll')" :aria-label="t('clearAll')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+
+                <button @click="addDeal" class="bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 rounded-lg shadow-sm transition-colors flex-shrink-0" :title="t('addOption')" :aria-label="t('addOption')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div v-if="showNeed" class="flex flex-wrap items-center gap-1.5 bg-white p-1.5 rounded-lg shadow-sm border border-indigo-100">
+            <span class="font-bold text-indigo-600 uppercase text-[0.5625rem] tracking-wide pl-1">{{ t('needTitle') }}</span>
+            <input type="number" v-model="needQty" min="0" step="0.01" placeholder="0" :aria-label="t('needTitle')"
+                   class="w-16 border border-indigo-200 rounded px-1.5 py-0.5 text-xs outline-none focus:border-indigo-500">
+            <select v-model="needUnit" :aria-label="t('ariaUnit')" class="border border-indigo-200 rounded px-1 py-0.5 text-[0.6875rem] font-medium text-zinc-700 outline-none focus:border-indigo-500">
+                <optgroup :label="t('catCount')"><option value="pcs">{{ t('unit_pcs') }}</option></optgroup>
+                <optgroup :label="t('catWeight')">
+                    <option value="g">{{ t('unit_g') }}</option><option value="kg">{{ t('unit_kg') }}</option>
+                    <option value="oz">{{ t('unit_oz') }}</option><option value="lb">{{ t('unit_lb') }}</option>
+                </optgroup>
+                <optgroup :label="t('catVolume')">
+                    <option value="ml">{{ t('unit_ml') }}</option><option value="L">{{ t('unit_L') }}</option>
+                    <option value="fl oz">{{ t('unit_floz') }}</option><option value="gal">{{ t('unit_gal') }}</option>
+                </optgroup>
+                <optgroup :label="t('catLength')">
+                    <option value="cm">{{ t('unit_cm') }}</option><option value="m">{{ t('unit_m') }}</option>
+                    <option value="mm">{{ t('unit_mm') }}</option><option value="in">{{ t('unit_in') }}</option>
+                    <option value="ft">{{ t('unit_ft') }}</option><option value="yd">{{ t('unit_yd') }}</option>
+                </optgroup>
+            </select>
+            <span class="text-zinc-400 text-[0.5625rem] truncate">{{ t('needHint') }}</span>
+        </div>
+
+        <div v-if="hasActiveDeals" class="space-y-1">
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-1.5">
+                <div v-for="(deal, dIndex) in deals" :key="'sum-' + deal.id"
+                     class="px-2 py-1.5 rounded-md flex flex-col shadow-sm overflow-hidden border"
+                     :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-400' : 'bg-white border-zinc-200 opacity-95'">
+                     <div class="flex justify-between items-center gap-1">
+                        <span class="text-zinc-600 text-[0.5625rem] font-bold uppercase truncate" :class="{'text-emerald-800': dealStats[deal.id]?.isBest}">
+                            {{ dealName(deal, dIndex) }}
+                        </span>
+                        <div class="flex items-center gap-0.5 flex-shrink-0">
+                            <span v-if="dealStats[deal.id]?.typeMismatch" class="text-[0.6rem] text-amber-500 leading-none" :title="t('warnMismatchOption')">⚠</span>
+                            <span v-if="dealStats[deal.id]?.isBest" class="text-[0.5rem] bg-emerald-600 text-white px-1 py-0.5 rounded font-bold leading-none">{{ t('best') }}</span>
+                        </div>
+                     </div>
+                     <div v-if="dealStats[deal.id]?.unitPrice > 0" class="flex items-baseline justify-between gap-1 mt-0.5">
+                         <span class="font-black text-[0.875rem] text-zinc-900 leading-tight whitespace-nowrap truncate" :class="{'text-emerald-900': dealStats[deal.id]?.isBest}">
+                             ${{ formatCurrency(dealStats[deal.id]?.unitPrice) }}<span class="text-[0.5rem] font-semibold text-zinc-500">/{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}</span>
+                         </span>
+                         <span v-if="dealStats[deal.id]?.comparable && !dealStats[deal.id]?.isBest" class="text-[0.5rem] font-bold text-rose-500 flex-shrink-0 whitespace-nowrap">+{{ formatPct(dealStats[deal.id]?.pctVsBest) }}</span>
+                     </div>
+                     <span v-else class="text-zinc-400 text-[0.5625rem] italic mt-0.5">{{ t('pending') }}</span>
+                </div>
+            </div>
+            <div v-if="activeTypes.size > 1" class="flex items-start gap-1.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-md px-2 py-1.5 shadow-sm" role="alert">
+                <span class="text-sm leading-none mt-px" aria-hidden="true">⚠</span>
+                <p class="text-[0.625rem] leading-snug">
+                    <span class="font-bold">{{ t('warnMixedTitle') }}:</span>
+                    <span class="font-semibold">{{ activeTypeLabels.join(' · ') }}</span>.
+                    <span class="text-amber-700">{{ t('warnMixedHint') }}</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 pb-8">
+            <div v-for="(deal, dIndex) in deals" :key="deal.id"
+                 class="rounded-xl shadow-lg border flex flex-col relative transition-colors duration-300"
+                 :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-white border-zinc-200'">
+
+                <div class="p-2 flex-grow flex flex-col gap-2">
+                    <div class="flex justify-between items-center gap-1 border-b border-black/5 pb-1">
+                        <input type="text" :value="deal.name || (deal.nameKey ? t(deal.nameKey) : '')" @input="deal.name = $event.target.value; deal.nameKey = null"
+                               :placeholder="t('option') + ' ' + (dIndex + 1)" :aria-label="t('ariaName')"
+                               class="font-extrabold text-zinc-800 text-sm focus:text-indigo-700 focus:outline-none w-full bg-transparent placeholder-zinc-400/70">
+                        <div class="flex items-center flex-shrink-0">
+                            <button @click="duplicateDeal(deal.id)" class="text-zinc-400 hover:text-indigo-600 px-1.5 py-0.5 leading-none transition-colors" :title="t('duplicate')" :aria-label="t('duplicate')">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <rect x="8" y="8" width="12" height="12" rx="2" /><path stroke-linecap="round" stroke-linejoin="round" d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" />
+                                </svg>
+                            </button>
+                            <button @click="removeDeal(deal.id)" class="text-zinc-400 hover:text-red-500 px-1.5 text-lg leading-none font-bold transition-colors" :title="t('removeOption')" :aria-label="t('removeOption')">×</button>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-1.5 items-center">
+                        <div class="relative flex-grow">
+                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400 text-xs font-bold" aria-hidden="true">$</span>
+                            <input type="number" v-model="deal.price" min="0" step="0.01" placeholder="0.00" :aria-label="t('ariaPrice')"
+                                   class="w-full border rounded px-2 pl-5 py-1 text-sm font-bold outline-none focus:border-indigo-500 transition-colors"
+                                   :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200 focus:bg-white' : 'bg-zinc-50 border-zinc-200 focus:bg-white'">
+                        </div>
+                        <button @click="deal.showDiscount = !deal.showDiscount"
+                                class="text-[0.625rem] font-bold px-2 py-1 rounded border transition-colors flex items-center gap-1 select-none flex-shrink-0"
+                                :aria-pressed="deal.showDiscount"
+                                :class="deal.showDiscount ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : (dealStats[deal.id]?.isBest ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-200' : 'bg-zinc-50 text-zinc-500 border-zinc-200 hover:bg-zinc-100')">
+                            🏷️ {{ t('discountToggle') }}
+                        </button>
+                    </div>
+
+                    <div v-if="deal.showDiscount" class="grid grid-cols-2 gap-1.5 bg-indigo-50/80 p-1.5 rounded border border-indigo-100 shadow-sm">
+                        <div class="flex items-center gap-1">
+                            <label class="text-[0.5625rem] font-bold text-indigo-500 uppercase w-10 text-right">{{ t('percentOff') }}</label>
+                            <input type="number" v-model="deal.discountPercent" min="0" max="100" placeholder="0" :aria-label="t('percentOff')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-0.5 text-xs outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <label class="text-[0.5625rem] font-bold text-indigo-500 uppercase w-10 text-right">{{ t('coupon') }}</label>
+                            <input type="number" v-model="deal.discountFlat" min="0" step="0.01" placeholder="0" :aria-label="t('coupon')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-0.5 text-xs outline-none focus:border-indigo-500">
+                        </div>
+                        <div v-if="deal.price > 0 && (deal.discountPercent > 0 || deal.discountFlat > 0)" class="col-span-2 text-[0.625rem] text-emerald-600 font-bold text-right pt-0.5">
+                            {{ t('finalPrice') }}: ${{ formatCurrency(dealStats[deal.id]?.finalPrice) }}
+                        </div>
+                    </div>
+
+                    <div class="flex-grow flex flex-col mt-0.5">
+                        <div class="grid grid-cols-12 gap-1 px-0.5 mb-0.5" v-if="deal.items.length > 0">
+                            <div class="col-span-3 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('qty') }}</div>
+                            <div class="col-span-4 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('size') }}</div>
+                            <div class="col-span-4 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('unit') }}</div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div v-for="(item, iIndex) in deal.items" :key="item.id" class="grid grid-cols-12 gap-1 items-center">
+                                <input type="number" v-model="item.qty" min="0" placeholder="1" :aria-label="t('ariaQty')" class="col-span-3 border rounded px-1 py-1 text-xs font-medium outline-none focus:border-indigo-500 focus:bg-white" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
+                                <input type="number" v-model="item.size" min="0" step="0.01" placeholder="--" :aria-label="t('ariaSize')" class="col-span-4 border rounded px-1 py-1 text-xs font-medium outline-none focus:border-indigo-500 focus:bg-white" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
+
+                                <select v-model="item.unit" @change="iIndex === 0 ? syncUnits(deal) : null" :aria-label="t('ariaUnit')" class="col-span-4 border rounded px-0.5 py-1 text-[0.6875rem] font-medium outline-none focus:border-indigo-500 focus:bg-white text-zinc-700" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
+                                    <optgroup v-if="iIndex === 0 || getUnitType(deal.items[0].unit) === 'count'" :label="t('catCount')">
+                                        <option value="pcs">{{ t('unit_pcs') }}</option>
+                                    </optgroup>
+                                    <optgroup v-if="iIndex === 0 || getUnitType(deal.items[0].unit) === 'weight'" :label="t('catWeight')">
+                                        <option value="g">{{ t('unit_g') }}</option><option value="kg">{{ t('unit_kg') }}</option>
+                                        <option value="oz">{{ t('unit_oz') }}</option><option value="lb">{{ t('unit_lb') }}</option>
+                                    </optgroup>
+                                    <optgroup v-if="iIndex === 0 || getUnitType(deal.items[0].unit) === 'volume'" :label="t('catVolume')">
+                                        <option value="ml">{{ t('unit_ml') }}</option><option value="L">{{ t('unit_L') }}</option>
+                                        <option value="fl oz">{{ t('unit_floz') }}</option><option value="gal">{{ t('unit_gal') }}</option>
+                                    </optgroup>
+                                    <optgroup v-if="iIndex === 0 || getUnitType(deal.items[0].unit) === 'length'" :label="t('catLength')">
+                                        <option value="cm">{{ t('unit_cm') }}</option><option value="m">{{ t('unit_m') }}</option>
+                                        <option value="mm">{{ t('unit_mm') }}</option><option value="in">{{ t('unit_in') }}</option>
+                                        <option value="ft">{{ t('unit_ft') }}</option><option value="yd">{{ t('unit_yd') }}</option>
+                                    </optgroup>
+                                </select>
+                                <button v-if="deal.items.length > 1" @click="removeItem(deal.id, item.id)" :title="t('removeItem')" :aria-label="t('removeItem')" class="col-span-1 h-full flex items-center justify-center text-zinc-400 hover:text-red-500 text-base font-bold leading-none transition-colors">×</button>
+                            </div>
+                        </div>
+                        <button @click="addItem(deal.id)" class="text-[0.625rem] font-bold mt-1.5 px-0.5 self-start transition-colors" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700 hover:text-emerald-900' : 'text-indigo-500 hover:text-indigo-700'">
+                            + {{ t('addCombined') }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-2.5 rounded-b-xl border-t mt-auto transition-colors" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-200/50 border-emerald-300' : 'bg-zinc-100 border-zinc-200'">
+                    <div v-if="dealStats[deal.id]?.totalBaseUnits > 0 && dealStats[deal.id]?.finalPrice > 0">
+                        <div class="flex justify-between items-center gap-2">
+                            <div class="text-[0.625rem] font-bold bg-white px-1.5 py-0.5 rounded border whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-800 border-emerald-200' : 'text-zinc-500 border-zinc-200'">
+                                {{ formatNumber(dealStats[deal.id]?.totalBaseUnits) }}{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}
+                            </div>
+                            <div class="flex items-baseline gap-1.5">
+                                <span v-if="dealStats[deal.id]?.comparable && !dealStats[deal.id]?.isBest" class="text-[0.625rem] font-bold text-rose-500 whitespace-nowrap">+{{ formatPct(dealStats[deal.id]?.pctVsBest) }}</span>
+                                <div class="text-lg font-black leading-none truncate whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-900' : 'text-indigo-700'">
+                                    ${{ formatCurrency(dealStats[deal.id]?.unitPrice) }}<span class="text-[0.5625rem] font-semibold ml-0.5" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-500'">/{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="dealStats[deal.id]?.typeMismatch" class="flex items-center justify-end gap-1 text-[0.5625rem] font-bold text-amber-600 pt-1">
+                            <span aria-hidden="true">⚠</span><span class="whitespace-nowrap">{{ t('warnMismatchOption') }} ({{ typeLabel(dealStats[deal.id]?.type) }})</span>
+                        </div>
+                        <div v-if="needCost(dealStats[deal.id]) !== null" class="text-[0.625rem] text-right font-bold text-indigo-600 pt-1 whitespace-nowrap">
+                            {{ formatNumber(needQty) }}{{ unitLabel(needUnit) }} ≈ ${{ formatCurrency(needCost(dealStats[deal.id])) }}
+                        </div>
+                        <div class="text-[0.5625rem] text-right font-semibold pt-1 whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'" v-if="dealStats[deal.id]?.baseDisplay !== 'pcs'">
+                            {{ getMetricText(dealStats[deal.id]) }}
+                        </div>
+                    </div>
+                    <div v-else class="text-[0.625rem] italic font-medium text-center py-1" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">
+                        {{ t('pending') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-grow"></div>
+
+        <div class="mt-auto pt-2 pb-2">
+            <h3 class="text-slate-400 mb-2 font-bold text-[0.5625rem] uppercase tracking-widest text-center">{{ t('loadSample') }}</h3>
+            <div class="flex flex-wrap justify-center gap-2">
+                <button @click="loadSodaExample" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 px-3 py-1.5 rounded text-[0.625rem] font-bold shadow-sm">
+                    🥤 {{ t('sodaDeals') }}
+                </button>
+                <button @click="loadDetergentExample" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 px-3 py-1.5 rounded text-[0.625rem] font-bold shadow-sm">
+                    🧴 {{ t('detergentDeals') }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, watch } = Vue;
+
+        const messages = {
+            en: {
+                title: "Deal Comparator", clearAll: "Clear all", addOption: "Add option",
+                increaseFont: "Increase size", decreaseFont: "Decrease size", toggleLang: "Switch language",
+                install: "Install",
+                best: "BEST", pending: "Awaiting details...", discountToggle: "Discount", percentOff: "% Off",
+                coupon: "$ Off", finalPrice: "Final", qty: "Qty", size: "Unit", unit: "Measure",
+                addCombined: "Add Item", loadSample: "Load Sample Data", sodaDeals: "Soda Deals", detergentDeals: "Detergent Deals",
+                option: "Option", confirmClear: "Clear all options?",
+                confirmOverwrite: "Overwrite current deals?",
+                duplicate: "Duplicate option", removeOption: "Remove option", removeItem: "Remove item",
+                ariaName: "Option name", ariaPrice: "Price", ariaQty: "Quantity", ariaSize: "Unit size", ariaUnit: "Measure unit",
+                crossTypeNote: "Best is marked within each measure type.",
+                warnMixedTitle: "Options use different measures",
+                warnMixedHint: "Best is ranked within each type, not across them — these prices aren't directly comparable.",
+                warnMismatchOption: "Different measure than the first option",
+                typeWeight: "Weight", typeVolume: "Volume", typeLength: "Length", typeCount: "Count",
+                needToggle: "Set quantity I need", needTitle: "I need", needHint: "Cost shown per option below",
+                sampleSoda1: "8-Pack", sampleSoda2: "12-Pack", sampleSoda3: "Bulk (3x 8-Packs)",
+                sampleDet1: "Promo Bundle", sampleDet2: "Standard Bag",
+                catCount: "Count", catWeight: "Weight", catVolume: "Volume", catLength: "Length",
+                unit_pcs: "pcs", unit_g: "g", unit_kg: "kg", unit_lb: "lb", unit_oz: "oz",
+                unit_ml: "ml", unit_L: "L", unit_floz: "fl oz", unit_gal: "gal",
+                unit_cm: "cm", unit_m: "m", unit_mm: "mm", unit_in: "in", unit_ft: "ft", unit_yd: "yd"
+            },
+            zh: {
+                title: "貨比N家", clearAll: "清除全部", addOption: "新增選項",
+                increaseFont: "放大字體", decreaseFont: "縮小字體", toggleLang: "切換語言",
+                install: "安裝",
+                best: "最抵", pending: "等待輸入...", discountToggle: "折扣", percentOff: "% 折",
+                coupon: "減 $", finalPrice: "折實", qty: "數量", size: "量", unit: "單位",
+                addCombined: "新增項目", loadSample: "載入範例數據", sodaDeals: "汽水優惠", detergentDeals: "洗衣液套裝",
+                option: "選項", confirmClear: "確定要清除所有選項嗎？",
+                confirmOverwrite: "覆蓋當前資料？",
+                duplicate: "複製選項", removeOption: "移除選項", removeItem: "移除項目",
+                ariaName: "選項名稱", ariaPrice: "價格", ariaQty: "數量", ariaSize: "單位大小", ariaUnit: "計量單位",
+                crossTypeNote: "最抵會按每種計量單位分別標示。",
+                warnMixedTitle: "各選項計量單位不一致",
+                warnMixedHint: "最抵只在同類型內排名，不能跨類型比較，這些價格無法直接比較。",
+                warnMismatchOption: "與第一個選項的計量單位不同",
+                typeWeight: "重量", typeVolume: "容量", typeLength: "長度", typeCount: "數量",
+                needToggle: "設定所需數量", needTitle: "我需要", needHint: "金額顯示於下方各選項",
+                sampleSoda1: "8罐裝", sampleSoda2: "12罐裝", sampleSoda3: "原箱 (3盒8罐)",
+                sampleDet1: "特價套裝", sampleDet2: "標準裝",
+                catCount: "數量", catWeight: "重量", catVolume: "容量", catLength: "長度",
+                unit_pcs: "件/罐", unit_g: "g", unit_kg: "kg", unit_lb: "lb", unit_oz: "oz",
+                unit_ml: "ml", unit_L: "L", unit_floz: "fl oz", unit_gal: "gal",
+                unit_cm: "cm", unit_m: "m", unit_mm: "mm", unit_in: "in", unit_ft: "ft", unit_yd: "yd"
+            }
+        };
+
+        const unitsInfo = {
+            'g': { type: 'weight', factor: 1, display: 'g' },
+            'kg': { type: 'weight', factor: 1000, display: 'g' },
+            'lb': { type: 'weight', factor: 453.592, display: 'g' },
+            'oz': { type: 'weight', factor: 28.3495, display: 'g' },
+            'ml': { type: 'volume', factor: 1, display: 'ml' },
+            'L': { type: 'volume', factor: 1000, display: 'ml' },
+            'fl oz': { type: 'volume', factor: 29.5735, display: 'ml' },
+            'gal': { type: 'volume', factor: 3785.41, display: 'ml' },
+            'cm': { type: 'length', factor: 1, display: 'cm' },
+            'm': { type: 'length', factor: 100, display: 'cm' },
+            'mm': { type: 'length', factor: 0.1, display: 'cm' },
+            'in': { type: 'length', factor: 2.54, display: 'cm' },
+            'ft': { type: 'length', factor: 30.48, display: 'cm' },
+            'yd': { type: 'length', factor: 91.44, display: 'cm' },
+            'pcs': { type: 'count', factor: 1, display: 'pcs' }
+        };
+
+        const STORAGE_KEY = 'dealComparatorState_v1';
+
+        createApp({
+            setup() {
+                const deals = ref([]);
+                const lang = ref('zh');
+                const zoomPercentage = ref(100);
+                const showNeed = ref(false);
+                const needQty = ref(null);
+                const needUnit = ref('g');
+
+                // PWA install prompt
+                const installPromptEvent = ref(null);
+                const canInstall = computed(() => !!installPromptEvent.value);
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    installPromptEvent.value = e;
+                });
+                window.addEventListener('appinstalled', () => { installPromptEvent.value = null; });
+                const triggerInstall = async () => {
+                    const e = installPromptEvent.value;
+                    if (!e) return;
+                    e.prompt();
+                    try { await e.userChoice; } catch (err) {}
+                    installPromptEvent.value = null;
+                };
+
+                const generateId = () => Math.random().toString(36).substr(2, 9);
+                const t = (key) => messages[lang.value][key] || key;
+                const unitLabel = (key) => t('unit_' + (key === 'fl oz' ? 'floz' : key));
+
+                const dealName = (deal, index) => deal.name || (deal.nameKey ? t(deal.nameKey) : (t('option') + ' ' + (index + 1)));
+
+                const toggleLang = () => {
+                    lang.value = lang.value === 'en' ? 'zh' : 'en';
+                    document.documentElement.lang = lang.value;
+                };
+
+                const toggleNeed = () => { showNeed.value = !showNeed.value; };
+
+                const adjustZoom = (delta) => {
+                    let newZoom = zoomPercentage.value + delta;
+                    if (newZoom >= 80 && newZoom <= 180) {
+                        zoomPercentage.value = newZoom;
+                        document.documentElement.style.fontSize = newZoom + "%";
+                    }
+                };
+
+                const getUnitType = (unitKey) => unitsInfo[unitKey]?.type || 'count';
+
+                const syncUnits = (deal) => {
+                    if (deal.items.length <= 1) return;
+                    const baseType = getUnitType(deal.items[0].unit);
+                    deal.items.forEach((item, idx) => {
+                        if (idx > 0 && getUnitType(item.unit) !== baseType) {
+                            const firstUnitOfNewType = Object.keys(unitsInfo).find(k => unitsInfo[k].type === baseType);
+                            item.unit = firstUnitOfNewType;
+                        }
+                    });
+                };
+
+                const addDeal = () => {
+                    deals.value.push({
+                        id: generateId(), name: '', nameKey: null, price: null, showDiscount: false, discountPercent: null, discountFlat: null,
+                        items: [{ id: generateId(), qty: 1, size: null, unit: 'pcs' }]
+                    });
+                };
+
+                const duplicateDeal = (id) => {
+                    const idx = deals.value.findIndex(d => d.id === id);
+                    if (idx === -1) return;
+                    const copy = JSON.parse(JSON.stringify(deals.value[idx]));
+                    copy.id = generateId();
+                    copy.items = copy.items.map(it => ({ ...it, id: generateId() }));
+                    deals.value.splice(idx + 1, 0, copy);
+                };
+
+                const initBlankState = () => {
+                    deals.value = [];
+                    addDeal(); addDeal();
+                };
+
+                const clearAll = () => { if (confirm(t('confirmClear'))) initBlankState(); };
+
+                const hasData = () => deals.value.some(d => d.price || d.items[0]?.size);
+
+                const loadSodaExample = () => {
+                    if (hasData() && !confirm(t('confirmOverwrite'))) return;
+                    deals.value = [
+                        { id: generateId(), name: '', nameKey: 'sampleSoda1', price: 30, showDiscount: false, discountPercent: null, discountFlat: null, items: [{ id: generateId(), qty: 1, size: 8, unit: 'pcs' }] },
+                        { id: generateId(), name: '', nameKey: 'sampleSoda2', price: 51, showDiscount: true, discountPercent: 10, discountFlat: null, items: [{ id: generateId(), qty: 1, size: 12, unit: 'pcs' }] },
+                        { id: generateId(), name: '', nameKey: 'sampleSoda3', price: 80, showDiscount: true, discountPercent: null, discountFlat: 5, items: [{ id: generateId(), qty: 3, size: 8, unit: 'pcs' }] }
+                    ];
+                };
+
+                const loadDetergentExample = () => {
+                    if (hasData() && !confirm(t('confirmOverwrite'))) return;
+                    deals.value = [
+                        { id: generateId(), name: '', nameKey: 'sampleDet1', price: 72, showDiscount: false, discountPercent: null, discountFlat: null, items: [
+                            { id: generateId(), qty: 1, size: 2.2, unit: 'kg' },
+                            { id: generateId(), qty: 1, size: 1.5, unit: 'kg' }
+                        ] },
+                        { id: generateId(), name: '', nameKey: 'sampleDet2', price: 69.9, showDiscount: false, discountPercent: null, discountFlat: null, items: [{ id: generateId(), qty: 1, size: 800, unit: 'g' }] }
+                    ];
+                };
+
+                const removeDeal = (id) => { deals.value = deals.value.filter(d => d.id !== id); };
+
+                const addItem = (dealId) => {
+                    const deal = deals.value.find(d => d.id === dealId);
+                    if (deal) {
+                        let defaultUnit = deal.items.length > 0 ? deal.items[0].unit : 'pcs';
+                        deal.items.push({ id: generateId(), qty: 1, size: null, unit: defaultUnit });
+                    }
+                };
+
+                const removeItem = (dealId, itemId) => {
+                    const deal = deals.value.find(d => d.id === dealId);
+                    if (deal) deal.items = deal.items.filter(i => i.id !== itemId);
+                };
+
+                const dealStats = computed(() => {
+                    let results = deals.value.map(deal => {
+                        if (deal.items.length === 0) return { id: deal.id, type: 'count', baseDisplay: 'pcs', unitPrice: 0, finalPrice: 0, totalBaseUnits: 0 };
+
+                        let firstItemType = unitsInfo[deal.items[0].unit]?.type || 'count';
+                        let baseDisplay = unitsInfo[deal.items[0].unit]?.display || 'pcs';
+
+                        let totalBaseUnits = 0;
+                        deal.items.forEach(item => {
+                            let uInfo = unitsInfo[item.unit];
+                            if (uInfo && uInfo.type === firstItemType) {
+                                totalBaseUnits += Math.max(0, parseFloat(item.qty) || 0) * Math.max(0, parseFloat(item.size) || 0) * uInfo.factor;
+                            }
+                        });
+
+                        let rawPrice = Math.max(0, parseFloat(deal.price) || 0);
+                        let dPercent = deal.showDiscount ? Math.min(100, Math.max(0, parseFloat(deal.discountPercent) || 0)) : 0;
+                        let dFlat = deal.showDiscount ? Math.max(0, parseFloat(deal.discountFlat) || 0) : 0;
+
+                        let finalPrice = Math.max(0, (rawPrice * (1 - dPercent / 100)) - dFlat);
+                        let unitPrice = totalBaseUnits > 0 ? (finalPrice / totalBaseUnits) : 0;
+
+                        return { id: deal.id, type: firstItemType, baseDisplay, totalBaseUnits, finalPrice, unitPrice };
+                    });
+
+                    let bestPrices = {};
+                    results.forEach(d => {
+                        if (d.unitPrice > 0) {
+                            if (bestPrices[d.type] === undefined || d.unitPrice < bestPrices[d.type]) {
+                                bestPrices[d.type] = d.unitPrice;
+                            }
+                        }
+                    });
+
+                    // The first priced option (in display order) sets the reference measure type.
+                    let referenceType = null;
+                    for (const r of results) { if (r.unitPrice > 0) { referenceType = r.type; break; } }
+
+                    let statsMap = {};
+                    results.forEach(d => {
+                        const pricedSameType = results.filter(r => r.type === d.type && r.unitPrice > 0).length;
+                        const comparable = d.unitPrice > 0 && pricedSameType > 1;
+                        const best = bestPrices[d.type];
+                        statsMap[d.id] = {
+                            ...d,
+                            comparable,
+                            isBest: comparable && best !== undefined && Math.abs(d.unitPrice - best) < 1e-9,
+                            pctVsBest: (d.unitPrice > 0 && best) ? (d.unitPrice / best - 1) * 100 : 0,
+                            typeMismatch: d.unitPrice > 0 && referenceType !== null && d.type !== referenceType
+                        };
+                    });
+
+                    return statsMap;
+                });
+
+                const needBase = computed(() => {
+                    const q = parseFloat(needQty.value) || 0;
+                    const info = unitsInfo[needUnit.value];
+                    if (!info || q <= 0) return null;
+                    return { type: info.type, baseUnits: q * info.factor };
+                });
+
+                const needCost = (stats) => {
+                    if (!showNeed.value || !needBase.value || !stats || !(stats.unitPrice > 0)) return null;
+                    if (stats.type !== needBase.value.type) return null;
+                    return stats.unitPrice * needBase.value.baseUnits;
+                };
+
+                const activeTypes = computed(() => {
+                    const s = new Set();
+                    Object.values(dealStats.value).forEach(d => { if (d.unitPrice > 0) s.add(d.type); });
+                    return s;
+                });
+
+                const typeLabel = (type) => {
+                    const map = { weight: 'typeWeight', volume: 'typeVolume', length: 'typeLength', count: 'typeCount' };
+                    return t(map[type] || 'typeCount');
+                };
+
+                const activeTypeLabels = computed(() => Array.from(activeTypes.value).map(typeLabel));
+
+                const getMetricText = (stats) => {
+                    if (!stats || stats.baseDisplay === 'pcs') return '';
+                    const price = stats.unitPrice;
+
+                    if (stats.baseDisplay === 'cm') {
+                        return `$${formatCurrency(price * 10)}/10${t('unit_cm')} \u00A0•\u00A0 $${formatCurrency(price * 100)}/${t('unit_m')}`;
+                    }
+
+                    let per100 = `$${formatCurrency(price * 100)}/100${t('unit_' + stats.baseDisplay)}`;
+                    let per1000 = `$${formatCurrency(price * 1000)}/${stats.baseDisplay === 'g' ? t('unit_kg') : t('unit_L')}`;
+                    return `${per100} \u00A0•\u00A0 ${per1000}`;
+                };
+
+                const hasActiveDeals = computed(() => Object.values(dealStats.value).some(d => d.unitPrice > 0));
+                const formatNumber = (num) => parseFloat((parseFloat(num) || 0).toFixed(4));
+                const formatCurrency = (num) => {
+                    if (num === 0) return "0.00";
+                    if (num < 0.01) return num.toFixed(4);
+                    if (num < 0.1) return num.toFixed(3);
+                    return num.toFixed(2);
+                };
+                const formatPct = (p) => {
+                    if (p == null) return '';
+                    if (p < 0.5) return '<1%';
+                    if (p < 10) return p.toFixed(1) + '%';
+                    return Math.round(p) + '%';
+                };
+
+                const saveState = () => {
+                    try {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                            deals: deals.value, lang: lang.value, zoom: zoomPercentage.value,
+                            showNeed: showNeed.value, needQty: needQty.value, needUnit: needUnit.value
+                        }));
+                    } catch (e) { /* storage unavailable (e.g. private mode) — run without persistence */ }
+                };
+
+                const loadState = () => {
+                    try {
+                        const raw = localStorage.getItem(STORAGE_KEY);
+                        if (!raw) return false;
+                        const s = JSON.parse(raw);
+                        if (!Array.isArray(s.deals) || s.deals.length === 0) return false;
+                        deals.value = s.deals;
+                        if (s.lang) lang.value = s.lang;
+                        if (typeof s.zoom === 'number') zoomPercentage.value = s.zoom;
+                        if (typeof s.showNeed === 'boolean') showNeed.value = s.showNeed;
+                        if (s.needQty != null) needQty.value = s.needQty;
+                        if (s.needUnit && unitsInfo[s.needUnit]) needUnit.value = s.needUnit;
+                        return true;
+                    } catch (e) { return false; }
+                };
+
+                if (!loadState()) initBlankState();
+                document.documentElement.lang = lang.value;
+                document.documentElement.style.fontSize = zoomPercentage.value + "%";
+
+                watch([deals, lang, zoomPercentage, showNeed, needQty, needUnit], saveState, { deep: true });
+
+                return {
+                    deals, lang, t, toggleLang, adjustZoom, getUnitType, syncUnits, getMetricText,
+                    addDeal, removeDeal, duplicateDeal, addItem, removeItem, clearAll,
+                    loadSodaExample, loadDetergentExample, dealStats, hasActiveDeals,
+                    formatNumber, formatCurrency, formatPct, dealName, unitLabel,
+                    showNeed, needQty, needUnit, toggleNeed, needCost, activeTypes, typeLabel, activeTypeLabels,
+                    canInstall, triggerInstall
+                };
+            }
+        }).mount('#app');
+
+        // Register the service worker for offline support.
+        // Service workers only run over http(s)/localhost, not file:// — so this is skipped on a direct file open.
+        if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch((err) => {
+                    console.warn('Service worker registration failed:', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
