@@ -1,5 +1,5 @@
 /* Deal Comparator service worker — offline support */
-const CACHE = 'deal-comparator-v2';
+const CACHE = 'deal-comparator-v3';
 
 // Same-origin app shell (precached on install).
 const SHELL = [
