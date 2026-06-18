@@ -157,7 +157,7 @@
                     <div class="flex gap-1.5 items-center">
                         <div class="relative flex-grow">
                             <span class="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400 text-xs font-bold" aria-hidden="true">$</span>
-                            <input type="number" v-model="deal.price" min="0" step="0.01" placeholder="0.00" :aria-label="t('ariaPrice')"
+                            <input type="number" inputmode="decimal" v-model="deal.price" @focus="$event.target.select()" min="0" step="0.01" placeholder="0.00" :aria-label="t('ariaPrice')"
                                    class="w-full border rounded px-2 pl-5 py-1 text-sm font-bold outline-none focus:border-indigo-500 transition-colors"
                                    :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200 focus:bg-white' : 'bg-zinc-50 border-zinc-200 focus:bg-white'">
                         </div>
@@ -172,11 +172,11 @@
                     <div v-if="deal.showDiscount" class="grid grid-cols-2 gap-1.5 bg-indigo-50/80 p-1.5 rounded border border-indigo-100 shadow-sm">
                         <div class="flex items-center gap-1">
                             <label class="text-[0.5625rem] font-bold text-indigo-500 uppercase w-10 text-right">{{ t('percentOff') }}</label>
-                            <input type="number" v-model="deal.discountPercent" min="0" max="100" placeholder="0" :aria-label="t('percentOff')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-0.5 text-xs outline-none focus:border-indigo-500">
+                            <input type="number" inputmode="decimal" v-model="deal.discountPercent" @focus="$event.target.select()" min="0" max="100" placeholder="0" :aria-label="t('percentOff')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-0.5 text-xs outline-none focus:border-indigo-500">
                         </div>
                         <div class="flex items-center gap-1">
                             <label class="text-[0.5625rem] font-bold text-indigo-500 uppercase w-10 text-right">{{ t('coupon') }}</label>
-                            <input type="number" v-model="deal.discountFlat" min="0" step="0.01" placeholder="0" :aria-label="t('coupon')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-0.5 text-xs outline-none focus:border-indigo-500">
+                            <input type="number" inputmode="decimal" v-model="deal.discountFlat" @focus="$event.target.select()" min="0" step="0.01" placeholder="0" :aria-label="t('coupon')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-0.5 text-xs outline-none focus:border-indigo-500">
                         </div>
                         <div v-if="deal.price > 0 && (deal.discountPercent > 0 || deal.discountFlat > 0)" class="col-span-2 text-[0.625rem] text-emerald-600 font-bold text-right pt-0.5">
                             {{ t('finalPrice') }}: ${{ formatCurrency(dealStats[deal.id]?.finalPrice) }}
@@ -185,15 +185,19 @@
 
                     <div class="flex-grow flex flex-col mt-0.5">
                         <div class="grid grid-cols-12 gap-1 px-0.5 mb-0.5" v-if="deal.items.length > 0">
-                            <div class="col-span-3 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('qty') }}</div>
-                            <div class="col-span-4 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('size') }}</div>
+                            <div class="col-span-4 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('qty') }}</div>
+                            <div class="col-span-3 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('size') }}</div>
                             <div class="col-span-4 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('unit') }}</div>
                         </div>
 
                         <div class="space-y-1">
                             <div v-for="(item, iIndex) in deal.items" :key="item.id" class="grid grid-cols-12 gap-1 items-center">
-                                <input type="number" v-model="item.qty" min="0" placeholder="1" :aria-label="t('ariaQty')" class="col-span-3 border rounded px-1 py-1 text-xs font-medium outline-none focus:border-indigo-500 focus:bg-white" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
-                                <input type="number" v-model="item.size" min="0" step="0.01" placeholder="--" :aria-label="t('ariaSize')" class="col-span-4 border rounded px-1 py-1 text-xs font-medium outline-none focus:border-indigo-500 focus:bg-white" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
+                                <div class="col-span-4 flex items-stretch rounded border overflow-hidden" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
+                                    <button type="button" @click="stepQty(item, -1)" :aria-label="t('decrease')" class="px-2 flex items-center justify-center text-zinc-500 hover:bg-zinc-200/70 active:bg-zinc-300 font-bold text-sm leading-none select-none">−</button>
+                                    <input type="number" inputmode="numeric" v-model="item.qty" @focus="$event.target.select()" min="0" placeholder="1" :aria-label="t('ariaQty')" class="w-full min-w-0 text-center py-1 text-xs font-medium bg-transparent border-x outline-none focus:bg-white" :class="dealStats[deal.id]?.isBest ? 'border-emerald-200' : 'border-zinc-200'">
+                                    <button type="button" @click="stepQty(item, 1)" :aria-label="t('increase')" class="px-2 flex items-center justify-center text-zinc-500 hover:bg-zinc-200/70 active:bg-zinc-300 font-bold text-sm leading-none select-none">+</button>
+                                </div>
+                                <input type="number" inputmode="decimal" v-model="item.size" @focus="$event.target.select()" min="0" step="0.01" placeholder="--" :aria-label="t('ariaSize')" class="col-span-3 border rounded px-1 py-1 text-xs font-medium outline-none focus:border-indigo-500 focus:bg-white" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
 
                                 <select v-model="item.unit" @change="iIndex === 0 ? syncUnits(deal) : null" :aria-label="t('ariaUnit')" class="col-span-4 border rounded px-0.5 py-1 text-[0.6875rem] font-medium outline-none focus:border-indigo-500 focus:bg-white text-zinc-700" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
                                     <optgroup v-if="iIndex === 0 || getUnitType(deal.items[0].unit) === 'count'" :label="t('catCount')">
@@ -287,6 +291,7 @@
                 confirmOverwrite: "Overwrite current deals?",
                 duplicate: "Duplicate option", removeOption: "Remove option", removeItem: "Remove item",
                 ariaName: "Option name", ariaPrice: "Price", ariaQty: "Quantity", ariaSize: "Unit size", ariaUnit: "Measure unit",
+                decrease: "Decrease quantity", increase: "Increase quantity",
                 crossTypeNote: "Best is marked within each measure type.",
                 warnMixedTitle: "Options use different measures",
                 warnMixedHint: "Best is ranked within each type, not across them — these prices aren't directly comparable.",
@@ -312,6 +317,7 @@
                 confirmOverwrite: "覆蓋當前資料？",
                 duplicate: "複製選項", removeOption: "移除選項", removeItem: "移除項目",
                 ariaName: "選項名稱", ariaPrice: "價格", ariaQty: "數量", ariaSize: "單位大小", ariaUnit: "計量單位",
+                decrease: "減少數量", increase: "增加數量",
                 crossTypeNote: "最抵會按每種計量單位分別標示。",
                 warnMixedTitle: "各選項計量單位不一致",
                 warnMixedHint: "最抵只在同類型內排名，不能跨類型比較，這些價格無法直接比較。",
@@ -351,7 +357,7 @@
             setup() {
                 const deals = ref([]);
                 const lang = ref('zh');
-                const zoomPercentage = ref(100);
+                const zoomPercentage = ref(110);
                 const showNeed = ref(false);
                 const needQty = ref(null);
                 const needUnit = ref('g');
@@ -479,6 +485,13 @@
                 const removeItem = (dealId, itemId) => {
                     const deal = deals.value.find(d => d.id === dealId);
                     if (deal) deal.items = deal.items.filter(i => i.id !== itemId);
+                };
+
+                const stepQty = (item, delta) => {
+                    const cur = parseFloat(item.qty);
+                    let n = (isNaN(cur) ? 0 : cur) + delta;
+                    if (n < 0) n = 0;
+                    item.qty = n;
                 };
 
                 const dealStats = computed(() => {
@@ -625,7 +638,7 @@
                     deals, lang, t, toggleLang, adjustZoom, getUnitType, syncUnits, getMetricText,
                     addDeal, removeDeal, duplicateDeal, addItem, removeItem, clearAll,
                     loadSodaExample, loadDetergentExample, dealStats, hasActiveDeals,
-                    formatNumber, formatCurrency, formatPct, dealName, unitLabel,
+                    formatNumber, formatCurrency, formatPct, dealName, unitLabel, stepQty,
                     showNeed, needQty, needUnit, toggleNeed, needCost, activeTypes, typeLabel, activeTypeLabels,
                     canInstall, triggerInstall
                 };
