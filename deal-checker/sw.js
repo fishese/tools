@@ -1,19 +1,19 @@
 /* Deal Comparator service worker — offline support */
-const CACHE = 'deal-comparator-v4';
+const CACHE = 'deal-comparator-v6';
 
-// Same-origin app shell (precached on install).
+// Added explicit '/' to the shell to prevent cache miss errors on domain root
 const SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './icon.svg',
   './icon-192.png',
   './icon-512.png'
 ];
 
-// Cross-origin runtime dependencies (best-effort precache, opaque responses).
 const VENDOR = [
   'https://cdn.tailwindcss.com',
-  'https://unpkg.com/vue@3/dist/vue.global.js'
+  'https://unpkg.com/vue@3.5/dist/vue.global.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -24,7 +24,7 @@ self.addEventListener('install', (event) => {
       try {
         const res = await fetch(url, { mode: 'no-cors' });
         await cache.put(url, res);
-      } catch (err) { /* ignore — will be cached on first online use */ }
+      } catch (err) {}
     }));
     self.skipWaiting();
   })());
@@ -42,18 +42,20 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
-  // Page navigations: network-first so updates load when online,
-  // fall back to the cached shell when offline.
+  // Page navigations (HTML): Network first, then cache fallback
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
         const fresh = await fetch(req);
         const cache = await caches.open(CACHE);
+        // Save to specific path rather than generic match
         cache.put('./index.html', fresh.clone()).catch(() => {});
         return fresh;
       } catch (err) {
         const cache = await caches.open(CACHE);
-        return (await cache.match('./index.html')) ||
+        // Explicitly check the request URL, then fallback to standard index/root
+        return (await cache.match(req)) || 
+               (await cache.match('./index.html')) ||
                (await cache.match('./')) ||
                Response.error();
       }
@@ -61,8 +63,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Everything else (scripts, icons, CDN deps): cache-first, then network,
-  // populating the cache so subsequent loads work offline.
+  // Assets (Scripts, Images): Cache-first
   event.respondWith((async () => {
     const cached = await caches.match(req);
     if (cached) return cached;
@@ -74,7 +75,7 @@ self.addEventListener('fetch', (event) => {
       }
       return res;
     } catch (err) {
-      return cached || Response.error();
+      return Response.error();
     }
   })());
 });

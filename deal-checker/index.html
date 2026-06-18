@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4f46e5">
+    <meta name="description" content="Compare price-per-unit across deals, fast.">
     <title>貨比N家 · Deal Comparator</title>
 
-    <!-- PWA -->
     <link rel="manifest" href="./manifest.webmanifest">
-    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="./icon.svg">
     <link rel="apple-touch-icon" href="./icon-192.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,13 +16,9 @@
     <meta name="apple-mobile-web-app-title" content="貨比N家">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue@3.5/dist/vue.global.js"></script>
     <style>
         [v-cloak] { display: none; }
-        /* Clean number inputs */
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
         /* Smooth transitions for scaling */
         html { transition: font-size 0.2s ease-out; }
         /* Respect reduced-motion preference */
@@ -31,58 +27,52 @@
         }
         /* Visible keyboard focus */
         :focus-visible { outline: 2px solid #4f46e5; outline-offset: 1px; }
+        
+        body {
+            background: linear-gradient(160deg, #eef1f7 0%, #e2e8f2 45%, #d8e0ed 100%);
+            min-height: 100vh;
+        }
     </style>
 </head>
-<body class="bg-slate-300 min-h-screen p-1.5 md:p-4 text-zinc-800 font-sans flex flex-col antialiased">
-    <div id="app" v-cloak class="max-w-7xl mx-auto w-full space-y-2.5 flex-grow flex flex-col">
+<body class="min-h-screen p-1.5 md:p-4 text-zinc-800 font-sans flex flex-col antialiased relative">
+    <div id="app" v-cloak class="max-w-7xl mx-auto w-full space-y-2 flex-grow flex flex-col pb-24">
 
-        <div class="flex flex-col md:flex-row justify-between items-center gap-2 bg-white p-2.5 rounded-xl shadow-md border-b border-zinc-200">
-            <h1 class="text-lg font-black text-indigo-900 tracking-tight flex items-center gap-1.5 w-full md:w-auto pl-1">
-                🛒 {{ t('title') }}
+        <div class="flex flex-col md:flex-row justify-between items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-md border-b border-zinc-200">
+            <h1 class="text-base font-black text-indigo-900 tracking-tight flex items-center gap-1.5 w-full md:w-auto pl-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-indigo-600 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {{ t('title') }}
             </h1>
 
             <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto justify-end">
-
                 <div class="flex items-center justify-center bg-zinc-100 rounded px-1 py-1 shadow-inner border border-zinc-200">
-                    <button @click="adjustZoom(-10)" class="px-2 py-0.5 text-zinc-500 hover:text-indigo-700 hover:bg-zinc-200 rounded text-[0.6875rem] font-bold transition-colors" :title="t('decreaseFont')" :aria-label="t('decreaseFont')">A-</button>
-                    <div class="w-[1px] h-3 bg-zinc-300 mx-0.5"></div>
-                    <button @click="adjustZoom(10)" class="px-2 py-0.5 text-zinc-500 hover:text-indigo-700 hover:bg-zinc-200 rounded text-[0.875rem] font-bold transition-colors" :title="t('increaseFont')" :aria-label="t('increaseFont')">A+</button>
+                    <button @click="adjustZoom(-10)" class="min-w-[32px] min-h-[32px] text-zinc-500 hover:text-indigo-700 hover:bg-zinc-200 rounded text-sm font-bold transition-colors flex items-center justify-center" :title="t('decreaseFont')" :aria-label="t('decreaseFont')">A-</button>
+                    <div class="w-[1px] h-4 bg-zinc-300 mx-0.5"></div>
+                    <button @click="adjustZoom(10)" class="min-w-[32px] min-h-[32px] text-zinc-500 hover:text-indigo-700 hover:bg-zinc-200 rounded text-base font-bold transition-colors flex items-center justify-center" :title="t('increaseFont')" :aria-label="t('increaseFont')">A+</button>
                 </div>
 
-                <button v-if="canInstall" @click="triggerInstall" class="flex items-center gap-1 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[0.6875rem] font-bold rounded transition-colors shadow-sm border border-emerald-600" :title="t('install')" :aria-label="t('install')">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <button v-if="canInstall" @click="triggerInstall" class="flex items-center gap-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded transition-colors shadow-sm border border-emerald-600" :title="t('install')" :aria-label="t('install')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
                     </svg>
                     <span class="hidden sm:inline">{{ t('install') }}</span>
                 </button>
 
-                <button @click="toggleNeed" class="flex items-center justify-center px-2 py-1.5 text-[0.6875rem] font-bold rounded transition-colors shadow-sm border" :class="showNeed ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-zinc-200'" :title="t('needToggle')" :aria-label="t('needToggle')" :aria-pressed="showNeed">🎯</button>
+                <button @click="toggleNeed" class="flex items-center justify-center px-3 py-2 text-xs font-bold rounded transition-colors shadow-sm border" :class="showNeed ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-zinc-200'" :title="t('needToggle')" :aria-label="t('needToggle')" :aria-pressed="showNeed">🎯</button>
 
-                <button @click="toggleLang" class="flex items-center justify-center px-2 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[0.6875rem] font-bold rounded transition-colors shadow-sm border border-zinc-200" :aria-label="t('toggleLang')">
+                <button @click="toggleLang" class="flex items-center justify-center px-3 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-bold rounded transition-colors shadow-sm border border-zinc-200" :aria-label="t('toggleLang')">
                     <span :class="{'text-indigo-600': lang === 'en'}">EN</span>
                     <span class="mx-1 text-zinc-300">/</span>
                     <span :class="{'text-indigo-600': lang === 'zh'}">繁</span>
                 </button>
-
-                <button @click="clearAll" class="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg transition-colors flex-shrink-0 shadow-sm border border-red-100" :title="t('clearAll')" :aria-label="t('clearAll')">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-
-                <button @click="addDeal" class="bg-indigo-600 hover:bg-indigo-700 text-white p-1.5 rounded-lg shadow-sm transition-colors flex-shrink-0" :title="t('addOption')" :aria-label="t('addOption')">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                </button>
             </div>
         </div>
 
-        <div v-if="showNeed" class="flex flex-wrap items-center gap-1.5 bg-white p-1.5 rounded-lg shadow-sm border border-indigo-100">
-            <span class="font-bold text-indigo-600 uppercase text-[0.5625rem] tracking-wide pl-1">{{ t('needTitle') }}</span>
-            <input type="number" v-model="needQty" min="0" step="0.01" placeholder="0" :aria-label="t('needTitle')"
-                   class="w-16 border border-indigo-200 rounded px-1.5 py-0.5 text-xs outline-none focus:border-indigo-500">
-            <select v-model="needUnit" :aria-label="t('ariaUnit')" class="border border-indigo-200 rounded px-1 py-0.5 text-[0.6875rem] font-medium text-zinc-700 outline-none focus:border-indigo-500">
+        <div v-if="showNeed" class="flex flex-wrap items-center gap-1.5 bg-white p-2 rounded-lg shadow-sm border border-indigo-100">
+            <span class="font-bold text-indigo-600 uppercase text-xs tracking-wide pl-1">{{ t('needTitle') }}</span>
+            <input type="text" inputmode="decimal" v-model="needQty" placeholder="0" :aria-label="t('needTitle')" class="w-16 border border-indigo-200 rounded px-2 py-1 text-sm outline-none focus:border-indigo-500">
+            <select v-model="needUnit" :aria-label="t('ariaUnit')" class="border border-indigo-200 rounded px-1.5 py-1 text-sm font-medium text-zinc-700 outline-none focus:border-indigo-500">
                 <optgroup :label="t('catCount')"><option value="pcs">{{ t('unit_pcs') }}</option></optgroup>
                 <optgroup :label="t('catWeight')">
                     <option value="g">{{ t('unit_g') }}</option><option value="kg">{{ t('unit_kg') }}</option>
@@ -98,35 +88,33 @@
                     <option value="ft">{{ t('unit_ft') }}</option><option value="yd">{{ t('unit_yd') }}</option>
                 </optgroup>
             </select>
-            <span class="text-zinc-400 text-[0.5625rem] truncate">{{ t('needHint') }}</span>
+            <span class="text-zinc-400 text-xs truncate">{{ t('needHint') }}</span>
         </div>
 
         <div v-if="hasActiveDeals" class="space-y-1">
-            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-1.5">
-                <div v-for="(deal, dIndex) in deals" :key="'sum-' + deal.id"
-                     class="px-2 py-1.5 rounded-md flex flex-col shadow-sm overflow-hidden border"
-                     :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-400' : 'bg-white border-zinc-200 opacity-95'">
+            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
+                <div v-for="(deal, dIndex) in deals" :key="'sum-' + deal.id" class="px-2 py-1.5 rounded-md flex flex-col shadow-sm overflow-hidden border" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-400' : 'bg-white border-zinc-200 opacity-95'">
                      <div class="flex justify-between items-center gap-1">
-                        <span class="text-zinc-600 text-[0.5625rem] font-bold uppercase truncate" :class="{'text-emerald-800': dealStats[deal.id]?.isBest}">
+                        <span class="text-zinc-600 text-xs font-bold uppercase truncate" :class="{'text-emerald-800': dealStats[deal.id]?.isBest}">
                             {{ dealName(deal, dIndex) }}
                         </span>
                         <div class="flex items-center gap-0.5 flex-shrink-0">
-                            <span v-if="dealStats[deal.id]?.typeMismatch" class="text-[0.6rem] text-amber-500 leading-none" :title="t('warnMismatchOption')">⚠</span>
-                            <span v-if="dealStats[deal.id]?.isBest" class="text-[0.5rem] bg-emerald-600 text-white px-1 py-0.5 rounded font-bold leading-none">{{ t('best') }}</span>
+                            <span v-if="dealStats[deal.id]?.typeMismatch" class="text-xs text-amber-500 leading-none" :title="t('warnMismatchOption')">⚠</span>
+                            <span v-if="dealStats[deal.id]?.isBest" class="text-[0.625rem] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-bold leading-none">{{ t('best') }}</span>
                         </div>
                      </div>
                      <div v-if="dealStats[deal.id]?.unitPrice > 0" class="flex items-baseline justify-between gap-1 mt-0.5">
-                         <span class="font-black text-[0.875rem] text-zinc-900 leading-tight whitespace-nowrap truncate" :class="{'text-emerald-900': dealStats[deal.id]?.isBest}">
-                             ${{ formatCurrency(dealStats[deal.id]?.unitPrice) }}<span class="text-[0.5rem] font-semibold text-zinc-500">/{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}</span>
+                         <span class="font-black text-base text-zinc-900 leading-tight whitespace-nowrap truncate" :class="{'text-emerald-900': dealStats[deal.id]?.isBest}">
+                             ${{ formatCurrency(dealStats[deal.id]?.unitPrice) }}<span class="text-[0.625rem] font-semibold text-zinc-500">/{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}</span>
                          </span>
-                         <span v-if="dealStats[deal.id]?.comparable && !dealStats[deal.id]?.isBest" class="text-[0.5rem] font-bold text-rose-500 flex-shrink-0 whitespace-nowrap">+{{ formatPct(dealStats[deal.id]?.pctVsBest) }}</span>
+                         <span v-if="dealStats[deal.id]?.comparable && !dealStats[deal.id]?.isBest" class="text-xs font-bold text-rose-500 flex-shrink-0 whitespace-nowrap">+{{ formatPct(dealStats[deal.id]?.pctVsBest) }}</span>
                      </div>
-                     <span v-else class="text-zinc-400 text-[0.5625rem] italic mt-0.5">{{ t('pending') }}</span>
+                     <span v-else class="text-zinc-400 text-xs italic mt-0.5">{{ t('pending') }}</span>
                 </div>
             </div>
             <div v-if="activeTypes.size > 1" class="flex items-start gap-1.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-md px-2 py-1.5 shadow-sm" role="alert">
                 <span class="text-sm leading-none mt-px" aria-hidden="true">⚠</span>
-                <p class="text-[0.625rem] leading-snug">
+                <p class="text-xs leading-snug">
                     <span class="font-bold">{{ t('warnMixedTitle') }}:</span>
                     <span class="font-semibold">{{ activeTypeLabels.join(' · ') }}</span>.
                     <span class="text-amber-700">{{ t('warnMixedHint') }}</span>
@@ -134,72 +122,63 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 pb-8">
-            <div v-for="(deal, dIndex) in deals" :key="deal.id"
-                 class="rounded-xl shadow-lg border flex flex-col relative transition-colors duration-300"
-                 :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-white border-zinc-200'">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 pb-2">
+            <div v-for="(deal, dIndex) in deals" :key="deal.id" class="rounded-xl shadow-lg border flex flex-col relative transition-colors duration-300" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-white border-zinc-200'">
 
-                <div class="p-2 flex-grow flex flex-col gap-2">
-                    <div class="flex justify-between items-center gap-1 border-b border-black/5 pb-1">
-                        <input type="text" :value="deal.name || (deal.nameKey ? t(deal.nameKey) : '')" @input="deal.name = $event.target.value; deal.nameKey = null"
-                               :placeholder="t('option') + ' ' + (dIndex + 1)" :aria-label="t('ariaName')"
-                               class="font-extrabold text-zinc-800 text-sm focus:text-indigo-700 focus:outline-none w-full bg-transparent placeholder-zinc-400/70">
+                <div class="px-2 py-1 flex-grow flex flex-col gap-1">
+                    <div class="flex justify-between items-center gap-1 border-b border-black/5 pb-1 mt-1">
+                        <input type="text" :value="deal.name || (deal.nameKey ? t(deal.nameKey) : '')" @input="deal.name = $event.target.value; deal.nameKey = null" :placeholder="t('option') + ' ' + (dIndex + 1)" :aria-label="t('ariaName')" class="font-extrabold text-zinc-800 text-base focus:text-indigo-700 focus:outline-none w-full bg-transparent placeholder-zinc-400/70">
                         <div class="flex items-center flex-shrink-0">
-                            <button @click="duplicateDeal(deal.id)" class="text-zinc-400 hover:text-indigo-600 px-1.5 py-0.5 leading-none transition-colors" :title="t('duplicate')" :aria-label="t('duplicate')">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <button @click="duplicateDeal(deal.id)" class="text-zinc-400 hover:text-indigo-600 min-w-[32px] min-h-[32px] flex items-center justify-center transition-colors" :title="t('duplicate')" :aria-label="t('duplicate')">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <rect x="8" y="8" width="12" height="12" rx="2" /><path stroke-linecap="round" stroke-linejoin="round" d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" />
                                 </svg>
                             </button>
-                            <button @click="removeDeal(deal.id)" class="text-zinc-400 hover:text-red-500 px-1.5 text-lg leading-none font-bold transition-colors" :title="t('removeOption')" :aria-label="t('removeOption')">×</button>
+                            <button @click="removeDeal(deal.id)" class="text-zinc-400 hover:text-red-500 min-w-[32px] min-h-[32px] flex items-center justify-center text-xl font-bold transition-colors" :title="t('removeOption')" :aria-label="t('removeOption')">×</button>
                         </div>
                     </div>
 
                     <div class="flex gap-1.5 items-center">
                         <div class="relative flex-grow">
-                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400 text-xs font-bold" aria-hidden="true">$</span>
-                            <input type="number" inputmode="decimal" v-model="deal.price" @focus="$event.target.select()" min="0" step="0.01" placeholder="0.00" :aria-label="t('ariaPrice')"
-                                   class="w-full border rounded px-2 pl-5 py-1 text-sm font-bold outline-none focus:border-indigo-500 transition-colors"
-                                   :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200 focus:bg-white' : 'bg-zinc-50 border-zinc-200 focus:bg-white'">
+                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-400 text-sm font-bold" aria-hidden="true">$</span>
+                            <input type="text" inputmode="decimal" v-model="deal.price" @focus="$event.target.select()" placeholder="0.00" :aria-label="t('ariaPrice')" class="w-full border rounded px-2 pl-5 py-1 text-sm font-bold outline-none focus:border-indigo-500 transition-colors" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200 focus:bg-white' : 'bg-zinc-50 border-zinc-200 focus:bg-white'">
                         </div>
-                        <button @click="deal.showDiscount = !deal.showDiscount"
-                                class="text-[0.625rem] font-bold px-2 py-1 rounded border transition-colors flex items-center gap-1 select-none flex-shrink-0"
-                                :aria-pressed="deal.showDiscount"
-                                :class="deal.showDiscount ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : (dealStats[deal.id]?.isBest ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-200' : 'bg-zinc-50 text-zinc-500 border-zinc-200 hover:bg-zinc-100')">
+                        <button @click="deal.showDiscount = !deal.showDiscount" class="text-xs font-bold px-2 py-1 min-h-[32px] rounded border transition-colors flex items-center justify-center gap-1 select-none flex-shrink-0" :aria-pressed="deal.showDiscount" :class="deal.showDiscount ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : (dealStats[deal.id]?.isBest ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-200' : 'bg-zinc-50 text-zinc-500 border-zinc-200 hover:bg-zinc-100')">
                             🏷️ {{ t('discountToggle') }}
                         </button>
                     </div>
 
-                    <div v-if="deal.showDiscount" class="grid grid-cols-2 gap-1.5 bg-indigo-50/80 p-1.5 rounded border border-indigo-100 shadow-sm">
+                    <div v-if="deal.showDiscount" class="grid grid-cols-2 gap-1 bg-indigo-50/80 px-1.5 py-0.5 rounded border border-indigo-100 shadow-sm">
                         <div class="flex items-center gap-1">
-                            <label class="text-[0.5625rem] font-bold text-indigo-500 uppercase w-10 text-right">{{ t('percentOff') }}</label>
-                            <input type="number" inputmode="decimal" v-model="deal.discountPercent" @focus="$event.target.select()" min="0" max="100" placeholder="0" :aria-label="t('percentOff')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-0.5 text-xs outline-none focus:border-indigo-500">
+                            <label class="text-[0.625rem] font-bold text-indigo-500 uppercase w-10 text-right leading-none">{{ t('percentOff') }}</label>
+                            <input type="text" inputmode="decimal" v-model="deal.discountPercent" @focus="$event.target.select()" placeholder="0" :aria-label="t('percentOff')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-1 text-xs outline-none focus:border-indigo-500 min-w-0">
                         </div>
                         <div class="flex items-center gap-1">
-                            <label class="text-[0.5625rem] font-bold text-indigo-500 uppercase w-10 text-right">{{ t('coupon') }}</label>
-                            <input type="number" inputmode="decimal" v-model="deal.discountFlat" @focus="$event.target.select()" min="0" step="0.01" placeholder="0" :aria-label="t('coupon')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-0.5 text-xs outline-none focus:border-indigo-500">
+                            <label class="text-[0.625rem] font-bold text-indigo-500 uppercase w-10 text-right leading-none">{{ t('coupon') }}</label>
+                            <input type="text" inputmode="decimal" v-model="deal.discountFlat" @focus="$event.target.select()" placeholder="0" :aria-label="t('coupon')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-1 text-xs outline-none focus:border-indigo-500 min-w-0">
                         </div>
-                        <div v-if="deal.price > 0 && (deal.discountPercent > 0 || deal.discountFlat > 0)" class="col-span-2 text-[0.625rem] text-emerald-600 font-bold text-right pt-0.5">
+                        <div v-if="deal.price > 0 && (deal.discountPercent > 0 || deal.discountFlat > 0)" class="col-span-2 text-xs text-emerald-600 font-bold text-right pt-0.5">
                             {{ t('finalPrice') }}: ${{ formatCurrency(dealStats[deal.id]?.finalPrice) }}
                         </div>
                     </div>
 
-                    <div class="flex-grow flex flex-col mt-0.5">
+                    <div class="flex-grow flex flex-col mt-1">
                         <div class="grid grid-cols-12 gap-1 px-0.5 mb-0.5" v-if="deal.items.length > 0">
-                            <div class="col-span-4 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('qty') }}</div>
-                            <div class="col-span-3 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('size') }}</div>
-                            <div class="col-span-4 text-[0.5625rem] font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('unit') }}</div>
+                            <div class="col-span-4 text-xs font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('qty') }}</div>
+                            <div class="col-span-3 text-xs font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('size') }}</div>
+                            <div class="col-span-4 text-xs font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('unit') }}</div>
                         </div>
 
-                        <div class="space-y-1">
+                        <div class="space-y-1.5">
                             <div v-for="(item, iIndex) in deal.items" :key="item.id" class="grid grid-cols-12 gap-1 items-center">
-                                <div class="col-span-4 flex items-stretch rounded border overflow-hidden" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
-                                    <button type="button" @click="stepQty(item, -1)" :aria-label="t('decrease')" class="px-2 flex items-center justify-center text-zinc-500 hover:bg-zinc-200/70 active:bg-zinc-300 font-bold text-sm leading-none select-none">−</button>
-                                    <input type="number" inputmode="numeric" v-model="item.qty" @focus="$event.target.select()" min="0" placeholder="1" :aria-label="t('ariaQty')" class="w-full min-w-0 text-center py-1 text-xs font-medium bg-transparent border-x outline-none focus:bg-white" :class="dealStats[deal.id]?.isBest ? 'border-emerald-200' : 'border-zinc-200'">
-                                    <button type="button" @click="stepQty(item, 1)" :aria-label="t('increase')" class="px-2 flex items-center justify-center text-zinc-500 hover:bg-zinc-200/70 active:bg-zinc-300 font-bold text-sm leading-none select-none">+</button>
+                                <div class="col-span-4 flex items-stretch rounded border overflow-hidden bg-white" :class="dealStats[deal.id]?.isBest ? 'border-emerald-200' : 'border-zinc-200'">
+                                    <button type="button" @click="stepQty(item, -1)" :aria-label="t('decrease')" class="min-w-[32px] flex items-center justify-center text-zinc-500 hover:bg-zinc-200/70 active:bg-zinc-300 font-bold text-base select-none">−</button>
+                                    <input type="text" inputmode="decimal" v-model="item.qty" @focus="$event.target.select()" placeholder="1" :aria-label="t('ariaQty')" class="w-full min-w-0 text-center py-1 text-sm font-medium bg-transparent border-x outline-none focus:bg-zinc-50" :class="dealStats[deal.id]?.isBest ? 'border-emerald-200' : 'border-zinc-200'">
+                                    <button type="button" @click="stepQty(item, 1)" :aria-label="t('increase')" class="min-w-[32px] flex items-center justify-center text-zinc-500 hover:bg-zinc-200/70 active:bg-zinc-300 font-bold text-base select-none">+</button>
                                 </div>
-                                <input type="number" inputmode="decimal" v-model="item.size" @focus="$event.target.select()" min="0" step="0.01" placeholder="--" :aria-label="t('ariaSize')" class="col-span-3 border rounded px-1 py-1 text-xs font-medium outline-none focus:border-indigo-500 focus:bg-white" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
+                                <input type="text" inputmode="decimal" v-model="item.size" @focus="$event.target.select()" placeholder="--" :aria-label="t('ariaSize')" class="col-span-3 border rounded px-1 py-1.5 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white min-w-0" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
 
-                                <select v-model="item.unit" @change="iIndex === 0 ? syncUnits(deal) : null" :aria-label="t('ariaUnit')" class="col-span-4 border rounded px-0.5 py-1 text-[0.6875rem] font-medium outline-none focus:border-indigo-500 focus:bg-white text-zinc-700" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
+                                <select v-model="item.unit" @change="iIndex === 0 ? syncUnits(deal) : null" :aria-label="t('ariaUnit')" class="col-span-4 border rounded px-0.5 py-1.5 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white text-zinc-700 text-ellipsis overflow-hidden whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'bg-white/80 border-emerald-200' : 'bg-zinc-50 border-zinc-200'">
                                     <optgroup v-if="iIndex === 0 || getUnitType(deal.items[0].unit) === 'count'" :label="t('catCount')">
                                         <option value="pcs">{{ t('unit_pcs') }}</option>
                                     </optgroup>
@@ -217,62 +196,76 @@
                                         <option value="ft">{{ t('unit_ft') }}</option><option value="yd">{{ t('unit_yd') }}</option>
                                     </optgroup>
                                 </select>
-                                <button v-if="deal.items.length > 1" @click="removeItem(deal.id, item.id)" :title="t('removeItem')" :aria-label="t('removeItem')" class="col-span-1 h-full flex items-center justify-center text-zinc-400 hover:text-red-500 text-base font-bold leading-none transition-colors">×</button>
+                                <button v-if="deal.items.length > 1" @click="removeItem(deal.id, item.id)" :title="t('removeItem')" :aria-label="t('removeItem')" class="col-span-1 min-w-[32px] min-h-[32px] flex items-center justify-center text-zinc-400 hover:text-red-500 text-lg font-bold transition-colors">×</button>
                             </div>
                         </div>
-                        <button @click="addItem(deal.id)" class="text-[0.625rem] font-bold mt-1.5 px-0.5 self-start transition-colors" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700 hover:text-emerald-900' : 'text-indigo-500 hover:text-indigo-700'">
+                        <button @click="addItem(deal.id)" class="text-xs font-bold mt-2 px-1 py-1 min-h-[32px] self-start transition-colors flex items-center" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700 hover:text-emerald-900' : 'text-indigo-500 hover:text-indigo-700'">
                             + {{ t('addCombined') }}
                         </button>
                     </div>
                 </div>
 
-                <div class="p-2.5 rounded-b-xl border-t mt-auto transition-colors" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-200/50 border-emerald-300' : 'bg-zinc-100 border-zinc-200'">
+                <div class="px-2 py-1.5 rounded-b-xl border-t mt-auto transition-colors" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-200/50 border-emerald-300' : 'bg-zinc-100 border-zinc-200'">
                     <div v-if="dealStats[deal.id]?.totalBaseUnits > 0 && dealStats[deal.id]?.finalPrice > 0">
                         <div class="flex justify-between items-center gap-2">
-                            <div class="text-[0.625rem] font-bold bg-white px-1.5 py-0.5 rounded border whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-800 border-emerald-200' : 'text-zinc-500 border-zinc-200'">
+                            <div class="text-xs font-bold bg-white px-1.5 py-0.5 rounded border whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-800 border-emerald-200' : 'text-zinc-500 border-zinc-200'">
                                 {{ formatNumber(dealStats[deal.id]?.totalBaseUnits) }}{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}
                             </div>
                             <div class="flex items-baseline gap-1.5">
-                                <span v-if="dealStats[deal.id]?.comparable && !dealStats[deal.id]?.isBest" class="text-[0.625rem] font-bold text-rose-500 whitespace-nowrap">+{{ formatPct(dealStats[deal.id]?.pctVsBest) }}</span>
+                                <span v-if="dealStats[deal.id]?.comparable && !dealStats[deal.id]?.isBest" class="text-xs font-bold text-rose-500 whitespace-nowrap">+{{ formatPct(dealStats[deal.id]?.pctVsBest) }}</span>
                                 <div class="text-lg font-black leading-none truncate whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-900' : 'text-indigo-700'">
-                                    ${{ formatCurrency(dealStats[deal.id]?.unitPrice) }}<span class="text-[0.5625rem] font-semibold ml-0.5" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-500'">/{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}</span>
+                                    ${{ formatCurrency(dealStats[deal.id]?.unitPrice) }}<span class="text-[0.625rem] font-semibold ml-0.5" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-500'">/{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}</span>
                                 </div>
                             </div>
                         </div>
-                        <div v-if="dealStats[deal.id]?.typeMismatch" class="flex items-center justify-end gap-1 text-[0.5625rem] font-bold text-amber-600 pt-1">
+                        <div v-if="dealStats[deal.id]?.typeMismatch" class="flex items-center justify-end gap-1 text-xs font-bold text-amber-600 pt-1">
                             <span aria-hidden="true">⚠</span><span class="whitespace-nowrap">{{ t('warnMismatchOption') }} ({{ typeLabel(dealStats[deal.id]?.type) }})</span>
                         </div>
-                        <div v-if="needCost(dealStats[deal.id]) !== null" class="text-[0.625rem] text-right font-bold text-indigo-600 pt-1 whitespace-nowrap">
+                        <div v-if="needCost(dealStats[deal.id]) !== null" class="text-xs text-right font-bold text-indigo-600 pt-1 whitespace-nowrap">
                             {{ formatNumber(needQty) }}{{ unitLabel(needUnit) }} ≈ ${{ formatCurrency(needCost(dealStats[deal.id])) }}
                         </div>
-                        <div class="text-[0.5625rem] text-right font-semibold pt-1 whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'" v-if="dealStats[deal.id]?.baseDisplay !== 'pcs'">
+                        <div class="text-[0.625rem] text-right font-semibold pt-1 whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'" v-if="dealStats[deal.id]?.baseDisplay !== 'pcs'">
                             {{ getMetricText(dealStats[deal.id]) }}
                         </div>
                     </div>
-                    <div v-else class="text-[0.625rem] italic font-medium text-center py-1" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">
+                    <div v-else class="text-xs italic font-medium text-center py-1.5" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">
                         {{ t('pending') }}
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="flex-grow"></div>
-
         <div class="mt-auto pt-2 pb-2">
-            <h3 class="text-slate-400 mb-2 font-bold text-[0.5625rem] uppercase tracking-widest text-center">{{ t('loadSample') }}</h3>
+            <h3 class="text-slate-400 mb-2 font-bold text-xs uppercase tracking-widest text-center">{{ t('loadSample') }}</h3>
             <div class="flex flex-wrap justify-center gap-2">
-                <button @click="loadSodaExample" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 px-3 py-1.5 rounded text-[0.625rem] font-bold shadow-sm">
+                <button @click="loadSodaExample" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 px-3 py-2 rounded text-xs font-bold shadow-sm min-h-[32px] whitespace-nowrap">
                     🥤 {{ t('sodaDeals') }}
                 </button>
-                <button @click="loadDetergentExample" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 px-3 py-1.5 rounded text-[0.625rem] font-bold shadow-sm">
+                <button @click="loadDetergentExample" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 px-3 py-2 rounded text-xs font-bold shadow-sm min-h-[32px] whitespace-nowrap">
                     🧴 {{ t('detergentDeals') }}
                 </button>
             </div>
         </div>
-
-        <div class="text-center pt-1 pb-2">
-            <a href="../" class="text-[0.625rem] text-slate-400 hover:text-slate-600 tracking-wide transition-colors">0oo.fish.oo0</a>
+        <div class="text-center pt-1 pb-4">
+            <a href="../" class="text-xs text-slate-400 hover:text-slate-600 tracking-wide transition-colors">0oo.fish.oo0</a>
         </div>
+
+        <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-zinc-200 p-2 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <div class="max-w-7xl mx-auto w-full flex justify-between items-center px-1 gap-2">
+                <button @click="clearAll" class="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg transition-colors shadow-sm border border-red-100 font-bold text-sm min-h-[44px] whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+                <button @click="addDeal" class="flex-grow flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg shadow-sm transition-colors font-bold text-sm min-h-[44px] whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    {{ t('addOption') }}
+                </button>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -362,16 +355,14 @@
                 const needQty = ref(null);
                 const needUnit = ref('g');
 
-                // PWA install prompt
                 const installPromptEvent = ref(null);
                 const isStandalone = ref(
                     (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
                     window.navigator.standalone === true
                 );
                 const isServed = location.protocol === 'http:' || location.protocol === 'https:';
-                // Offer install whenever we're served over http(s) and not already running as an installed app —
-                // this way the button doesn't disappear just because the browser's prompt event is suppressed.
                 const canInstall = computed(() => isServed && !isStandalone.value);
+                
                 window.addEventListener('beforeinstallprompt', (e) => {
                     e.preventDefault();
                     installPromptEvent.value = e;
@@ -380,6 +371,7 @@
                     installPromptEvent.value = null;
                     isStandalone.value = true;
                 });
+                
                 const triggerInstall = async () => {
                     const e = installPromptEvent.value;
                     if (e) {
@@ -388,20 +380,18 @@
                         installPromptEvent.value = null;
                         return;
                     }
-                    // No native prompt available (already attempted, iOS, or browser hasn't offered it yet):
-                    // point the user at the browser's own install entry.
                     alert(t('installHint'));
                 };
 
                 const generateId = () => Math.random().toString(36).substr(2, 9);
                 const t = (key) => messages[lang.value][key] || key;
                 const unitLabel = (key) => t('unit_' + (key === 'fl oz' ? 'floz' : key));
-
                 const dealName = (deal, index) => deal.name || (deal.nameKey ? t(deal.nameKey) : (t('option') + ' ' + (index + 1)));
 
                 const toggleLang = () => {
                     lang.value = lang.value === 'en' ? 'zh' : 'en';
                     document.documentElement.lang = lang.value;
+                    document.title = messages[lang.value].title + ' · Deal Comparator';
                 };
 
                 const toggleNeed = () => { showNeed.value = !showNeed.value; };
@@ -432,6 +422,7 @@
                         id: generateId(), name: '', nameKey: null, price: null, showDiscount: false, discountPercent: null, discountFlat: null,
                         items: [{ id: generateId(), qty: 1, size: null, unit: 'pcs' }]
                     });
+                    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
                 };
 
                 const duplicateDeal = (id) => {
@@ -528,7 +519,6 @@
                         }
                     });
 
-                    // The first priced option (in display order) sets the reference measure type.
                     let referenceType = null;
                     for (const r of results) { if (r.unitPrice > 0) { referenceType = r.type; break; } }
 
@@ -589,13 +579,16 @@
                 };
 
                 const hasActiveDeals = computed(() => Object.values(dealStats.value).some(d => d.unitPrice > 0));
+                
                 const formatNumber = (num) => parseFloat((parseFloat(num) || 0).toFixed(4));
+                
                 const formatCurrency = (num) => {
-                    if (num === 0) return "0.00";
+                    if (isNaN(num) || !isFinite(num) || num === 0) return "0.00";
                     if (num < 0.01) return num.toFixed(4);
                     if (num < 0.1) return num.toFixed(3);
                     return num.toFixed(2);
                 };
+                
                 const formatPct = (p) => {
                     if (p == null) return '';
                     if (p < 0.5) return '<1%';
@@ -609,7 +602,7 @@
                             deals: deals.value, lang: lang.value, zoom: zoomPercentage.value,
                             showNeed: showNeed.value, needQty: needQty.value, needUnit: needUnit.value
                         }));
-                    } catch (e) { /* storage unavailable (e.g. private mode) — run without persistence */ }
+                    } catch (e) {}
                 };
 
                 const loadState = () => {
@@ -645,8 +638,6 @@
             }
         }).mount('#app');
 
-        // Register the service worker for offline support.
-        // Service workers only run over http(s)/localhost, not file:// — so this is skipped on a direct file open.
         if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').catch((err) => {
