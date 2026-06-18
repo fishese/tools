@@ -142,7 +142,6 @@
 </header>
 
 <main>
-  <!-- LIST VIEW -->
   <section id="view-list" class="view active">
     <div id="banner"></div>
     <div class="filters">
@@ -158,17 +157,16 @@
     <div id="list"></div>
   </section>
 
-  <!-- ADD VIEW -->
   <section id="view-add" class="view">
     <div class="seg">
-      <button id="modeScan" class="active">📷 Scan screenshot</button>
+      <button id="modeScan" class="active">📷 Scan coupon</button>
       <button id="modeManual">✍️ Manual</button>
     </div>
 
     <div id="scanBox">
       <div class="drop" id="drop">
         <div class="big">🖼️</div>
-        <div>Tap to choose a screenshot</div>
+        <div>Tap to choose a coupon image</div>
         <div class="hint">Coupon, offer email, or photo — read on your device, nothing uploaded.</div>
       </div>
       <input type="file" id="file" accept="image/*" style="display:none">
@@ -232,7 +230,6 @@
     </form>
   </section>
 
-  <!-- SETTINGS VIEW -->
   <section id="view-settings" class="view">
     <div class="settings-card">
       <h4>Scan languages</h4>
@@ -274,7 +271,7 @@
       <p><b>Android (Chrome):</b> Tap the <b>⬇ Install</b> button in the header when it appears, or tap ⋮ → <b>Add to Home screen</b>.<br>
       <b>iPhone / iPad (Safari):</b> Tap the Share button (□↑) → <b>Add to Home Screen</b>.</p>
     </div>
-    <div class="hint" style="text-align:center">Coupon Keeper · works offline · v1.2</div>
+    <div class="hint" style="text-align:center">Coupon Keeper · works offline · v1.6</div>
   </section>
 </main>
 
@@ -286,7 +283,6 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- QR full-screen display for cashier -->
 <div id="qrModal">
   <div id="qrClose">✕ Close</div>
   <div id="qrBox">
@@ -306,8 +302,9 @@ const DB_KEY='ck_coupons_v1', SET_KEY='ck_settings_v1', NOTE_KEY='ck_notified_v1
 const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 let coupons=load(DB_KEY,[]);
-let settings=load(SET_KEY,{reminderDays:[7,1],langs:['eng','chi_sim','chi_tra','jpn']});
-if(!settings.langs||!settings.langs.length)settings.langs=['eng','chi_sim','chi_tra','jpn'];
+// Default to Traditional first to ensure correct OCR priority
+let settings=load(SET_KEY,{reminderDays:[7,1],langs:['eng','chi_tra','chi_sim','jpn']});
+if(!settings.langs||!settings.langs.length)settings.langs=['eng','chi_tra','chi_sim','jpn'];
 let notified=load(NOTE_KEY,{});
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
@@ -463,7 +460,7 @@ $('#modeManual').onclick=()=>setMode('manual');
 /* ---------- OCR ---------- */
 $('#drop').onclick=()=>$('#file').click();
 
-/* grayscale + contrast boost + upscale small images — dramatically improves Tesseract accuracy */
+/* grayscale + contrast boost + upscale small images */
 async function preprocessImage(file){
   return new Promise(resolve=>{
     const img=new Image();const src=URL.createObjectURL(file);
@@ -493,7 +490,12 @@ $('#file').addEventListener('change',async e=>{
   $('#preview').src=url;$('#preview').style.display='block';
   $('#progwrap').classList.add('show');$('#ocrStatus').classList.add('show');
   $('#ocrStatus').textContent='Enhancing image…';
-  const langs=(settings.langs&&settings.langs.length?settings.langs:['eng']).join('+');
+  
+  // Explicitly sort languages so Traditional Chinese takes priority over Simplified Chinese for the OCR engine
+  const PRIORITY=['eng','chi_tra','chi_sim','jpn'];
+  const userLangs=(settings.langs&&settings.langs.length)?settings.langs:['eng'];
+  const langs=userLangs.slice().sort((a,b)=>PRIORITY.indexOf(a)-PRIORITY.indexOf(b)).join('+');
+  
   try{
     const processed=await preprocessImage(f);
     const {data}=await Tesseract.recognize(processed,langs,{logger:m=>{
@@ -520,7 +522,7 @@ function inferCategory(text){
     [/\b(fashion|clothing|clothes|apparel|outfit|shoes|footwear|sneakers|handbag)|(衣服|時裝|服飾|衣料|鞋|包包|ファッション|洋服|アパレル|ブランド)/,'Fashion'],
     [/\b(pharmacy|drugstore|medicine|vitamin|supplement|wellness|health\s+product)|(藥房|藥局|保健品|健康食品|醫藥品|薬局|薬|医薬品)/,'Health'],
     [/\b(electronics|gadget|computer|laptop|smartphone|mobile\s+phone|tablet|camera)|(電器|電腦|手機|家電|電子機器|スマホ|パソコン|テクノロジー)/,'Electronics'],
-    [/\b(beauty|cosmetic|makeup|skincare|moistur|serum|lipstick|salon|spa)|(美妝|美容|護膚|彩妝|美髮|護髮|化粧品|スキンケア|コスメ)/,'Beauty'],
+    [/\b(beauty|cosmetic|makeup|skincare|moistur|serum|lipstick|salon|spa)|(美妆|美妝|美容|護膚|彩妝|美髮|護髮|化粧品|スキンケア|コスメ)/,'Beauty'],
     [/\b(hotel|flight|airline|travel|tour|booking|accommodation)|(旅行|旅遊|酒店|航空|民宿|宿泊|旅館|ホテル)/,'Travel'],
     [/\b(cinema|movie|theatre|theater|concert|ticket|gym|fitness|sport)|(娛樂|映画|スポーツ|ゲーム|フィットネス|健身|映画館)/,'Entertainment'],
     [/\b(book|stationery|office\s+supply|school\s+supply)|(文具|書籍|教材|本|雑誌|辦公)/,'Books & Office'],
@@ -531,6 +533,7 @@ function inferCategory(text){
   for(const [re,cat] of rules)if(re.test(t))return cat;
   return '';
 }
+
 function detectAmount(t){
   let m;
   m=t.match(/\b(HK|US|NT|SG|AU|CA|NZ|RM)\s?[S$＄]\s?(\d{1,5}(?:\.\d{2})?)/i);
@@ -546,72 +549,96 @@ function detectAmount(t){
   m=t.match(/(?<![A-Za-z0-9])[$＄]\s?(\d{1,5}(?:\.\d{2})?)/);if(m)return '$'+m[1];
   return '';
 }
+
+function detectVoucherAmount(t){
+  let m = t.match(/\b(HK|US|NT|SG|AU|CA|NZ|RM)\s?[S$＄]\s?(\d{1,5}(?:\.\d{2})?)(?=\s*(?:eVoucher|Voucher|電子|现金|現金|礼券|禮券|折扣|coupon|扣減))/i);
+  if(m) return m[1].toUpperCase()+'$'+m[2];
+  m = t.match(/(?:eVoucher|Voucher|電子|现金|現金|礼券|禮券|折扣|coupon|扣減)\s*(HK|US|NT|SG|AU|CA|NZ|RM)\s?[S$＄]\s?(\d{1,5}(?:\.\d{2})?)/i);
+  if(m) return m[1].toUpperCase()+'$'+m[2];
+  m = t.match(/(\d{1,5}(?:\.\d{2})?)\s*(HK|US|NT|SG|AU|CA|NZ|RM)\s?[S$＄](?=\s*(?:eVoucher|Voucher|電子|现金|現金|礼券|禮券|折扣|coupon|扣減))/i);
+  if(m) return m[2].toUpperCase()+'$'+m[1];
+  m = t.match(/(HK|US|NT|SG|AU|CA|NZ|RM)\s?[S$＄]\s?(\d{1,5}(?:\.\d{2})?)\s*(?:電子|现金|現金|礼券|禮券)/i);
+  if(m) return m[1].toUpperCase()+'$'+m[2];
+  return '';
+}
+
 function fillFromText(text){
-  const t=text.replace(/ /g,' ');
+  const t=text.normalize('NFKC').replace(/ /g,' ');
   const lines=t.split('\n').map(l=>l.trim()).filter(Boolean);
   let m,mm;
-  // value — ordered from most specific to least specific
-  let value='';
-  // "X% off" with optional qualifier prefix
-  m=t.match(/(?:up\s+to\s+|extra\s+|additional\s+)?\b(\d{1,3})\s*(?:%|％)\s*off/i);
-  if(m)value=m[1]+'% off';
-  // bare % without "off" keyword (1-2 digits only to avoid false matches like "100% organic")
-  if(!value){m=t.match(/(?<!\d)(\d{1,2})\s*(?:%|％)(?!\s*(?:done|complete|full|left|remaining|charge|battery|vol|more|increase))/i);if(m&&+m[1]>0)value=m[1]+'% off';}
-  // "$X off" / "£X off" / "€X off" etc.
-  if(!value){m=t.match(/([£€$＄₩฿₹])\s?(\d{1,5}(?:\.\d{2})?)\s*(?:off|back)/i);if(m)value=m[1]+m[2]+' off';}
-  // "save $X" / "save £X" etc.
-  if(!value){m=t.match(/save\s+([£€$＄¥₩฿₹])\s?(\d{1,5}(?:\.\d{2})?)/i);if(m)value=m[1]+m[2]+' off';}
-  // CJK: 满X减Y / 滿X減Y
-  if(!value){m=t.match(/[满滿]\s*(\d{1,5})\s*[减減]\s*(\d{1,5})/);if(m){value='-¥'+m[2]+' (满'+m[1]+')';}}
-  // CJK: X折 / X.X折
-  if(!value){m=t.match(/([0-9](?:\.[0-9])?)\s*折/);if(m){const n=parseFloat(m[1]);value=m[1]+'折 ('+Math.round((1-n/10)*100)+'% off)';}}
-  // JP: X円オフ / X円引
-  if(!value){m=t.match(/(\d{1,5})\s*円\s*(?:off|オフ|引)/i);if(m)value='¥'+m[1]+' off';}
-  if(!value){m=t.match(/(\d{1,3})\s*(?:%|％)\s*(?:off|オフ|引|引き|割引)/i);if(m)value=m[1]+'% off';}
-  if(!value){m=t.match(/(\d{1,2})\s*割(?:引)?/);if(m)value=m[1]+'割 ('+(parseInt(m[1],10)*10)+'% off)';}
-  if(!value&&/\bBOGO\b|buy one get one|买一[送赠]一|買一[送贈]一|1\s*つ買うと/i.test(t))value='BOGO';
-  if(!value&&/free shipping|免运费|免運費|免費運費|包邮|包郵|送料無料|宅配無料/i.test(t))value='Free shipping';
-  // CJK: 立减/立減 X (instant off — SC/TC)
-  if(!value){m=t.match(/立[减減]\s*(\d{1,5})/);if(m)value='-¥'+m[1]+' (立减)';}
-  // CJK: 每满X减Y / 每滿X減Y (tiered — SC/TC); also catches 满减 already via earlier pattern
-  if(!value){m=t.match(/每[满滿]\s*(\d{1,5})\s*[减減]\s*(\d{1,5})/);if(m)value='-¥'+m[2]+' (每满'+m[1]+')';}
-  if(!value)value=detectAmount(t);
-  // code — expanded keyword list; tightened fallback requires keyword proximity or dash format
+  
+  // value
+  let value = detectVoucherAmount(t);
+  
+  if(!value){ m=t.match(/(?:up\s+to\s+|extra\s+|additional\s+)?\b(\d{1,3})\s*(?:%|％)\s*(?:off|discount)/i); if(m)value=m[1]+'% off'; }
+  // Block random bare percentages like "2%" from being interpreted as discounts
+  if(!value){ m=t.match(/(?<!\d)(1[05]|2[05]|3[05]|4[05]|5[05]|6[05]|7[05]|8[05]|9[05])\s*(?:%|％)(?!\s*(?:done|complete|full|left|remaining|charge|battery|vol|more|increase))/i); if(m)value=m[1]+'% off'; }
+  if(!value){ m=t.match(/([£€$＄₩฿₹])\s?(\d{1,5}(?:\.\d{2})?)\s*(?:off|back)/i); if(m)value=m[1]+m[2]+' off'; }
+  if(!value){ m=t.match(/save\s+([£€$＄¥₩฿₹])\s?(\d{1,5}(?:\.\d{2})?)/i); if(m)value=m[1]+m[2]+' off'; }
+  if(!value){ m=t.match(/[满滿]\s*(\d{1,5})\s*[减減]\s*(\d{1,5})/); if(m){value='-¥'+m[2]+' (满'+m[1]+')';} }
+  if(!value){ m=t.match(/([0-9](?:\.[0-9])?)\s*折/); if(m){const n=parseFloat(m[1]);value=m[1]+'折 ('+Math.round((1-n/10)*100)+'% off)';} }
+  if(!value){ m=t.match(/(\d{1,5})\s*円\s*(?:off|オフ|引)/i); if(m)value='¥'+m[1]+' off'; }
+  if(!value){ m=t.match(/(\d{1,3})\s*(?:%|％)\s*(?:off|オフ|引|引き|割引)/i); if(m)value=m[1]+'% off'; }
+  if(!value){ m=t.match(/(\d{1,2})\s*割(?:引)?/); if(m)value=m[1]+'割 ('+(parseInt(m[1],10)*10)+'% off)'; }
+  if(!value&&/\bBOGO\b|buy one get one|买一[送赠]一|買一[送贈]一|1\s*つ買うと/i.test(t)) value='BOGO';
+  if(!value&&/free shipping|免运费|免運費|免費運費|包邮|包郵|送料無料|宅配無料/i.test(t)) value='Free shipping';
+  if(!value){ m=t.match(/立[减減]\s*(\d{1,5})/); if(m)value='-¥'+m[1]+' (立减)'; }
+  if(!value){ m=t.match(/每[满滿]\s*(\d{1,5})\s*[减減]\s*(\d{1,5})/); if(m)value='-¥'+m[2]+' (每满'+m[1]+')'; }
+  if(!value) value=detectAmount(t);
+  
+  // code
   let code='';
-  m=t.match(/(?:code|promo(?:tion)?|coupon|voucher|discount\s+code|offer\s+code|redeem|enter\s+code|apply|use\s+code|优惠码|優惠碼|折扣码|折扣碼|促销码|促銷碼|兑换码|兌換碼|代码|代碼|序号|序號|号码|號碼|券码|券碼|番号|券号|クーポンコード|クーポン番号|コード|引換コード|バウチャー)\s*[:#：]?\s*([A-Z0-9]{4,20})\b/i);
+  m=t.match(/(?:code|promo(?:tion)?|coupon|voucher|discount\s+code|offer\s+code|redeem|enter\s+code|apply|use\s+code|优惠码|優惠碼|折扣码|折扣碼|促销码|促銷碼|兑换码|兌換碼|代码|代碼|序号|序號|号码|號碼|券码|券碼|番号|券号|クーポンコード|クーポン番号|コード|引換コード|バウチャー)[^a-zA-Z0-9]{0,6}([A-Z0-9#\-_]{5,20})(?=$|[^a-zA-Z0-9#\-_])/i);
   if(m)code=m[1].toUpperCase();
+
   if(!code){
-    const NOISE=/^(https?|www|the|and|for|off|use|get|buy|save|you|your|valid|until|after|from|with|this|only|new|free|see|more|shop|here|our|all|any|now|per|app|day|time|item|date|order)$/i;
-    const re=/\b([A-Z][A-Z0-9]{3,15}|[A-Z0-9]{3,8}-[A-Z0-9]{3,8})\b/g;
-    let best=null,bscore=-1;
+    const NOISE=/^(https?|www|the|and|for|off|use|get|buy|save|you|your|valid|until|after|from|with|this|only|new|free|see|more|shop|here|our|all|any|now|per|app|day|time|item|date|order|amount|total)$/i;
+    const re=/(?:^|[^a-zA-Z0-9#\-_])([A-Z0-9#\-_]{5,20})(?=$|[^a-zA-Z0-9#\-_])/gi;
+    let best=null, bscore=-1, firstValid=null;
+    
     while((mm=re.exec(t))!==null){
       const s=mm[1];
-      if(!s.includes('-')&&(!/[A-Z]/.test(s)||!/\d/.test(s)))continue;
-      if(NOISE.test(s))continue;
+      if(!/[A-Z]/i.test(s) || !/\d/.test(s)) continue; 
+      if(NOISE.test(s)) continue;
+      
+      if(/^(?:HK|US|NT|SG|RM|AU|CA|NZ)[S$]?\d+(?:\.\d+)?$/i.test(s)) continue;
+      if(/^[£€$＄¥￥₩฿₹]\d+/i.test(s)) continue;
+
+      if(!firstValid) firstValid = s;
+
       const before=t.slice(Math.max(0,mm.index-80),mm.index).toLowerCase();
-      const score=/code|promo|coupon|voucher|redeem|enter|apply|号码|號碼|券码|券碼|番号|券号|编号|編號/.test(before)?2:s.includes('-')?1:0;
+      const score=/code|promo|coupon|voucher|discount|offer|redeem|enter|apply|use|优惠|優惠|折扣|促销|促銷|兑换|兌換|代码|代碼|序号|序號|号码|號碼|券码|券碼|番号|券号|编号|編號|クーポン|コード|引換|バウチャー/.test(before)?2:s.includes('-')?1:0;
+      
       if(score>bscore){best=s;bscore=score;}
     }
-    if(best&&bscore>0)code=best;
+    
+    if(best && bscore > 0) code=best.toUpperCase();
+    else if(firstValid) code=firstValid.toUpperCase();
   }
-  // min spend — accept any currency symbol
+
+  // min spend
   let min='';
   m=t.match(/(?:orders?\s+(?:over|of)|minimum(?:\s+purchase)?(?:\s+of)?|spend(?:\s+over)?|min\.?)\s*[£€$＄¥₩฿₹]?\s?(\d{1,5}(?:\.\d{2})?)/i);
   if(m)min='$'+m[1];
-  if(!min){m=t.match(/[满滿満]\s*(\d{1,5})/);if(m)min='¥'+m[1];}  // 満 = JP, 满 = SC, 滿 = TC
+  if(!min){m=t.match(/[满滿満]\s*(\d{1,5})/);if(m)min='¥'+m[1];} 
   if(!min){m=t.match(/(\d{1,5})\s*円\s*以上/);if(m)min='¥'+m[1];}
-  if(!min){m=t.match(/(\d{1,5})\s*元\s*以上/);if(m)min='¥'+m[1];}   // SC: X元以上
-  if(!min){m=t.match(/[満滿満]\s*(\d{1,5})\s*円/);if(m)min='¥'+m[1];} // JP: 満X円
-  // link — first URL in text
+  if(!min){m=t.match(/(\d{1,5})\s*元\s*以上/);if(m)min='¥'+m[1];}  
+  if(!min){m=t.match(/[満滿満]\s*(\d{1,5})\s*円/);if(m)min='¥'+m[1];} 
+  
+  // link
   let link='';
   m=t.match(/https?:\/\/[^\s<>"'，。、　]+/i);
   if(m)link=m[0].replace(/[.,;:!?)]+$/,'');
+  
   // expiration
   let exp=findDate(t);
+  
   // store
   let store='';
-  const skip=/折|円|年|月|日|有效|有効|期限|[满滿]|[减減]|扫|掃|码|碼|獎賞|奖赏|詳情|详情|領取|领取|前往|請按|请按|二維|二维|禮券|礼券|現金券|现金券|電子券|电子券|優惠券|优惠券|eVoucher|Voucher/i;
-  const amtLine=lines.find(l=>(/(?:HK|US|NT)?\s?[S$＄¥￥]\s?\d/i.test(l)||/\d\s*[円元圓]/.test(l))&&/[぀-ヿ一-鿿]/.test(l));
+  const skip=/客戶|客户|親愛|亲爱|多謝|多谢|折|円|年|月|日|有效|有効|期限|[满滿]|[减減]|扫|掃|码|碼|獎賞|奖赏|詳情|详情|領取|领取|前往|請按|请按|二維|二维|禮券|礼券|現金券|现金券|電子券|电子券|優惠券|优惠券|eVoucher|Voucher/i;
+  
+  const amtLine=lines.find(l=>(/(?:HK|US|NT)?\s?[S$＄¥￥]\s?\d/i.test(l)||/\d\s*[円元圓]/.test(l))&&/[぀-ヿ一-鿿]/.test(l)&&l.length<60);
+  
   if(amtLine){store=amtLine.split(/(?:HK|US|NT)?\s?[S$＄¥￥]\s?\d|\d+\s*[円元圓]|[\[\(【]/i)[0].replace(/[^\p{L}\p{N} &'.\-]/gu,'').trim();}
   if(!store){
     for(const l of lines){
@@ -619,6 +646,7 @@ function fillFromText(text){
       if(cl.length>=2&&cl.length<=28&&!/^\d/.test(cl)&&!/%|\$|http|code|expir|valid/i.test(cl)&&!skip.test(l)){store=cl;break;}
     }
   }
+  
   // fill
   if(store)$('#f-store').value=store;
   if(value)$('#f-value').value=value;
@@ -636,7 +664,6 @@ function fillFromText(text){
 const MONTHS={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
 function toISO(y,mo,d){if(y<100)y+=2000;const dt=new Date(y,mo,d);if(isNaN(dt))return'';return dt.getFullYear()+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
 function findDate(t){
-  // prefer dates near expire keywords (incl. Chinese/Japanese)
   const exKw=/(expir\w*|valid\s+(?:thru|through|until|to)|ends?|use\s+by|redeem\s+by|good\s+(?:thru|through|until)|有效期至|有效期限|有效期|截止|到期|期限|使用截止|活[動动]截止|有効期限|使用期限|ご利用期限|終了日|期間終了|まで|迄|利用期限)/i;
   const patterns=[
     /(?<!\d)(\d{4})-(\d{1,2})-(\d{1,2})(?!\d)/g,             // 2025-12-31
@@ -649,11 +676,9 @@ function findDate(t){
   let mm;
   while((mm=patterns[0].exec(t))){cands.push({i:mm.index,iso:toISO(+mm[1],+mm[2]-1,+mm[3])});}
   [patterns[1],patterns[2]].forEach(p=>{while((mm=p.exec(t))){let a=+mm[1],b=+mm[2],y=+mm[3];let mo=a,d=b;if(a>12&&b<=12){mo=b;d=a;}cands.push({i:mm.index,iso:toISO(y,mo-1,d)});}});
-  // if no explicit year and date is already past, roll forward to next year
   function nextYearIf(iso){if(!iso)return iso;const d=parseDate(iso);return d<today()?toISO(d.getFullYear()+1,d.getMonth(),d.getDate()):iso;}
   while((mm=patterns[3].exec(t))){const mo=MONTHS[mm[1].slice(0,3).toLowerCase()];if(mo===undefined)continue;const hasY=!!mm[3];const iso=toISO(hasY?+mm[3]:new Date().getFullYear(),mo,+mm[2]);cands.push({i:mm.index,iso:hasY?iso:nextYearIf(iso)});}
   while((mm=patterns[4].exec(t))){const mo=MONTHS[mm[2].slice(0,3).toLowerCase()];if(mo===undefined)continue;const hasY=!!mm[3];const iso=toISO(hasY?+mm[3]:new Date().getFullYear(),mo,+mm[1]);cands.push({i:mm.index,iso:hasY?iso:nextYearIf(iso)});}
-  // CJK: 2026年12月31日 (year optional) and 2026/12/31 or 2026.12.31
   let cjk=/(?:(\d{4})\s*年)?\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/g;
   while((mm=cjk.exec(t))){const hasY=!!mm[1];const iso=toISO(hasY?+mm[1]:new Date().getFullYear(),+mm[2]-1,+mm[3]);cands.push({i:mm.index,iso:hasY?iso:nextYearIf(iso),cjk:hasY});}
   let ymd=/(?<!\d)(\d{4})[.\/](\d{1,2})[.\/](\d{1,2})(?!\d)/g;
@@ -661,17 +686,15 @@ function findDate(t){
   const valid=cands.filter(c=>c.iso);
   if(!valid.length)return'';
   const lower=t.toLowerCase();
-  // an expiration is in the future; ignore past dates if any future date exists
   const fut=valid.filter(c=>(parseDate(c.iso)-today())>=0);
   const pool=fut.length?fut:valid;
   pool.forEach(c=>{
     let score=0;
     const around=lower.slice(Math.max(0,c.i-30),c.i);
     if(exKw.test(around))score+=100;
-    if(c.cjk)score+=15; // explicit 年月日 is reliable
+    if(c.cjk)score+=15; 
     c.score=score;
   });
-  // best score wins; on a tie pick the later date (the end of a validity range)
   pool.sort((a,b)=>b.score-a.score || (parseDate(b.iso)-parseDate(a.iso)));
   return pool[0].iso;
 }
@@ -680,7 +703,7 @@ function findDate(t){
 function icsDate(d){return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');}
 function downloadICS(c){
   const exp=parseDate(c.exp);
-  const dtEnd=new Date(exp);dtEnd.setDate(dtEnd.getDate()+1); // all-day end exclusive
+  const dtEnd=new Date(exp);dtEnd.setDate(dtEnd.getDate()+1); 
   const stamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
   const title=`Coupon expires: ${c.store}${c.value?' ('+c.value+')':''}`;
   const desc=[c.value?'Value: '+c.value:'',c.code?'Code: '+c.code:'',c.min?'Min spend: '+c.min:'',c.link?'Where: '+c.link:'',c.notes?'Notes: '+c.notes:'']
@@ -772,7 +795,8 @@ function renderSettings(){
   updateNotifState();
 }
 function renderLangs(){
-  const opts=[['eng','English'],['chi_sim','中文 · Chinese (Simplified)'],['chi_tra','中文 · Chinese (Traditional)'],['jpn','日本語 · Japanese']];
+  // Reordered to list Traditional before Simplified
+  const opts=[['eng','English'],['chi_tra','中文 · Chinese (Traditional)'],['chi_sim','中文 · Chinese (Simplified)'],['jpn','日本語 · Japanese']];
   const sel=settings.langs||['eng'];
   $('#langOpts').innerHTML=opts.map(([code,label])=>
     `<label style="display:flex;align-items:center;gap:10px;margin:10px 0;font-size:15px;color:var(--text)">
