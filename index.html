@@ -5,75 +5,218 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tools</title>
   <style>
+    :root {
+      --bg: #f2f2f2;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --text-muted: #777;
+      --text-faint: #c0c0c0;
+      --section-label: #b0b0b0;
+      --shadow: rgba(0,0,0,0.07);
+      --shadow-hover: rgba(0,0,0,0.13);
+      --border: rgba(0,0,0,0.07);
+      --toggle-bg: #fff;
+    }
+    [data-theme="dark"] {
+      --bg: #0f0f0f;
+      --surface: #1c1c1c;
+      --text: #efefef;
+      --text-muted: #888;
+      --text-faint: #444;
+      --section-label: #555;
+      --shadow: rgba(0,0,0,0.5);
+      --shadow-hover: rgba(0,0,0,0.7);
+      --border: rgba(255,255,255,0.07);
+      --toggle-bg: #1c1c1c;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f5f5f5;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2.5rem 1.5rem 5rem;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    header {
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 900px;
+      margin: 0 auto 3.5rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    #theme-toggle {
+      background: var(--toggle-bg);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      font-size: 1.15rem;
+      display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
-      gap: 2rem;
-      padding: 2rem;
+      box-shadow: 0 1px 4px var(--shadow);
+      transition: background 0.2s, box-shadow 0.15s;
+      flex-shrink: 0;
     }
-    h1 { font-size: 1.5rem; color: #333; }
-    .cards {
+    #theme-toggle:hover {
+      box-shadow: 0 3px 10px var(--shadow-hover);
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
       display: flex;
-      gap: 1.5rem;
-      flex-wrap: wrap;
-      justify-content: center;
+      flex-direction: column;
+      gap: 3.5rem;
     }
+
+    .section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--section-label);
+      margin-bottom: 1rem;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 1rem;
+    }
+
     a.card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 2rem 2.5rem;
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 1.5rem 1.25rem 1.4rem;
       text-decoration: none;
-      color: #333;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      color: var(--text);
+      box-shadow: 0 2px 8px var(--shadow);
+      border: 1px solid var(--border);
       text-align: center;
       transition: transform 0.15s, box-shadow 0.15s;
-      max-width: 220px;
     }
     a.card:hover {
       transform: translateY(-3px);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+      box-shadow: 0 8px 22px var(--shadow-hover);
     }
-    a.card .emoji { font-size: 3rem; display: block; margin-bottom: 0.75rem; }
-    a.card .name { font-size: 1.1rem; font-weight: 600; }
-    a.card .desc { font-size: 0.85rem; color: #777; margin-top: 0.4rem; }
-    .credit { font-size: 0.75rem; color: #ccc; margin-top: 1rem; }
+    a.card .emoji {
+      font-size: 2.4rem;
+      display: block;
+      margin-bottom: 0.65rem;
+    }
+    a.card .name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    a.card .desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+      line-height: 1.45;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 5rem;
+      font-size: 0.75rem;
+      color: var(--text-faint);
+    }
   </style>
 </head>
 <body>
-  <h1>Tools</h1>
-  <div class="cards">
-    <a class="card" href="groupbuy.html">
-      <span class="emoji">🛒</span>
-      <div class="name">Group Order Splitter</div>
-      <div class="desc">Split complex group orders with fees &amp; shipping</div>
-    </a>
-    <a class="card" href="sushi-split.html">
-      <span class="emoji">🍣</span>
-      <div class="name">Sushi Split</div>
-      <div class="desc">Split a sushi bill among friends</div>
-    </a>
-    <a class="card" href="coupon-keeper/">
-      <span class="emoji">🎟️</span>
-      <div class="name">Coupon Keeper</div>
-      <div class="desc">Track and manage your coupons</div>
-    </a>
-    <a class="card" href="deal-checker/index.html">
-      <span class="emoji">🏷️</span>
-      <div class="name">Deal Comparator</div>
-      <div class="desc">Compare price-per-unit across deals</div>
-    </a>
-    <a class="card" href="https://fishese.github.io/period-tracker/period-tracker/">
-      <span class="emoji">🩸</span>
-      <div class="name">My Cycle Keeper</div>
-      <div class="desc">Privacy-first cycle tracker. Encrypted on-device &mdash; no server, no accounts.</div>
-    </a>
-  </div>
-  <p class="credit">0oo.fish.oo0</p>
+  <header>
+    <h1>Tools</h1>
+    <button id="theme-toggle" aria-label="Toggle dark/light mode"></button>
+  </header>
+
+  <main>
+    <section>
+      <div class="section-label">Spend Money to Save Money</div>
+      <div class="cards">
+        <a class="card" href="cartulator/">
+          <span class="emoji">🛒</span>
+          <div class="name">Cartulator</div>
+          <div class="desc">Track your running total as you shop</div>
+        </a>
+        <a class="card" href="coupon-keeper/">
+          <span class="emoji">🎟️</span>
+          <div class="name">Coupon Keeper</div>
+          <div class="desc">Track and manage your coupons</div>
+        </a>
+        <a class="card" href="deal-checker/">
+          <span class="emoji">🏷️</span>
+          <div class="name">Deal Comparator</div>
+          <div class="desc">Compare price-per-unit across deals</div>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-label">Anything Worth Buying is Worth Buying Together</div>
+      <div class="cards">
+        <a class="card" href="sushi-split.html">
+          <span class="emoji">🍣</span>
+          <div class="name">Sushi Split</div>
+          <div class="desc">Split a sushi bill among friends</div>
+        </a>
+        <a class="card" href="groupbuy.html">
+          <span class="emoji">📦</span>
+          <div class="name">Group Order Splitter</div>
+          <div class="desc">Split complex group orders with fees &amp; shipping</div>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-label">If You Can't Stop It, Track It</div>
+      <div class="cards">
+        <a class="card" href="https://fishese.github.io/period-tracker/period-tracker/">
+          <span class="emoji">🩸</span>
+          <div class="name">My Cycle Keeper</div>
+          <div class="desc">Privacy-first cycle tracker — encrypted on-device, no server, no accounts</div>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer>0oo.fish.oo0</footer>
+
+  <script>
+    const btn = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function applyTheme(dark) {
+      html.dataset.theme = dark ? 'dark' : 'light';
+      btn.textContent = dark ? '☀️' : '🌙';
+    }
+
+    const saved = localStorage.getItem('theme');
+    applyTheme(saved ? saved === 'dark' : mq.matches);
+
+    btn.addEventListener('click', () => {
+      const nowDark = html.dataset.theme === 'dark';
+      localStorage.setItem('theme', nowDark ? 'light' : 'dark');
+      applyTheme(!nowDark);
+    });
+
+    mq.addEventListener('change', e => {
+      if (!localStorage.getItem('theme')) applyTheme(e.matches);
+    });
+  </script>
 </body>
 </html>
