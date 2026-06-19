@@ -506,7 +506,7 @@ function getDishName(d) {
   const n = {
     red:{en:'Red Plate',zh:'紅碟'}, silver:{en:'Silver Plate',zh:'銀碟'},
     gold:{en:'Gold Plate',zh:'金碟'}, black:{en:'Black Plate',zh:'黑碟'},
-    sundae:{en:'Sundae',zh:'新地'}, discount:{en:'Discount',zh:'＄10碟'}
+    sundae:{en:'Sundae',zh:'新地'}, discount:{en:'Discount',zh:'特價碟'}
   };
   return n[d.id] ? n[d.id][currentLang] : d.name;
 }
