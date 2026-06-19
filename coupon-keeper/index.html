@@ -263,7 +263,7 @@
         <input type="number" id="badgeHours" min="0" placeholder="48" style="max-width:110px">
         <span class="hint">hours before expiration (0 to disable)</span>
       </div>
-      <div class="hint" style="margin-top:8px">Note: Requires the app to be installed to your device. On iPhone/iPad, you must also allow Notifications.</div>
+      <div class="hint" style="margin-top:8px">Requires the app to be installed (added to home screen). Also requires Notifications permission on Android and iPhone/iPad — use the button below if you haven't enabled it yet. Note: some Android launchers only show a dot, not a number.</div>
     </div>
 
     <div class="settings-card">
@@ -856,11 +856,15 @@ function renderSettings(){
   $('#badgeHours').value = settings.badgeHours !== undefined ? settings.badgeHours : 48;
 }
 
-$('#badgeHours').addEventListener('change', e => {
+$('#badgeHours').addEventListener('change', async e => {
   const v = parseInt(e.target.value, 10);
   if (!isNaN(v) && v >= 0) {
     settings.badgeHours = v;
     save(SET_KEY, settings);
+    if (v > 0 && 'Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission();
+      updateNotifState();
+    }
     updateAppBadge();
     toast('Badge settings saved');
   }
