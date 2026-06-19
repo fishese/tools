@@ -157,8 +157,12 @@
                             <label class="text-[0.625rem] font-bold text-indigo-500 uppercase w-10 text-right leading-none">{{ t('coupon') }}</label>
                             <input type="text" inputmode="decimal" v-model="deal.discountFlat" @focus="$event.target.select()" placeholder="0" :aria-label="t('coupon')" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-1 text-xs outline-none focus:border-indigo-500 min-w-0">
                         </div>
-                        <div v-if="deal.price > 0 && (deal.discountPercent > 0 || deal.discountFlat > 0)" class="col-span-2 text-xs text-emerald-600 font-bold text-right pt-0.5">
-                            {{ t('finalPrice') }}: ${{ formatCurrency(dealStats[deal.id]?.finalPrice) }}
+                        <div v-if="deal.price > 0 && (deal.discountPercent > 0 || deal.discountFlat > 0)" class="col-span-2 flex justify-end pt-0.5">
+                            <span class="text-xs font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 rounded px-1.5 py-0.5">{{ t('finalPrice') }}: ${{ formatCurrency(dealStats[deal.id]?.finalPrice) }}</span>
+                        </div>
+                        <div v-if="discountMinSetsWarning(deal)" class="col-span-2 mt-0.5 flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                            <span class="text-xs text-amber-700 font-semibold leading-snug">⚠ {{ discountMinSetsWarning(deal) }}</span>
+                            <button @click="applyMinSets(deal)" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 whitespace-nowrap underline transition-colors flex-shrink-0">{{ t('applyMinSets') }} →</button>
                         </div>
                     </div>
 
@@ -296,7 +300,8 @@
                 catCount: "Count", catWeight: "Weight", catVolume: "Volume", catLength: "Length",
                 unit_pcs: "pcs", unit_g: "g", unit_kg: "kg", unit_lb: "lb", unit_oz: "oz",
                 unit_ml: "ml", unit_L: "L", unit_floz: "fl oz", unit_gal: "gal",
-                unit_cm: "cm", unit_m: "m", unit_mm: "mm", unit_in: "in", unit_ft: "ft", unit_yd: "yd"
+                unit_cm: "cm", unit_m: "m", unit_mm: "mm", unit_in: "in", unit_ft: "ft", unit_yd: "yd",
+                applyMinSets: "Apply"
             },
             zh: {
                 title: "貨比N家", clearAll: "清除全部", addOption: "新增選項",
@@ -322,7 +327,8 @@
                 catCount: "數量", catWeight: "重量", catVolume: "容量", catLength: "長度",
                 unit_pcs: "件/罐", unit_g: "g", unit_kg: "kg", unit_lb: "lb", unit_oz: "oz",
                 unit_ml: "ml", unit_L: "L", unit_floz: "fl oz", unit_gal: "gal",
-                unit_cm: "cm", unit_m: "m", unit_mm: "mm", unit_in: "in", unit_ft: "ft", unit_yd: "yd"
+                unit_cm: "cm", unit_m: "m", unit_mm: "mm", unit_in: "in", unit_ft: "ft", unit_yd: "yd",
+                applyMinSets: "套用"
             }
         };
 
@@ -596,6 +602,38 @@
                     return Math.round(p) + '%';
                 };
 
+                const applyMinSets = (deal) => {
+                    const rawPrice = Math.max(0, parseFloat(deal.price) || 0);
+                    const dFlat = Math.max(0, parseFloat(deal.discountFlat) || 0);
+                    if (rawPrice <= 0 || dFlat <= rawPrice) return;
+                    const N = Math.ceil(dFlat / rawPrice);
+                    deal.price = N * rawPrice;
+                    deal.items.forEach(item => {
+                        item.qty = Math.round((parseFloat(item.qty) || 1) * N);
+                    });
+                };
+
+                const discountMinSetsWarning = (deal) => {
+                    if (!deal.showDiscount) return null;
+                    const rawPrice = Math.max(0, parseFloat(deal.price) || 0);
+                    const dFlat = Math.max(0, parseFloat(deal.discountFlat) || 0);
+                    if (rawPrice <= 0 || dFlat <= rawPrice) return null;
+
+                    const N = Math.ceil(dFlat / rawPrice);
+                    const totalCost = N * rawPrice;
+                    const totalQtyPerSet = deal.items.reduce((sum, item) => sum + (parseFloat(item.qty) || 0), 0);
+
+                    if (totalQtyPerSet > 1) {
+                        const expandedQty = Math.round(N * totalQtyPerSet);
+                        return lang.value === 'zh'
+                            ? `至少 ${expandedQty} 包（$${formatCurrency(totalCost)}）才可用 -$${formatCurrency(dFlat)} 折扣`
+                            : `Min. ${expandedQty} packs at $${formatCurrency(totalCost)} for -$${formatCurrency(dFlat)} off`;
+                    }
+                    return lang.value === 'zh'
+                        ? `至少 ${N} 份（$${formatCurrency(totalCost)}）才可用 -$${formatCurrency(dFlat)} 折扣`
+                        : `Min. ${N} sets at $${formatCurrency(totalCost)} for -$${formatCurrency(dFlat)} off`;
+                };
+
                 const saveState = () => {
                     try {
                         localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -633,7 +671,7 @@
                     loadSodaExample, loadDetergentExample, dealStats, hasActiveDeals,
                     formatNumber, formatCurrency, formatPct, dealName, unitLabel, stepQty,
                     showNeed, needQty, needUnit, toggleNeed, needCost, activeTypes, typeLabel, activeTypeLabels,
-                    canInstall, triggerInstall
+                    canInstall, triggerInstall, discountMinSetsWarning, applyMinSets
                 };
             }
         }).mount('#app');
