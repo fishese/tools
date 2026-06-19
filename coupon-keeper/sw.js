@@ -1,4 +1,4 @@
-const CACHE = 'ck-v2';
+const CACHE = 'ck-v3';
 const ASSETS = [
   './',
   './index.html',
