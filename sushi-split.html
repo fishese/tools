@@ -201,7 +201,7 @@
 
 /* ── grand bar ── */
   .grand{
-    position:fixed; bottom:6px; left:16px; right:16px; margin:0 auto; max-width:728px;
+    position:fixed; bottom:12px; left:16px; right:16px; margin:0 auto; max-width:728px;
     /* Layer 1: Frosted white wash 
        Layer 2: Soft cream rice pattern (darker toasted-beige stroke for visibility) */
     background: 
@@ -832,9 +832,10 @@ function changeDishCount(pIndex, d, delta) {
 
   } else {
     // Single-box add/remove. If "All in" is armed and this is a remove,
-    // do NOT bulk-remove: keep the toggle armed (so the intended round can
-    // still follow) and explain that removals are one at a time.
+    // affect ONLY the clicked box and CONSUME the toggle (disarm), so a
+    // later stray tap can't accidentally fire a round for everyone.
     if (applyAll && delta < 0) {
+      applyAllToggle.checked = false;
       toast(i18n[currentLang].toastRemoveOne);
     }
 
