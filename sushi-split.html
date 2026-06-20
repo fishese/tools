@@ -6,14 +6,13 @@
 <title>數碟郎 — 迴轉壽司分帳機</title>
 <style>
   :root{
-    /* Softer, warmer "rice paper" and elegant color palette */
     --bg: #F9F6F0;
     --card: rgba(255, 255, 255, 0.85);
     --ink: #3A3532;
     --muted: #968D85;
     --line: #EAE3D9;
-    --accent: #D84A46; /* Soft coral/salmon red */
-    --accent2: #5F8F75; /* Matcha green */
+    --accent: #D84A46;
+    --accent2: #5F8F75;
     --accent-glow: rgba(216, 74, 70, 0.12);
     --shadow: 0 4px 12px rgba(58, 53, 50, 0.04), 0 1px 3px rgba(58, 53, 50, 0.02);
     --shadow-lift: 0 8px 24px rgba(216, 74, 70, 0.08), 0 2px 8px rgba(58, 53, 50, 0.04);
@@ -24,28 +23,46 @@
     background-color: var(--bg);
     color: var(--ink);
     -webkit-font-smoothing: antialiased;
-
-    /* Authentic overlapping Seigaiha (wave) background pattern */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='40' viewBox='0 0 80 40'%3E%3Cg fill='%23F9F6F0' stroke='%23EAE3D9' stroke-width='1'%3E%3Ccircle cx='0' cy='0' r='20'/%3E%3Ccircle cx='0' cy='0' r='15'/%3E%3Ccircle cx='0' cy='0' r='10'/%3E%3Ccircle cx='0' cy='0' r='5'/%3E%3Ccircle cx='40' cy='0' r='20'/%3E%3Ccircle cx='40' cy='0' r='15'/%3E%3Ccircle cx='40' cy='0' r='10'/%3E%3Ccircle cx='40' cy='0' r='5'/%3E%3Ccircle cx='80' cy='0' r='20'/%3E%3Ccircle cx='80' cy='0' r='15'/%3E%3Ccircle cx='80' cy='0' r='10'/%3E%3Ccircle cx='80' cy='0' r='5'/%3E%3Ccircle cx='20' cy='20' r='20'/%3E%3Ccircle cx='20' cy='20' r='15'/%3E%3Ccircle cx='20' cy='20' r='10'/%3E%3Ccircle cx='20' cy='20' r='5'/%3E%3Ccircle cx='60' cy='20' r='20'/%3E%3Ccircle cx='60' cy='20' r='15'/%3E%3Ccircle cx='60' cy='20' r='10'/%3E%3Ccircle cx='60' cy='20' r='5'/%3E%3Ccircle cx='0' cy='40' r='20'/%3E%3Ccircle cx='0' cy='40' r='15'/%3E%3Ccircle cx='0' cy='40' r='10'/%3E%3Ccircle cx='0' cy='40' r='5'/%3E%3Ccircle cx='40' cy='40' r='20'/%3E%3Ccircle cx='40' cy='40' r='15'/%3E%3Ccircle cx='40' cy='40' r='10'/%3E%3Ccircle cx='40' cy='40' r='5'/%3E%3Ccircle cx='80' cy='40' r='20'/%3E%3Ccircle cx='80' cy='40' r='15'/%3E%3Ccircle cx='80' cy='40' r='10'/%3E%3Ccircle cx='80' cy='40' r='5'/%3E%3C/g%3E%3C/svg%3E");
     background-size: 80px 40px;
   }
 
-  /* ── header ── */
-  header{
-    position:sticky; top:0; z-index:20; color:#fff; padding:16px 16px 20px;
+  /* ── header (COMPACT) ── */
+  .header-top {
     background: linear-gradient(135deg, #E86A66 0%, #D84A46 100%);
+    color: #fff; padding: 8px 16px 4px;
+  }
+  .header-top h1 {
+    margin: 0 auto; font-size: 17px; font-weight: 700; letter-spacing: .3px;
+    max-width: 760px; display: flex; align-items: center; gap: 8px;
+  }
+  
+  .sticky-tabs {
+    position: sticky; top: 0; z-index: 20;
+    background: #D84A46;
     box-shadow: 0 4px 24px rgba(216, 74, 70, 0.25);
-    border-radius: 0 0 24px 24px;
+    border-radius: 0 0 16px 16px;
+    padding: 0px 16px 8px;
   }
-  header h1{margin:0; font-size:19px; font-weight: 700; letter-spacing:.3px; display:flex; align-items:center; gap:8px}
-  .header-row{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; max-width:760px; margin:0 auto}
-  .tabs{display:flex; gap:10px; margin-top:14px}
-  .tab{
-    flex:1; padding:10px 12px; border:none; border-radius:14px; cursor:pointer;
-    background:rgba(255,255,255,.15); color:#fff; font-weight:600; font-size:14px; transition:.2s;
+  .tabs-row {
+    display: flex; justify-content: space-between; align-items: center;
+    max-width: 760px; margin: 0 auto; gap: 12px;
   }
-  .tab:hover { background:rgba(255,255,255,.25); }
-  .tab.active{background:#fff; color:var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,0.1); transform: translateY(-1px);}
+  .tabs {
+    display: flex; gap: 8px; flex: 1;
+  }
+  .tab {
+    flex: 1; padding: 6px 8px; border: none; border-radius: 12px; cursor: pointer;
+    background: rgba(255,255,255,.15); color: #fff; font-weight: 600; font-size: 13px; transition: .2s;
+  }
+  .tab:hover { background: rgba(255,255,255,.25); }
+  .tab.active { background: #fff; color: var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,0.1); transform: translateY(-1px); }
+
+  .lang-btn {
+    background: rgba(255,255,255,.25); color: #fff; border: none;
+    padding: 6px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: .2s; flex-shrink: 0;
+  }
 
   /* ── layout & graphics ── */
   .wrap{max-width:760px; margin:0 auto; padding:16px 16px 120px;}
@@ -54,21 +71,53 @@
 
   @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-  .sugi-divider {
-    display: flex; justify-content: center; align-items: flex-end;
-    margin-top: -22px; /* Tucks the grass under the top card */
-    margin-bottom: 6px;
-    opacity: 0.95; pointer-events: none;
-    width: 100%; height: 36px;
-    position: relative; z-index: 0; /* Keeps grass behind the cards */
+  /* ── integrated sticky nav ── */
+  .sticky-nav-wrapper {
+    position: sticky; z-index: 18;
+    display: flex; flex-direction: column;
+    margin: -8px 0 16px 0; /* Tucks grass neatly under the top card initially */
+    transition: top 0.2s;
   }
+  .sticky-nav-inner {
+    display: flex; width: 100%; align-items: center;
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 4px 12px rgba(82, 125, 101, 0.25);
+    z-index: 1; position: relative;
+    /* Exactly identical repeating background as the grass tile */
+    background: repeating-linear-gradient(90deg, #5F8F75 0px, #5F8F75 4px, #527D65 4px, #527D65 8px);
+  }
+  .sticky-nav {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding: 2px 10px 8px 12px; flex: 1;
+  }
+  .sticky-nav::-webkit-scrollbar { display: none; }
+  .sticky-nav-actions {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 0 12px 6px; border-left: 1px dashed rgba(255,255,255,0.25);
+    flex-shrink: 0;
+  }
+  #lblApplyAll { color: rgba(255,255,255,0.95) !important; }
+
+  /* compact nav tiles */
+  .nav-tile {
+    flex: 0 0 auto; background: #fff; border-radius: 12px;
+    padding: 4px 10px; min-width: 90px; max-width: 120px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15); border: none;
+    cursor: pointer; display: flex; flex-direction: column; gap: 2px;
+    transition: .2s;
+  }
+  .nav-tile:active { transform: scale(0.96); }
+  .nav-tile .n { font-weight: 700; font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-tile .d { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .nav-tile .d b { color: var(--accent); font-size: 13px; }
 
   /* ── cards ── */
   .card{
     background:var(--card); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border:1px solid rgba(255,255,255,0.6); border-radius:24px;
     padding:18px; margin-bottom:16px; box-shadow:var(--shadow);
-    position: relative; z-index: 1; /* Elevates cards above the grass */
+    position: relative; z-index: 1;
+    scroll-margin-top: 140px;
   }
   .card h2{margin:0 0 12px; font-size:16px; display:flex; align-items:center; gap:8px; color:var(--ink)}
   .card h2 .ico{font-size:18px; line-height:1}
@@ -150,17 +199,55 @@
   .qty.has{color:var(--accent)}
   @media(max-width:380px){.dishgrid{gap:10px}}
 
-  /* ── grand bar (Floating Pill Design) ── */
+/* ── grand bar ── */
   .grand{
-    position:fixed; bottom:20px; left:16px; right:16px; margin:0 auto; max-width:728px;
-    background:rgba(255,255,255,.92); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    position:fixed; bottom:6px; left:16px; right:16px; margin:0 auto; max-width:728px;
+    /* Layer 1: Frosted white wash 
+       Layer 2: Soft cream rice pattern (darker toasted-beige stroke for visibility) */
+    background: 
+      linear-gradient(rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.50)),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='%23FDFBF7'/%3E%3Cg fill='%23ffffff' stroke='%23C5B7A3' stroke-width='0.9'%3E%3Cellipse cx='12' cy='15' rx='3.5' ry='9' transform='rotate(30 12 15)'/%3E%3Cellipse cx='28' cy='10' rx='3' ry='8' transform='rotate(-20 28 10)'/%3E%3Cellipse cx='45' cy='12' rx='3.5' ry='9' transform='rotate(70 45 12)'/%3E%3Cellipse cx='8' cy='35' rx='3' ry='8' transform='rotate(-45 8 35)'/%3E%3Cellipse cx='25' cy='28' rx='3.5' ry='9' transform='rotate(15 25 28)'/%3E%3Cellipse cx='40' cy='32' rx='3' ry='8' transform='rotate(-60 40 32)'/%3E%3Cellipse cx='55' cy='25' rx='3.5' ry='9' transform='rotate(25 55 25)'/%3E%3Cellipse cx='18' cy='48' rx='3.5' ry='9' transform='rotate(50 18 48)'/%3E%3Cellipse cx='35' cy='48' rx='3' ry='8' transform='rotate(-10 35 48)'/%3E%3Cellipse cx='52' cy='45' rx='3.5' ry='9' transform='rotate(40 52 45)'/%3E%3Cellipse cx='0' cy='5' rx='3.5' ry='9' transform='rotate(-15 0 5)'/%3E%3Cellipse cx='60' cy='5' rx='3.5' ry='9' transform='rotate(-15 60 5)'/%3E%3Cellipse cx='30' cy='0' rx='3.5' ry='9' transform='rotate(80 30 0)'/%3E%3Cellipse cx='30' cy='60' rx='3.5' ry='9' transform='rotate(80 30 60)'/%3E%3Cellipse cx='0' cy='55' rx='3' ry='8' transform='rotate(35 0 55)'/%3E%3Cellipse cx='60' cy='55' rx='3' ry='8' transform='rotate(35 60 55)'/%3E%3Cellipse cx='22' cy='50' rx='3.5' ry='9' transform='rotate(80 22 50)'/%3E%3Cellipse cx='38' cy='52' rx='3.5' ry='9' transform='rotate(-15 38 52)'/%3E%3Cellipse cx='52' cy='50' rx='3' ry='8' transform='rotate(30 52 50)'/%3E%3Cellipse cx='0' cy='15' rx='3.5' ry='9' transform='rotate(10 0 15)'/%3E%3Cellipse cx='60' cy='15' rx='3.5' ry='9' transform='rotate(10 60 15)'/%3E%3Cellipse cx='30' cy='0' rx='3' ry='8' transform='rotate(40 30 0)'/%3E%3Cellipse cx='30' cy='60' rx='3' ry='8' transform='rotate(40 30 60)'/%3E%3Cellipse cx='0' cy='40' rx='3.5' ry='9' transform='rotate(-20 0 40)'/%3E%3Cellipse cx='60' cy='40' rx='3.5' ry='9' transform='rotate(-20 60 40)'/%3E%3C/g%3E%3C/svg%3E") repeat;
+    background-size: cover, 60px 60px;
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
     border:1px solid rgba(255,255,255,0.6); border-radius:28px;
     box-shadow:0 12px 32px rgba(58, 53, 50,.12), 0 2px 8px rgba(58, 53, 50,.05);
-    padding:14px 24px; z-index:15;
+    padding:12px 20px; z-index:15;
   }
   .grand .row{display:flex; justify-content:space-between; align-items:center}
-  .grand .g{font-size:24px; font-weight:800; letter-spacing:-.5px; color:var(--accent)}
-  .grand .sub{font-size:13px; color:var(--muted); font-weight: 500;}
+  
+.grand .g {
+    font-size: 28px; 
+    font-weight: 800; 
+    letter-spacing: -0.5px; 
+    color: #B5322E; /* Kept the deeper red for better contrast */
+    text-shadow: 
+      /* Create a thick 2px white outline */
+      -2px -2px 0 #fff,  2px -2px 0 #fff,
+      -2px  2px 0 #fff,  2px  2px 0 #fff,
+      -2px  0   0 #fff,  2px  0   0 #fff,
+       0   -2px 0 #fff,  0    2px 0 #fff,
+      /* Fill in the corners so the stroke is smooth, not jagged */
+      -1px -2px 0 #fff,  1px -2px 0 #fff,
+      -2px -1px 0 #fff,  2px -1px 0 #fff,
+      -2px  1px 0 #fff,  2px  1px 0 #fff,
+      -1px  2px 0 #fff,  1px  2px 0 #fff,
+      /* Add a soft dark shadow behind the outline to pop off the rice */
+       0    4px 8px rgba(58, 53, 50, 0.15);
+  }
+  
+  .grand .sub {
+    font-size: 15px; 
+    color: var(--ink); 
+    font-weight: 700;
+    text-shadow: 
+      /* 1.5px white outline for the smaller text so it doesn't blob together */
+      -1.5px -1.5px 0 #fff,  1.5px -1.5px 0 #fff,
+      -1.5px  1.5px 0 #fff,  1.5px  1.5px 0 #fff,
+      -1.5px  0     0 #fff,  1.5px  0     0 #fff,
+       0     -1.5px 0 #fff,  0      1.5px 0 #fff,
+      /* Soft dark shadow */
+       0      2px   4px rgba(58, 53, 50, 0.1);
+  }
 
   /* ── settings rows ── */
   .srow{display:flex; align-items:center; gap:12px; padding:12px 4px; border-top:1px dashed var(--line)}
@@ -168,7 +255,7 @@
   .srow .nm{flex:1; font-size:15px; font-weight: 500;}
   input.price, input.text{
     border:none; border-radius:14px; padding:10px 12px; background: var(--bg);
-    font-size:15px; color:var(--ink); transition:.2s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    font-size:16px; color:var(--ink); transition:.2s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
   }
   input.price:focus, input.text:focus{outline:none; background:#fff; box-shadow: 0 0 0 2px var(--accent-glow), inset 0 2px 4px rgba(0,0,0,0.02);}
   input.text{width:100%}
@@ -217,6 +304,13 @@
   .toggle input:checked + .toggle-slider{background:var(--accent2)}
   .toggle input:checked + .toggle-slider:before{transform:translateX(22px)}
 
+  /* small toggle mapped for dark green nav bg */
+  .toggle.sm { width: 34px; height: 20px; }
+  .toggle.sm .toggle-slider { border-radius: 10px; background: rgba(0,0,0,0.25); }
+  .toggle.sm .toggle-slider:before { height: 14px; width: 14px; left: 3px; bottom: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); background: #fff; }
+  .toggle.sm input:checked + .toggle-slider { background: rgba(255,255,255,0.9); }
+  .toggle.sm input:checked + .toggle-slider:before { transform: translateX(14px); background: var(--accent); }
+
   /* ── discount radios ── */
   .radio-group{display:flex; gap:16px; align-items:center; flex-wrap:wrap}
   .radio-group label{display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer; font-weight:600}
@@ -229,54 +323,70 @@
 </head>
 <body>
 
-<header>
-  <div class="header-row">
-    <div>
-      <h1 id="lblHeaderTitle">🍣 數碟郎 — 迴轉壽司分帳機</h1>
-      <div class="tabs">
-        <button class="tab active" data-tab="tally"    id="lblTabTally">計帳點餐</button>
-        <button class="tab"        data-tab="settings" id="lblTabSettings">單價設定</button>
-      </div>
+<div class="header-top">
+  <h1 id="lblHeaderTitle">🍣 數碟郎 — 迴轉壽司分帳機</h1>
+</div>
+
+<div class="sticky-tabs">
+  <div class="tabs-row">
+    <div class="tabs">
+      <button class="tab active" data-tab="tally"    id="lblTabTally">計帳點餐</button>
+      <button class="tab"        data-tab="settings" id="lblTabSettings">單價設定</button>
     </div>
-    <button id="langToggleBtn" style="background:rgba(255,255,255,.25);color:#fff;border:none;
-      padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;margin-top:6px;cursor:pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: .2s;">EN</button>
+    <button id="langToggleBtn" class="lang-btn">EN</button>
   </div>
-</header>
+</div>
 
 <div class="wrap">
 
   <section id="tally" class="panel active">
 
-    <div class="card">
+    <div class="card" style="margin-bottom: 0;">
       <h2 id="lblWhosEating">今日幾位用餐？</h2>
       <div class="people-pick">
-        <span class="muted" id="lblPeople" style="font-weight: 600;">人數：</span>
-        <div class="pstepper">
-          <button id="peopleMinus">–</button>
-          <span class="pnum" id="peopleNum">1</span>
-          <button id="peoplePlus">+</button>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span class="muted" id="lblPeople" style="font-weight: 600;">人數：</span>
+          <div class="pstepper">
+            <button id="peopleMinus">–</button>
+            <span class="pnum" id="peopleNum">1</span>
+            <button id="peoplePlus">+</button>
+          </div>
         </div>
-        <button class="btn ghost sm" id="copyBill"  style="margin-left:auto">複製帳單</button>
-        <button class="btn ghost sm" id="newBill">清除帳單</button>
+        <div style="display:flex; gap:8px; margin-left:auto;">
+          <button class="btn ghost sm" id="copyBill">複製帳單</button>
+          <button class="btn ghost sm" id="newBill">清除帳單</button>
+        </div>
       </div>
     </div>
 
-    <div class="sugi-divider">
-      <svg viewBox="0 0 800 40" width="100%" height="100%" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <pattern id="baran-stripes" x="0" y="0" width="8" height="40" patternUnits="userSpaceOnUse">
-            <rect width="4" height="40" fill="#5F8F75"/>
-            <rect x="4" width="4" height="40" fill="#527D65"/>
-          </pattern>
-          <filter id="grass-shadow" x="-5%" y="-5%" width="110%" height="110%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.08"/>
-          </filter>
-        </defs>
-        <path d="M0,40 L0,15 L25,30 L50,8 L75,28 L100,5 L125,32 L150,12 L175,35 L200,8 L225,29 L250,6 L275,31 L300,14 L325,36 L350,10 L375,33 L400,7 L425,30 L450,12 L475,35 L500,9 L525,31 L550,6 L575,28 L600,11 L625,34 L650,8 L675,25 L700,5 L725,28 L750,10 L775,32 L800,15 L800,40 Z" fill="url(#baran-stripes)" filter="url(#grass-shadow)"/>
-        <path d="M0,15 L25,30 L50,8 L75,28 L100,5 L125,32 L150,12 L175,35 L200,8 L225,29 L250,6 L275,31 L300,14 L325,36 L350,10 L375,33 L400,7 L425,30 L450,12 L475,35 L500,9 L525,31 L550,6 L575,28 L600,11 L625,34 L650,8 L675,25 L700,5 L725,28 L750,10 L775,32 L800,15" fill="none" stroke="#466D57" stroke-width="1.5" stroke-linejoin="round"/>
-      </svg>
-    </div>
+    <div id="stickyNavWrapper" class="sticky-nav-wrapper" style="display:none;">
+      
+      <div class="sugi-divider" style="height: 24px; width: 100%; margin-bottom: -1px; position: relative; z-index: 2;">
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="sugi-stripes" width="8" height="24" patternUnits="userSpaceOnUse">
+              <rect width="4" height="24" fill="#5F8F75"/>
+              <rect x="4" width="4" height="24" fill="#527D65"/>
+            </pattern>
+            <pattern id="sugi-edge" width="200" height="24" patternUnits="userSpaceOnUse">
+              <path d="M0,12 L25,24 L50,4 L75,20 L100,2 L125,22 L150,6 L175,18 L200,12 L200,24 L0,24 Z" fill="url(#sugi-stripes)"/>
+              <path d="M0,12 L25,24 L50,4 L75,20 L100,2 L125,22 L150,6 L175,18 L200,12" fill="none" stroke="#466D57" stroke-width="1.5" stroke-linejoin="round"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#sugi-edge)"/>
+        </svg>
+      </div>
 
+      <div class="sticky-nav-inner">
+        <div id="stickyNav" class="sticky-nav"></div>
+        <div class="sticky-nav-actions">
+          <label class="toggle sm" style="margin-bottom: 4px;"><input type="checkbox" id="applyAllToggle"><span class="toggle-slider"></span></label>
+          <span class="muted" id="lblApplyAll" style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;">All In</span>
+        </div>
+      </div>
+
+    </div>
+    
     <div id="peopleContainer"></div>
   </section>
 
@@ -381,6 +491,12 @@ const i18n = {
     discountTitle:'Discount', discountToggle:'Apply discount',
     discountType:'Type', discPct:'Percentage (%)', discFixed:'Fixed amount ($)',
     discountAmt:'Amount',
+    applyToAll: 'All In', 
+    toastAddAll: 'Added One to Everyone',
+    toastToggleOn: "Everyone's in on this next order",
+    toastToggleOff: "Back to ordering one by one",
+    toastAddAllAndOff: "Added one for everyone, now back to ordering for yourself",
+    toastRemoveOne: "Remove one at a time",
     standardDishes:'Standard dishes', editPricesMuted:'Edit prices anytime. These show with icons in the tally.',
     seasonalSpecials:'Seasonal specials', typeTheseMuted:'Type these in. They show by name + price (no icon) in the tally.',
     seasNamePlaceholder:'Dish name (e.g. Uni special)', addBtn:'Add',
@@ -403,13 +519,19 @@ const i18n = {
   zh: {
     title:'壽司分帳機', headerTitle:'🍣 數碟郎 — 迴轉壽司分帳機',
     tabTally:'計帳點餐', tabSettings:'單價設定',
-    whosEating:'今天幾個人用餐？', people:'人數：',
+    whosEating:'今日幾位用餐？', people:'人數：',
     newBill:'清除帳單', copyBill:'複製帳單',
     billSettings:'帳單設定', svcChargeLabel:'10% 服務費',
     roundingLabel:'總額四捨五入至整數',
     discountTitle:'折扣', discountToggle:'套用折扣',
     discountType:'類型', discPct:'百分比（%）', discFixed:'固定金額（$）',
     discountAmt:'折扣金額',
+    applyToAll: '齊齊叫', 
+    toastAddAll: '一人加一碟',
+    toastToggleOn: '呢碟你叫我又叫',
+    toastToggleOff: '自己叫番自己嘅',
+    toastAddAllAndOff: '一人加咗一碟，而家自己叫番自己嘅',
+    toastRemoveOne: '減就一個一個嚟',
     standardDishes:'標準碟類', editPricesMuted:'可隨時修改單價。這些項目在計帳頁面會顯示對應圖示。',
     seasonalSpecials:'季節限定 / 特別單點', typeTheseMuted:'在此手動新增項目。這些項目在計帳頁面只會顯示名稱與價格（不含圖示）。',
     seasNamePlaceholder:'品名（例如：特選海膽）', addBtn:'新增項目',
@@ -434,6 +556,7 @@ const i18n = {
 let currentLang = localStorage.getItem(LS_LANG) || 'zh';
 let settings = loadSettings();
 let tally    = loadTally();
+window.dishRefreshers = {}; // Registry to decouple DOM from refresh actions
 
 /* ── persistence ── */
 function loadSettings() {
@@ -500,6 +623,7 @@ function updateStaticLabels() {
   document.getElementById('lblEditPricesMuted').textContent = t.editPricesMuted;
   document.getElementById('lblSeasonalSpecials').textContent= t.seasonalSpecials;
   document.getElementById('lblTypeTheseMuted').textContent  = t.typeTheseMuted;
+  document.getElementById('lblApplyAll').textContent        = t.applyToAll;
   document.getElementById('seasName').placeholder           = t.seasNamePlaceholder;
   document.getElementById('addSeas').textContent            = t.addBtn;
   document.getElementById('resetPrices').textContent        = t.resetPricesBtn;
@@ -618,6 +742,53 @@ function personTotal(p) {
   return t;
 }
 
+/* ── consolidated math ── */
+function computeBillBreakdown() {
+  const svcRate = settings.serviceCharge ? SERVICE_RATE : 0;
+  const rawTotals = tally.people.map(personTotal);
+  const grandRaw  = rawTotals.reduce((a, b) => a + b, 0);
+
+  let discAmt = 0;
+  if (settings.discount.enabled && settings.discount.amount > 0) {
+    discAmt = settings.discount.type === 'pct'
+      ? grandRaw * (settings.discount.amount / 100)
+      : Math.min(settings.discount.amount, grandRaw);
+  }
+
+  const personDiscs = rawTotals.map(sub =>
+    grandRaw > 0 ? Math.round((sub / grandRaw) * discAmt * 100) / 100 : 0
+  );
+  if (discAmt > 0 && grandRaw > 0) {
+    const discUsed = personDiscs.reduce((a, b) => a + b, 0);
+    personDiscs[personDiscs.length - 1] =
+      Math.round((personDiscs[personDiscs.length - 1] + discAmt - discUsed) * 100) / 100;
+  }
+
+  let grandFinal = 0;
+  let grandPlates = 0;
+  
+  const details = tally.people.map((p, idx) => {
+    const sub        = rawTotals[idx];
+    const fee        = svcRate > 0 ? Math.round(sub * svcRate * 100) / 100 : 0;
+    const personDisc = personDiscs[idx];
+    let total        = sub + fee - personDisc;
+    
+    if (settings.rounding) total = Math.round(total);
+    grandFinal += total;
+
+    let personPlates = 0;
+    for (const id in p.counts) { personPlates += p.counts[id]; }
+    grandPlates += personPlates;
+
+    return {
+      name: p.name,
+      sub, fee, disc: personDisc, total, plates: personPlates
+    };
+  });
+
+  return { details, grandRaw, grandFinal, grandPlates, svcRate, discAmt };
+}
+
 /* ── render tally ── */
 function renderPeopleCount() {
   document.getElementById('peopleNum').textContent  = tally.people.length;
@@ -626,6 +797,7 @@ function renderPeopleCount() {
   plusBtn.disabled = tally.people.length >= MAX_PEOPLE;
   plusBtn.title    = tally.people.length >= MAX_PEOPLE ? i18n[currentLang].maxPeopleMsg : '';
 }
+
 function setPeople(delta) {
   const n = tally.people.length + delta;
   if (n < 1 || n > MAX_PEOPLE) return;
@@ -641,12 +813,97 @@ function setPeople(delta) {
   saveTally(); renderTally();
 }
 
+function changeDishCount(pIndex, d, delta) {
+  const applyAllToggle = document.getElementById('applyAllToggle');
+  const applyAll = applyAllToggle.checked;
+
+  // "All in" is ADD-only. A remove (delta < 0) always affects just the clicked box.
+  if (applyAll && delta > 0) {
+    tally.people.forEach((person, i) => {
+      let newVal = (person.counts[d.id] || 0) + delta;
+      person.counts[d.id] = Math.max(0, newVal);
+      if (!person.counts[d.id]) delete person.counts[d.id];
+      if (window.dishRefreshers[`${i}-${d.id}`]) window.dishRefreshers[`${i}-${d.id}`]();
+    });
+
+    // Switch off automatically (one-use only logic)
+    applyAllToggle.checked = false;
+    toast(i18n[currentLang].toastAddAllAndOff);
+
+  } else {
+    // Single-box add/remove. If "All in" is armed and this is a remove,
+    // do NOT bulk-remove: keep the toggle armed (so the intended round can
+    // still follow) and explain that removals are one at a time.
+    if (applyAll && delta < 0) {
+      toast(i18n[currentLang].toastRemoveOne);
+    }
+
+    let person = tally.people[pIndex];
+    let newVal = (person.counts[d.id] || 0) + delta;
+    person.counts[d.id] = Math.max(0, newVal);
+    if (!person.counts[d.id]) delete person.counts[d.id];
+    if (window.dishRefreshers[`${pIndex}-${d.id}`]) window.dishRefreshers[`${pIndex}-${d.id}`]();
+  }
+
+  recalc();
+  saveTally();
+}
+
+function updateStickyNavTop() {
+  const hdr = document.querySelector('.sticky-tabs');
+  const wrap = document.getElementById('stickyNavWrapper');
+  // Slide it 14px UNDER the top header when sticking, neatly clipping the top peaks of the grass
+  if(hdr && wrap) wrap.style.top = (hdr.offsetHeight - 14) + 'px';
+}
+window.addEventListener('resize', updateStickyNavTop);
+
+function renderStickyNav(bd) {
+  const nav = document.getElementById('stickyNav');
+  const wrap = document.getElementById('stickyNavWrapper');
+  const t = i18n[currentLang];
+  
+  nav.innerHTML = '';
+  wrap.style.display = tally.people.length > 0 ? 'flex' : 'none';
+  updateStickyNavTop();
+
+  bd.details.forEach((d, idx) => {
+    const tile = document.createElement('div');
+    tile.className = 'nav-tile';
+    tile.onclick = () => {
+      const card = document.getElementById('person-card-' + idx);
+      if (card) {
+        const hdrHeight = document.querySelector('.sticky-tabs').offsetHeight;
+        // Correct the scroll destination to account for the 14px overlap
+        const offset = hdrHeight + wrap.offsetHeight - 14 + 10;
+        const y = card.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({top: y, behavior: 'smooth'});
+      }
+    };
+
+    const nm = document.createElement('div');
+    nm.className = 'n';
+    nm.textContent = d.name || (t.personDefault + (idx + 1));
+
+    const dat = document.createElement('div');
+    dat.className = 'd';
+    dat.innerHTML = `<span>${d.plates}${t.plates}</span> <b>${money(d.total)}</b>`;
+
+    tile.append(nm, dat);
+    nav.appendChild(tile);
+  });
+}
+
 function renderTally() {
   renderPeopleCount();
+  window.dishRefreshers = {}; // reset DOM hooks
+  
   const cont = document.getElementById('peopleContainer'); cont.innerHTML = '';
   const dishes = allDishes();
   tally.people.forEach((p, idx) => {
-    const card = document.createElement('div'); card.className = 'card';
+    const card = document.createElement('div'); 
+    card.className = 'card';
+    card.id = 'person-card-' + idx;
+    
     const head = document.createElement('div'); head.className = 'person-head';
 
     const av = document.createElement('div'); av.className = 'person-avatar'; av.textContent = idx + 1;
@@ -655,7 +912,7 @@ function renderTally() {
     inp.placeholder = i18n[currentLang].personDefault + (idx + 1);
     inp.value   = p.name;
     inp.onfocus = () => inp.select();
-    inp.oninput = () => { p.name = inp.value; saveTally(); };
+    inp.oninput = () => { p.name = inp.value; saveTally(); renderStickyNav(computeBillBreakdown()); };
 
     const tot = document.createElement('div'); tot.className = 'ptotal'; tot.id = 'ptot' + idx;
     head.append(av, inp, tot); card.appendChild(head);
@@ -683,21 +940,12 @@ function renderTally() {
         cell.classList.toggle('active', !!q);
         badge.textContent = q; badge.style.display = q ? 'flex' : 'none';
       };
-      minus.onclick = (e) => {
-        e.stopPropagation();
-        p.counts[d.id] = Math.max(0, (p.counts[d.id] || 0) - 1);
-        if (!p.counts[d.id]) delete p.counts[d.id];
-        refresh(); recalc(); saveTally();
-      };
-      plus.onclick = (e) => {
-        e.stopPropagation();
-        p.counts[d.id] = (p.counts[d.id] || 0) + 1; refresh(); recalc(); saveTally();
-      };
-
-      cell.onclick = (e) => {
-        if(e.target.tagName === 'BUTTON') return;
-        p.counts[d.id] = (p.counts[d.id] || 0) + 1; refresh(); recalc(); saveTally();
-      };
+      
+      // Wire up decoupled actions & registry
+      window.dishRefreshers[`${idx}-${d.id}`] = refresh;
+      minus.onclick = (e) => { e.stopPropagation(); changeDishCount(idx, d, -1); };
+      plus.onclick  = (e) => { e.stopPropagation(); changeDishCount(idx, d, 1); };
+      cell.onclick  = (e) => { if(e.target.tagName === 'BUTTON') return; changeDishCount(idx, d, 1); };
 
       refresh();
 
@@ -711,60 +959,29 @@ function renderTally() {
 }
 
 function recalc() {
-  const t       = i18n[currentLang];
-  const svcRate = settings.serviceCharge ? SERVICE_RATE : 0;
-  const rawTotals = tally.people.map(personTotal);
-  const grandRaw  = rawTotals.reduce((a, b) => a + b, 0);
+  const t = i18n[currentLang];
+  const bd = computeBillBreakdown();
 
-  let discAmt = 0;
-  if (settings.discount.enabled && settings.discount.amount > 0) {
-    discAmt = settings.discount.type === 'pct'
-      ? grandRaw * (settings.discount.amount / 100)
-      : Math.min(settings.discount.amount, grandRaw);
-  }
-
-  // Pre-compute proportional discounts; last person absorbs any rounding remainder
-  const personDiscs = rawTotals.map(sub =>
-    grandRaw > 0 ? Math.round((sub / grandRaw) * discAmt * 100) / 100 : 0
-  );
-  if (discAmt > 0 && grandRaw > 0) {
-    const discUsed = personDiscs.reduce((a, b) => a + b, 0);
-    personDiscs[personDiscs.length - 1] =
-      Math.round((personDiscs[personDiscs.length - 1] + discAmt - discUsed) * 100) / 100;
-  }
-
-  let grandFinal = 0;
-  let grandPlates = 0;
-
-  tally.people.forEach((p, idx) => {
-    const sub        = rawTotals[idx];
-    const fee        = svcRate > 0 ? Math.round(sub * svcRate * 100) / 100 : 0;
-    const personDisc = personDiscs[idx];
-    let total = sub + fee - personDisc;
-    if (settings.rounding) total = Math.round(total);
-    grandFinal += total;
-
-    let personPlates = 0;
-    for (const id in p.counts) { personPlates += p.counts[id]; }
-    grandPlates += personPlates;
-
+  bd.details.forEach((d, idx) => {
     const el = document.getElementById('ptot' + idx);
     if (el) {
-      let html = money(sub);
-      if (fee > 0)        html += ` + <b>${money(fee)}</b> ${t.svc}`;
-      if (personDisc > 0) html += ` − <b class="disc-val">${money(personDisc)}</b> ${t.disc}`;
-      el.innerHTML = `<span class="calc">${html} (${personPlates}${t.plates})</span><span class="big">${money(total)}</span>`;
+      let html = money(d.sub);
+      if (d.fee > 0)  html += ` + <b>${money(d.fee)}</b> ${t.svc}`;
+      if (d.disc > 0) html += ` − <b class="disc-val">${money(d.disc)}</b> ${t.disc}`;
+      el.innerHTML = `<span class="calc">${html} (${d.plates}${t.plates})</span><span class="big">${money(d.total)}</span>`;
     }
   });
 
-  document.getElementById('grandTotal').textContent = money(Math.round(grandFinal * 100) / 100);
+  document.getElementById('grandTotal').textContent = money(Math.round(bd.grandFinal * 100) / 100);
   const unit  = tally.people.length > 1 ? t.unitPeople : t.unitPerson;
   const notes = [];
   if (settings.serviceCharge) notes.push(t.noteSvc);
   if (settings.discount.enabled && settings.discount.amount > 0) notes.push(t.noteDisc);
   const noteStr = notes.length ? t.inclOpen + notes.join(t.inclSep) + t.inclClose : '';
 
-  document.getElementById('grandSub').textContent = `${t.totalBillBase}${noteStr} · ${t.countPrefix}${tally.people.length}${unit} · ${t.totalPlates}: ${grandPlates}${t.plates}`;
+  document.getElementById('grandSub').textContent = `${t.totalBillBase}${noteStr} · ${t.countPrefix}${tally.people.length}${unit} · ${t.totalPlates}: ${bd.grandPlates}${t.plates}`;
+  
+  renderStickyNav(bd);
 }
 
 /* ── render settings ── */
@@ -826,26 +1043,8 @@ function renderSettings() {
 
 /* ── copy summary ── */
 function copyBillSummary() {
-  const t        = i18n[currentLang];
-  const svcRate  = settings.serviceCharge ? SERVICE_RATE : 0;
-  const rawTotals = tally.people.map(personTotal);
-  const grandRaw  = rawTotals.reduce((a, b) => a + b, 0);
-  let discAmt = 0;
-  if (settings.discount.enabled && settings.discount.amount > 0) {
-    discAmt = settings.discount.type === 'pct'
-      ? grandRaw * (settings.discount.amount / 100)
-      : Math.min(settings.discount.amount, grandRaw);
-  }
-
-  const copyDiscs = rawTotals.map(sub =>
-    grandRaw > 0 ? Math.round((sub / grandRaw) * discAmt * 100) / 100 : 0
-  );
-  if (discAmt > 0 && grandRaw > 0) {
-    const discUsed = copyDiscs.reduce((a, b) => a + b, 0);
-    copyDiscs[copyDiscs.length - 1] =
-      Math.round((copyDiscs[copyDiscs.length - 1] + discAmt - discUsed) * 100) / 100;
-  }
-
+  const t = i18n[currentLang];
+  const bd = computeBillBreakdown();
   const n = tally.people.length;
   const lines = [
     currentLang === 'zh'
@@ -853,32 +1052,21 @@ function copyBillSummary() {
       : `🍣 Kaiten Sushi Bill — ${n}${n > 1 ? t.unitPeople : t.unitPerson}`,
     '─'.repeat(30)
   ];
-  let grandFinal = 0;
-  let grandPlates = 0;
 
-  tally.people.forEach((p, idx) => {
-    const sub  = rawTotals[idx];
-    const fee  = svcRate > 0 ? Math.round(sub * svcRate * 100) / 100 : 0;
-    const disc = copyDiscs[idx];
-    let total  = sub + fee - disc;
-    if (settings.rounding) total = Math.round(total);
-    grandFinal += total;
+  bd.details.forEach((d, idx) => {
+    const name  = d.name || (t.personDefault + (idx + 1));
+    const parts = [money(d.sub)];
+    if (d.fee  > 0) parts.push(`+ ${money(d.fee)} ${t.svc}`);
+    if (d.disc > 0) parts.push(`− ${money(d.disc)} ${t.disc}`);
 
-    let personPlates = 0;
-    for (const id in p.counts) { personPlates += p.counts[id]; }
-    grandPlates += personPlates;
-
-    const name  = p.name || (t.personDefault + (idx + 1));
-    const parts = [money(sub)];
-    if (fee  > 0) parts.push(`+ ${money(fee)} ${t.svc}`);
-    if (disc > 0) parts.push(`− ${money(disc)} ${t.disc}`);
-
-    parts.push(`= ${money(total)} (${personPlates}${t.plates})`);
+    parts.push(`= ${money(d.total)} (${d.plates}${t.plates})`);
     lines.push(`${name}: ${parts.join(' ')}`);
   });
+  
   lines.push('─'.repeat(30));
-  lines.push(`${t.totalPlates}: ${grandPlates}${t.plates}`);
-  lines.push(`${currentLang === 'zh' ? '總計' : 'Total'}: ${money(Math.round(grandFinal * 100) / 100)}`);
+  lines.push(`${t.totalPlates}: ${bd.grandPlates}${t.plates}`);
+  lines.push(`${currentLang === 'zh' ? '總計' : 'Total'}: ${money(Math.round(bd.grandFinal * 100) / 100)}`);
+  
   const text = lines.join('\n');
   navigator.clipboard.writeText(text).then(() => toast(t.copiedToast)).catch(() => {
     const ta = document.createElement('textarea');
@@ -899,7 +1087,7 @@ function addSeasonal() {
   document.getElementById('seasName').value  = '';
   document.getElementById('seasPrice').value = '';
   saveSettings(); renderSettings(); renderTally();
-  toast(t.msgAdded.replace('{name}', name));
+  toast(t.msgAdded.replace('{name}', escapeHtml(name)));
 }
 function newBill() {
   if (!confirm(i18n[currentLang].confirmNewBill)) return;
@@ -935,6 +1123,10 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 document.getElementById('peopleMinus').onclick = () => setPeople(-1);
 document.getElementById('peoplePlus').onclick  = () => setPeople(1);
+
+document.getElementById('applyAllToggle').onchange = (e) => {
+  toast(e.target.checked ? i18n[currentLang].toastToggleOn : i18n[currentLang].toastToggleOff);
+};
 
 document.getElementById('svcToggle').onchange = e => {
   settings.serviceCharge = e.target.checked; saveSettings(); recalc();
