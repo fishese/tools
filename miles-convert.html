@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miles to Cash Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cathay: {
+                            DEFAULT: '#006564', // Cathay Pacific Green
+                            dark: '#004c4b',    // Darker shade for hover states
+                            light: '#eef5f5',   // Very light tint for backgrounds
+                            border: '#cce0e0'   // Soft border tint
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen p-2 md:p-6">
+
+    <div class="max-w-5xl mx-auto space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold text-cathay tracking-tight">Miles to Cash Converter</h1>
+                <p class="text-xs text-gray-500">Check the cash value of your miles</p>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-3 sm:mt-0">
+                <input type="file" id="import-file" class="hidden">
+                <button onclick="document.getElementById('import-file').click()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-medium py-1.5 px-3 rounded transition">Import JSON</button>
+                <button onclick="exportData()" class="bg-cathay hover:bg-cathay-dark text-white text-xs font-medium py-1.5 px-3 rounded transition">Export Data</button>
+                <button onclick="clearData()" class="bg-red-500 hover:bg-red-600 text-white text-xs font-medium py-1.5 px-3 rounded transition">Clear All</button>
+            </div>
+        </div>
+
+        <div class="bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-sm font-semibold mb-2 md:mb-3 text-gray-700">1. Add Reference Data</h2>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-2 md:gap-3 items-end">
+                <div class="col-span-2 md:col-span-2">
+                    <label class="block text-xs text-gray-600 mb-1">Item Name</label>
+                    <input type="text" id="item" placeholder="e.g., Amazon promo" class="w-full border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-cathay outline-none">
+                </div>
+                <div class="col-span-1 md:col-span-1">
+                    <label class="block text-xs text-gray-600 mb-1">Price</label>
+                    <input type="number" id="price" placeholder="50" class="w-full border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-cathay outline-none">
+                </div>
+                <div class="col-span-1 md:col-span-1">
+                    <label class="block text-xs text-gray-600 mb-1">Curr</label>
+                    <select id="currency" class="w-full border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-cathay outline-none bg-white">
+                        <option value="HKD">HKD</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="JPY">JPY</option>
+                        <option value="AUD">AUD</option>
+                        <option value="CAD">CAD</option>
+                        <option value="SGD">SGD</option>
+                    </select>
+                </div>
+                <div class="col-span-1 md:col-span-1">
+                    <label class="block text-xs text-gray-600 mb-1">Points</label>
+                    <input type="number" id="points" placeholder="10k" class="w-full border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-cathay outline-none">
+                </div>
+                <div class="col-span-1 md:col-span-1">
+                    <button id="add-btn" class="w-full bg-cathay hover:bg-cathay-dark text-white text-sm font-medium py-1.5 rounded transition flex justify-center items-center h-[34px]">
+                        <span id="btn-text">Add</span>
+                        <svg id="btn-spinner" class="animate-spin ml-1 h-3 w-3 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <p id="error-msg" class="text-red-500 text-xs mt-1 hidden">Fill out all fields.</p>
+        </div>
+
+        <div class="bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-sm font-semibold mb-2 text-gray-700">2. Saved Data & Outlier Toggles</h2>
+            <div class="overflow-x-auto border border-gray-100 rounded">
+                <table class="min-w-full text-left text-xs whitespace-nowrap">
+                    <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+                        <tr>
+                            <th class="px-2 py-2 text-center" title="Include in calculation">Use</th>
+                            <th class="px-2 py-2">Item</th>
+                            <th class="px-2 py-2">Price</th>
+                            <th class="px-2 py-2">HKD Est.</th>
+                            <th class="px-2 py-2">Points</th>
+                            <th class="px-2 py-2">HKD/Pt</th>
+                            <th class="px-2 py-2"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-gray-100">
+                        </tbody>
+                </table>
+                <div id="empty-state" class="text-center text-gray-400 py-4 text-xs">
+                    No data added.
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-200 border-t-4 border-t-cathay">
+            <h2 class="text-sm font-semibold mb-3 text-gray-700">3. Calculate Value</h2>
+            
+            <div class="flex flex-col md:flex-row gap-4 items-start">
+                <div class="w-full md:w-1/3 flex md:flex-col gap-3 md:gap-2">
+                    <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                        <input type="radio" id="calc-avg" name="strategy" value="avg" class="h-3 w-3 text-cathay focus:ring-cathay" checked>
+                        <span>Use Average</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-sm cursor-pointer">
+                        <input type="radio" id="calc-max" name="strategy" value="max" class="h-3 w-3 text-cathay focus:ring-cathay">
+                        <span>Use Best Value</span>
+                    </label>
+                </div>
+
+                <div class="w-full md:w-1/3">
+                    <input type="number" id="spend-points" placeholder="Points to spend (e.g., 14000)" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-1 focus:ring-cathay shadow-inner outline-none">
+                </div>
+
+                <div class="w-full md:w-1/3 bg-cathay-light p-2 rounded text-center border border-cathay-border h-full flex flex-col justify-center">
+                    <p class="text-[10px] text-cathay font-bold uppercase tracking-wide">Worth</p>
+                    <div class="text-xl md:text-2xl font-bold text-gray-900" id="final-result">HKD 0.00</div>
+                    <p class="text-[10px] text-gray-500 leading-tight mt-1" id="calculation-meta">Awaiting input</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let datasets = [];
+
+        // DOM Elements
+        const itemInput = document.getElementById('item');
+        const priceInput = document.getElementById('price');
+        const currencyInput = document.getElementById('currency');
+        const pointsInput = document.getElementById('points');
+        const addBtn = document.getElementById('add-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnSpinner = document.getElementById('btn-spinner');
+        const errorMsg = document.getElementById('error-msg');
+        
+        const tableBody = document.getElementById('table-body');
+        const emptyState = document.getElementById('empty-state');
+        
+        const spendPointsInput = document.getElementById('spend-points');
+        const avgRadio = document.getElementById('calc-avg');
+        const maxRadio = document.getElementById('calc-max');
+        const finalResult = document.getElementById('final-result');
+        const calcMeta = document.getElementById('calculation-meta');
+        const importFileInput = document.getElementById('import-file');
+
+        const FALLBACK_RATES = { USD: 7.84, EUR: 8.45, GBP: 9.90, JPY: 0.049, AUD: 5.15, CAD: 5.75, SGD: 5.80, HKD: 1.00 };
+
+        // --- Init & Persistence ---
+        function init() {
+            const saved = localStorage.getItem('milesCalcData');
+            if (saved) {
+                try {
+                    datasets = JSON.parse(saved);
+                    datasets.forEach(d => { if (d.active === undefined) d.active = true; });
+                } catch(e) { console.error("Failed to parse local storage", e); }
+            }
+            renderTable();
+            calculateResult();
+        }
+
+        function saveData() {
+            localStorage.setItem('milesCalcData', JSON.stringify(datasets));
+        }
+
+        // --- Import / Export / Clear ---
+        function exportData() {
+            if(datasets.length === 0) return alert("No data to export!");
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(datasets, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", "miles_convert_data.json");
+            dlAnchorElem.click();
+        }
+
+        function clearData() {
+            if(datasets.length === 0) return;
+            if(confirm("Are you sure you want to clear all data? This cannot be undone.")) {
+                datasets = [];
+                saveData();
+                renderTable();
+                calculateResult();
+            }
+        }
+
+        importFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const imported = JSON.parse(event.target.result);
+                    if (Array.isArray(imported)) {
+                        datasets = imported;
+                        saveData();
+                        renderTable();
+                        calculateResult();
+                        alert("Data imported successfully!");
+                    } else { 
+                        alert("Invalid data format. Please select a valid JSON file exported from this app."); 
+                    }
+                } catch(err) { 
+                    alert("Failed to read file. Please ensure it is a valid JSON file."); 
+                }
+                
+                // Clear the input so the same file can be selected again if needed
+                importFileInput.value = ''; 
+            };
+            reader.readAsText(file);
+        });
+
+        // --- Rate Fetching ---
+        async function getHkdRate(currency) {
+            if (currency === 'HKD') return 1;
+            try {
+                const res = await fetch(`https://api.frankfurter.app/latest?from=${currency}&to=HKD`);
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.rates.HKD;
+                }
+            } catch (e) {}
+            return FALLBACK_RATES[currency] || 7.84;
+        }
+
+        // --- Add Data ---
+        addBtn.addEventListener('click', async () => {
+            const name = itemInput.value.trim();
+            const price = parseFloat(priceInput.value);
+            const currency = currencyInput.value;
+            const points = parseFloat(pointsInput.value);
+
+            if (!name || isNaN(price) || price <= 0 || isNaN(points) || points <= 0) {
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+            errorMsg.classList.add('hidden');
+
+            addBtn.disabled = true;
+            btnText.textContent = "";
+            btnSpinner.classList.remove('hidden');
+
+            const rate = await getHkdRate(currency);
+            const hkdEst = price * rate;
+            const valuePerPoint = hkdEst / points;
+
+            datasets.push({
+                id: Date.now(),
+                name,
+                price,
+                currency,
+                hkdEst,
+                points,
+                valuePerPoint,
+                active: true
+            });
+
+            itemInput.value = ''; priceInput.value = ''; pointsInput.value = '';
+            addBtn.disabled = false; btnText.textContent = "Add"; btnSpinner.classList.add('hidden');
+
+            saveData();
+            renderTable();
+            calculateResult();
+        });
+
+        // --- Operations ---
+        window.deleteItem = function(id) {
+            datasets = datasets.filter(d => d.id !== id);
+            saveData(); renderTable(); calculateResult();
+        }
+
+        window.toggleActive = function(id) {
+            const item = datasets.find(d => d.id === id);
+            if (item) {
+                item.active = !item.active;
+                saveData();
+                calculateResult();
+                const row = document.getElementById(`row-${id}`);
+                if(item.active) row.classList.remove('opacity-50', 'bg-gray-50');
+                else row.classList.add('opacity-50', 'bg-gray-50');
+            }
+        }
+
+        // --- Render ---
+        function renderTable() {
+            tableBody.innerHTML = '';
+            if (datasets.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            datasets.forEach(data => {
+                const tr = document.createElement('tr');
+                tr.id = `row-${data.id}`;
+                tr.className = `transition-colors hover:bg-gray-50 ${!data.active ? 'opacity-50 bg-gray-50' : ''}`;
+                tr.innerHTML = `
+                    <td class="px-2 py-1 text-center">
+                        <input type="checkbox" class="cursor-pointer h-3 w-3 text-cathay rounded focus:ring-cathay" onchange="toggleActive(${data.id})" ${data.active ? 'checked' : ''}>
+                    </td>
+                    <td class="px-2 py-1 font-medium truncate max-w-[100px]" title="${data.name}">${data.name}</td>
+                    <td class="px-2 py-1">${data.currency} ${data.price.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 2})}</td>
+                    <td class="px-2 py-1 text-cathay">HKD ${data.hkdEst.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 2})}</td>
+                    <td class="px-2 py-1">${data.points.toLocaleString()}</td>
+                    <td class="px-2 py-1 font-semibold text-green-600">${data.valuePerPoint.toFixed(4)}</td>
+                    <td class="px-2 py-1 text-right">
+                        <button onclick="deleteItem(${data.id})" class="text-red-500 hover:text-red-700 font-medium">✕</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // --- Calculate ---
+        function calculateResult() {
+            const spendPoints = parseFloat(spendPointsInput.value);
+            const activeData = datasets.filter(d => d.active);
+
+            if (activeData.length === 0) {
+                finalResult.textContent = "HKD 0.00";
+                calcMeta.textContent = datasets.length > 0 ? "Select at least one item." : "Add reference data.";
+                return;
+            }
+
+            if (isNaN(spendPoints) || spendPoints <= 0) {
+                finalResult.textContent = "HKD 0.00";
+                calcMeta.textContent = "Enter points to spend.";
+                return;
+            }
+
+            const useAverage = avgRadio.checked;
+            let multiplier = 0;
+
+            if (useAverage) {
+                const total = activeData.reduce((sum, item) => sum + item.valuePerPoint, 0);
+                multiplier = total / activeData.length;
+            } else {
+                multiplier = Math.max(...activeData.map(item => item.valuePerPoint));
+            }
+
+            const worth = spendPoints * multiplier;
+            finalResult.textContent = `HKD ${worth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            calcMeta.innerHTML = `Using rate: <strong>${multiplier.toFixed(4)}</strong> based on <strong>${activeData.length}</strong> selected item(s).`;
+        }
+
+        spendPointsInput.addEventListener('input', calculateResult);
+        avgRadio.addEventListener('change', calculateResult);
+        maxRadio.addEventListener('change', calculateResult);
+
+        // Run on load
+        init();
+    </script>
+</body>
+</html>
