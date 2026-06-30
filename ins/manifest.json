@@ -1,8 +1,8 @@
 {
   "name": "AIA Flexi-Max Tracker",
-  "short_name": "Flexi-Max",
+  "short_name": "AIA Max",
   "description": "Track outpatient and hospital insurance claims against your AIA Flexi-Max plan limits.",
-  "start_url": "./aiamax.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
