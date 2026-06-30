@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -84,7 +85,7 @@
           <i data-lucide="sun" id="themeSun" class="w-5 h-5 hidden"></i>
           <i data-lucide="moon" id="themeMoon" class="w-5 h-5"></i>
         </button>
-        <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">v1.4.0 Standalone</span>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">v1.5.0 Standalone</span>
       </div>
     </div>
   </header>
@@ -111,13 +112,13 @@
         </div>
 
         <p class="text-xs text-slate-400 -mt-2">
-          Paste pairs of latitude and longitude coordinates below. Or click points on the interactive map to start building your route.
+          Paste coordinates. List numbers (e.g. 1., 2.), brackets, and extra emojis (like 🍄) will be automatically detected and ignored.
         </p>
 
         <textarea 
           id="coordInput" 
           rows="8" 
-          placeholder="Paste coordinates here...&#10;&#10;Supported Formats:&#10;25.76813, 81.41214&#10;25.76760  81.41131&#10;[25.76566, 81.41178]&#10;25.76492,81.41142"
+          placeholder="Paste coordinates here...&#10;&#10;Supported Format Examples:&#10;1. 🍄47.562240, 10.742150&#10;2. 🍄26.086416, 50.540367&#10;[25.76566, 81.41178]&#10;25.76492,81.41142"
           class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition resize-y min-h-[140px]"
         ></textarea>
 
@@ -349,13 +350,12 @@
       }
     });
 
-    // --- Toast Notifications (Replacements for alert()) ---
+    // --- Toast Notifications ---
     function showToast(message, type = 'info') {
       const toastContainer = document.getElementById('toastContainer');
       const toast = document.createElement('div');
       toast.className = `flex items-center gap-2 px-4 py-3 rounded-xl border shadow-2xl transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto min-w-[280px]`;
       
-      // Determine Styles & Icons
       let bg, border, text, icon;
       if (type === 'success') {
         bg = 'bg-emerald-950/90';
@@ -386,12 +386,10 @@
       toastContainer.appendChild(toast);
       lucide.createIcons({ attrs: { class: 'lucide-custom' } });
       
-      // Animation entry
       requestAnimationFrame(() => {
         toast.classList.remove('translate-y-2', 'opacity-0');
       });
       
-      // Auto-remove
       setTimeout(() => {
         toast.classList.add('translate-y-[-10px]', 'opacity-0');
         setTimeout(() => toast.remove(), 300);
@@ -404,7 +402,6 @@
     const lightTiles = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
     function initMap() {
-      // Default viewpoint over India (fits general center coordinates)
       map = L.map('map', { zoomControl: true }).setView([25.76813, 81.41214], 13);
       
       tileLayer = L.tileLayer(darkTiles, {
@@ -414,7 +411,6 @@
       markersGroup = L.layerGroup().addTo(map);
       routeLine = L.polyline([], { color: '#6366f1', weight: 4, opacity: 0.85 }).addTo(map);
 
-      // On map click, append a coordinate
       map.on('click', (e) => {
         const { lat, lng } = e.latlng;
         addCoordinate(lat, lng);
@@ -431,17 +427,12 @@
       }).addTo(map);
     }
 
-    // Initialize map immediately after window loading
     window.onload = function() {
       initMap();
-      
-      // Start with text box completely empty as requested
       coordInput.value = '';
-      
-      processAndRender(false); // run initial pass (empty state)
+      processAndRender(false);
     };
 
-    // Responsive Canvas/Map resizing handle
     window.addEventListener('resize', () => {
       if (map) {
         map.invalidateSize();
@@ -450,7 +441,7 @@
 
     // --- Distance Calculator (Haversine Formula) ---
     function haversineDistance(pt1, pt2) {
-      const R = 6371e3; // metres
+      const R = 6371e3;
       const phi1 = pt1.lat * Math.PI/180;
       const phi2 = pt2.lat * Math.PI/180;
       const deltaPhi = (pt2.lat - pt1.lat) * Math.PI/180;
@@ -461,7 +452,7 @@
                 Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-      return R * c; // in meters
+      return R * c;
     }
 
     // --- Parse Text Inputs into Coordinates array ---
@@ -472,10 +463,18 @@
       const swap = swapLatLonCheckbox.checked;
 
       lines.forEach((line) => {
-        // Strip out brackets/unnecessary chars and find decimal floats
-        const cleaned = line.replace(/[\[\]\(\)\{\}]/g, ' ');
-        const matches = cleaned.match(/[-+]?[0-9]*\.?[0-9]+/g);
+        let cleanedLine = line.trim();
+        if (!cleanedLine) return;
+
+        // 1. Strip list index prefixes (e.g. "1.", "1)", "10:", "1 -", "1 🍄")
+        // but avoid matching raw coordinates like "25.76813" or "25 81"
+        cleanedLine = cleanedLine.replace(/^\d+(?:\.(?!\d)|[\:\)\-]+|\s+[^0-9\-+\s])/, '');
+        cleanedLine = cleanedLine.trim();
+
+        // 2. Find all valid floating point numbers (including signs like -155.958)
+        const matches = cleanedLine.match(/[-+]?[0-9]*\.?[0-9]+/g);
         
+        // We need at least 2 numbers to form a coordinate pair
         if (matches && matches.length >= 2) {
           let latVal = parseFloat(matches[0]);
           let lonVal = parseFloat(matches[1]);
@@ -486,7 +485,7 @@
             lonVal = temp;
           }
 
-          // Simple validation coordinates bounds
+          // Simple validation coordinate bounds
           if (Math.abs(latVal) <= 90 && Math.abs(lonVal) <= 180) {
             newCoordinates.push({ lat: latVal, lon: lonVal });
           }
@@ -506,32 +505,26 @@
     // --- Append individual point on Map Click ---
     function addCoordinate(lat, lon) {
       coordinates.push({ lat, lon });
-      processAndRender(true); // update text & map
+      processAndRender(true);
     }
 
-    // --- Process State (Sorting + Mapping + Text Sync) ---
+    // --- Process State ---
     function processAndRender(syncInputBox = false) {
-      // 1. Apply Optimization (Proximity Sorting) if checked
       if (sortProximityCheckbox.checked && coordinates.length > 2) {
         applyNearestNeighborOptimization();
       }
 
-      // 2. Synchronize Input Box text representation if requested
       if (syncInputBox) {
         syncTextareaWithCoordinates();
       }
 
-      // 3. Update Point UI & Table Elements
       renderPointTable();
-
-      // 4. Draw & Update Map Elements
       renderMapElements();
 
-      // Update total loaded counter
       pointCounter.innerText = `${coordinates.length} Point${coordinates.length === 1 ? '' : 's'} Loaded`;
     }
 
-    // --- Nearest Neighbor Travelling Trajectory Solver ---
+    // --- Nearest Neighbor Optimization Engine ---
     function applyNearestNeighborOptimization() {
       if (coordinates.length <= 1) return;
 
@@ -542,7 +535,6 @@
       let currentIdx = 0;
       
       if (strategy === 'optimal') {
-        // Start from the point that has the overall minimum latitude + longitude (bottom-left bounds logically)
         let minVal = Infinity;
         let startIndex = 0;
         for (let i = 0; i < unvisited.length; i++) {
@@ -555,7 +547,6 @@
         currentIdx = startIndex;
       }
 
-      // Pick starting point
       let current = unvisited.splice(currentIdx, 1)[0];
       sorted.push(current);
 
@@ -637,7 +628,6 @@
         coordinateTableBody.appendChild(tr);
       });
 
-      // Update aggregate stat display
       const km = totalDistanceMeters / 1000;
       routeStats.innerText = `Total distance: ${km.toFixed(2)} km (${(km * 0.621371).toFixed(2)} mi)`;
       lucide.createIcons();
@@ -684,21 +674,18 @@
       }
 
       const latlngs = coordinates.map(pt => [pt.lat, pt.lon]);
-      
-      // Update Route Path lines
       routeLine.setLatLngs(latlngs);
 
-      // Render custom circular markers for intermediate nodes
       coordinates.forEach((pt, index) => {
-        let markerColor = '#6366f1'; // brand/indigo
+        let markerColor = '#6366f1';
         let fillOpacity = 0.8;
         let radius = 6;
 
         if (index === 0) {
-          markerColor = '#10b981'; // starting point is emerald
+          markerColor = '#10b981';
           radius = 8;
         } else if (index === coordinates.length - 1) {
-          markerColor = '#f43f5e'; // ending point is rose
+          markerColor = '#f43f5e';
           radius = 8;
         }
 
@@ -711,7 +698,6 @@
           fillOpacity: fillOpacity
         });
 
-        // Add interactive popups
         marker.bindPopup(`
           <div class="text-xs text-slate-100 font-sans">
             <div class="font-bold border-b border-slate-700 pb-1 mb-1">Point #${index + 1}</div>
@@ -726,13 +712,10 @@
         markersGroup.addLayer(marker);
       });
 
-      // Fit map view to boundaries automatically
       try {
         const bounds = L.latLngBounds(latlngs);
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-      } catch (err) {
-        // Silence empty boundary exceptions
-      }
+      } catch (err) {}
     }
 
     // --- Reversing & Cycling Actions ---
@@ -789,7 +772,6 @@
       let body = '';
 
       if (selectedType === 'route') {
-        // Build route with '<Name> Route' format
         body += `  <rte>\n`;
         body += `    <name>${safeBaseName} Route</name>\n`;
         coordinates.forEach((pt, i) => {
@@ -800,7 +782,6 @@
         body += `  </rte>\n`;
       } 
       else if (selectedType === 'track') {
-        // Build track with '<Name> Track' format
         body += `  <trk>\n`;
         body += `    <name>${safeBaseName} Track</name>\n`;
         body += `    <trkseg>\n`;
@@ -811,7 +792,6 @@
         body += `  </trk>\n`;
       } 
       else if (selectedType === 'poi') {
-        // Build POI points with '<Name> POI' format
         coordinates.forEach((pt, i) => {
           body += `  <wpt lat="${pt.lat.toFixed(7)}" lon="${pt.lon.toFixed(7)}">\n`;
           body += `    <name>${safeBaseName} POI - ${i + 1}</name>\n`;
@@ -873,7 +853,6 @@ ${body}</gpx>`;
         const gpxText = buildGPXString();
         let filename = unifiedNameInput.value.trim() || "Flowers";
         
-        // Ensure proper filename extension
         if (!filename.toLowerCase().endsWith('.gpx')) {
           filename += ".gpx";
         }
@@ -897,7 +876,6 @@ ${body}</gpx>`;
       }
     });
 
-    // Track active class stylings for export toggles visual selection
     const radioTypeRte = document.getElementById('labelTypeRte');
     const radioTypeTrk = document.getElementById('labelTypeTrk');
     const radioTypeWpt = document.getElementById('labelTypeWpt');
@@ -905,7 +883,6 @@ ${body}</gpx>`;
     function updateRadioVisuals() {
       const selectedType = Array.from(gpxTypeRadios).find(r => r.checked).value;
       
-      // Clean classes
       [radioTypeRte, radioTypeTrk, radioTypeWpt].forEach(el => {
         el.classList.remove('border-brand-500', 'bg-brand-500/5', 'ring-1', 'ring-brand-500');
         el.classList.add('border-slate-800', 'bg-slate-950/50');
@@ -926,7 +903,7 @@ ${body}</gpx>`;
     gpxTypeRadios.forEach(radio => {
       radio.addEventListener('change', updateRadioVisuals);
     });
-    updateRadioVisuals(); // run initial active styling pass
+    updateRadioVisuals();
 
   </script>
 </body>
