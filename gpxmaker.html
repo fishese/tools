@@ -84,7 +84,7 @@
           <i data-lucide="sun" id="themeSun" class="w-5 h-5 hidden"></i>
           <i data-lucide="moon" id="themeMoon" class="w-5 h-5"></i>
         </button>
-        <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">v1.6.0 Standalone</span>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">v1.7.0 Standalone</span>
       </div>
     </div>
   </header>
@@ -111,13 +111,13 @@
         </div>
 
         <p class="text-xs text-slate-400 -mt-2">
-          Paste coordinates. List numbers, keycaps (e.g. 1️⃣, 6️⃣, 🔟), bracket decorations, and emojis are securely identified and ignored.
+          Paste coordinates. List numbers, keycaps, brackets, and emojis are ignored. Period-separated coordinate typos are auto-corrected.
         </p>
 
         <textarea 
           id="coordInput" 
           rows="8" 
-          placeholder="Paste coordinates here...&#10;&#10;Supported Format Examples:&#10;1️⃣ 64.147609, -21.922327&#10;2️⃣ 64.152840, -21.932219&#10;10. 🍄39.035763, -8.872782&#10;[25.76566, 81.41178]"
+          placeholder="Paste coordinates here...&#10;&#10;Supported Format Examples:&#10;1️⃣ 64.147609, -21.922327&#10;2️⃣ 64.152840, -21.932219&#10;10. 🍄39.035763, -8.872782&#10;23.627875.86.180014 (Auto-fixed!)"
           class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition resize-y min-h-[140px]"
         ></textarea>
 
@@ -401,7 +401,7 @@
     const lightTiles = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 
     function initMap() {
-      map = L.map('map', { zoomControl: true }).setView([64.147609, -21.922327], 13);
+      map = L.map('map', { zoomControl: true }).setView([23.633880, 86.178140], 13);
       
       tileLayer = L.tileLayer(darkTiles, {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
@@ -466,22 +466,23 @@
         if (!cleanedLine) return;
 
         // 1. Strip standard digit keycap emojis U+0030-0039 + U+FE0F + U+20E3 and 🔟 U+1F51F
-        // This ensures the digit from keycap emojis never confuses the parsed sequence
         cleanedLine = cleanedLine.replace(/\d\ufe0f?\u20e3|\uD83D\uDD1F/g, '');
 
-        // 2. Erase non-allowed formatting characters to instantly clear away complex symbols & other emojis
+        // 2. Auto-correct dot separators (e.g. "23.627875.86.180014" -> "23.627875,86.180014")
+        // Checks for two decimals separated by a dot (and optional spaces) and converts that dot to a comma
+        cleanedLine = cleanedLine.replace(/([-+]?\d+\.\d+)\s*\.\s*([-+]?\d+\.\d+)/g, '$1,$2');
+
+        // 3. Erase non-allowed formatting characters to instantly clear away complex symbols & other emojis
         cleanedLine = cleanedLine.replace(/[^0-9\-+.,\s\[\]\(\)\{\}]/g, '');
         cleanedLine = cleanedLine.trim();
 
-        // 3. Strip starting list index prefix if present (e.g. "1. ", "1) ", "10 ", etc.)
-        // Advanced negative lookahead \.(?!\d) guarantees starting coordinate digits (like the "6" in 64.xxxx) are never stripped.
+        // 4. Strip starting list index prefix if present (e.g. "1. ", "1) ", "10 ", etc.)
         cleanedLine = cleanedLine.replace(/^\s*\d+(?:(?:\.(?!\d)|[\)\-:])+\s*|\s+)/, '');
         cleanedLine = cleanedLine.trim();
 
-        // 4. Find all valid floating point values
+        // 5. Find all valid floating point values
         const matches = cleanedLine.match(/[-+]?[0-9]*\.?[0-9]+/g);
         
-        // Ensure we have at least 2 coordinate values
         if (matches && matches.length >= 2) {
           let latVal = parseFloat(matches[0]);
           let lonVal = parseFloat(matches[1]);
@@ -492,7 +493,6 @@
             lonVal = temp;
           }
 
-          // Bound validation check
           if (Math.abs(latVal) <= 90 && Math.abs(lonVal) <= 180) {
             newCoordinates.push({ lat: latVal, lon: lonVal });
           }
