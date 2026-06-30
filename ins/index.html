@@ -1,1 +1,1060 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AIA Flexi-Max Tracker</title>
 
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Flexi-Max">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+    ::-webkit-scrollbar { width: 0px; background: transparent; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans antialiased selection:bg-blue-200">
+  
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // --- I18N DICTIONARY ---
+    const t = {
+      zh: {
+        appTitle: "Flexi-Max 紀錄",
+        lock: "上鎖",
+        unlock: "解鎖 / 登入",
+        masterPwd: "請輸入主密碼",
+        sharedPool: "共用門診次數 (全年)",
+        visits: "次",
+        applicableTo: "適用於: 普通科、專科、物理治療、脊醫、中醫",
+        usedAmt: "已用金額",
+        sharedUsed: "共用已用",
+        remainingAmt: "剩餘餘額",
+        sharedRemaining: "共用剩餘",
+        notes: "注意事項 (Notes):",
+        addRecord: "新增紀錄",
+        date: "日期",
+        amount: "金額",
+        procedure: "項目備註 (如: 洗牙, 醫生名) (可選)",
+        saveRecord: "儲存紀錄",
+        updateRecord: "更新紀錄",
+        cancelEdit: "取消",
+        pastRecords: "過往紀錄",
+        noRecords: "暫無紀錄",
+        submitted: "已遞交",
+        approved: "已批核",
+        toSubmit: "待遞交",
+        toApprove: "待批核",
+        allRecords: "所有索償紀錄",
+        total: "總計",
+        exportCsv: "匯出 CSV (Excel)",
+        exportDesc: "匯出未加密的紀錄報表",
+        backup: "備份加密資料庫",
+        backupDesc: "下載 .json 加密檔以備還原",
+        restore: "載入備份檔",
+        reset: "忘記密碼 / 清除資料",
+        tabHome: "門診",
+        tabHospital: "住院",
+        tabHistory: "紀錄",
+        tabSettings: "設定",
+        back: "返回列表",
+        hospitalTitle: "住院及手術福利",
+        hospitalNote: "住院保障項目繁多，以下為最高賠償限額參考:",
+        hospLogBtn: "新增住院索償",
+        hospRecordNote: "⚠️ 此功能僅作紀錄用途，系統不會自動計算餘額，各項索償限額請參考上方列表。",
+        deleteConfirm: "確定刪除此紀錄？",
+        resetConfirm: "警告: 您的所有加密紀錄將被永久刪除！\n確定要重設嗎？",
+        restoreOverwriteConfirm: "警告：載入備份將覆蓋現有的加密資料庫，此操作無法復原。確定繼續？",
+        invalidAmount: "請輸入有效金額",
+        invalidDate: "請選擇日期",
+        policyYearLabel: "保單年度",
+        limitExceeded: "已超出限額",
+        exceededBy: "超出金額",
+        sharedPoolLabel: "共用門診次數",
+        categoryCapLabel: "本類別上限",
+        estReimbursement: "預計可獲賠償",
+        billed: "已支付",
+        cappedAt: "可索償上限",
+        priorYear: "上年度"
+      },
+      en: {
+        appTitle: "Flexi-Max Tracker",
+        lock: "Lock",
+        unlock: "Unlock / Login",
+        masterPwd: "Enter Master Password",
+        sharedPool: "Shared Outpatient Visits",
+        visits: "visits",
+        applicableTo: "Applies to: General, Specialist, Physio, Chiro, Chinese Med",
+        usedAmt: "Amount Used",
+        sharedUsed: "Visits Used",
+        remainingAmt: "Remaining",
+        sharedRemaining: "Remaining",
+        notes: "Notes:",
+        addRecord: "Add Record",
+        date: "Date",
+        amount: "Amount",
+        procedure: "Procedure / Notes (e.g. Scaling) (Optional)",
+        saveRecord: "Save Record",
+        updateRecord: "Update Record",
+        cancelEdit: "Cancel",
+        pastRecords: "Past Records",
+        noRecords: "No records found",
+        submitted: "Submitted",
+        approved: "Approved",
+        toSubmit: "Draft",
+        toApprove: "Pending Appr",
+        allRecords: "All Claims History",
+        total: "Total",
+        exportCsv: "Export CSV",
+        exportDesc: "Export unencrypted data to spreadsheet",
+        backup: "Backup Vault",
+        backupDesc: "Download .json for safekeeping",
+        restore: "Restore Backup",
+        reset: "Forgot Password / Reset",
+        tabHome: "Outpatient",
+        tabHospital: "Hospital",
+        tabHistory: "History",
+        tabSettings: "Settings",
+        back: "Back",
+        hospitalTitle: "Hospitalisation Benefits",
+        hospitalNote: "Hospital limits are complex. Below are maximum limit references:",
+        hospLogBtn: "Log Hospital Claim",
+        hospRecordNote: "⚠️ For record-keeping only. The system does not calculate hospital limits automatically. Please refer to the list above.",
+        deleteConfirm: "Delete this record?",
+        resetConfirm: "WARNING: All encrypted data will be permanently deleted!\nProceed?",
+        restoreOverwriteConfirm: "Warning: Loading a backup will overwrite your current encrypted vault. This cannot be undone. Continue?",
+        invalidAmount: "Please enter a valid amount",
+        invalidDate: "Please select a date",
+        policyYearLabel: "Policy Year",
+        limitExceeded: "Limit Exceeded",
+        exceededBy: "Exceeded by",
+        sharedPoolLabel: "Shared Pool",
+        categoryCapLabel: "Category Cap",
+        estReimbursement: "Est. Reimbursement",
+        billed: "billed",
+        cappedAt: "Capped at",
+        priorYear: "Prior Year"
+      }
+    };
+
+    // --- DATA: Categories ---
+    const CATEGORIES = [
+      { id: "dental", type: "amount", limitAmt: 10000, 
+        name: { zh: "牙科", en: "Dental" }, 
+        perVisitStr: { zh: "全年上限 $10,000", en: "Annual Limit $10,000" }, 
+        notes: { 
+          zh: ["涵蓋: 洗牙(每年2次)、檢查、補牙、脫牙、X光、杜牙根、牙冠等。"], 
+          en: ["Covers: Scaling (Max 2/yr), Exam, Fillings, Extraction, X-ray, Root Canal, Crowns."] 
+        } 
+      },
+      { id: "gen_physician", type: "visits", sharedPool: "outpatient", perVisitCap: 2000,
+        name: { zh: "普通科門診", en: "General Physician" }, 
+        perVisitStr: { zh: "非網絡上限 $2,000", en: "Out-network limit $2,000" }, 
+        notes: { 
+          zh: ["每次診症最高 $2,000 (超出部分不可索償)", "每天最多2次診症 (Max 2 visits/day)", "與專科/物理治療/脊醫/中醫共用全年50次上限"], 
+          en: ["Max $2,000 per visit (amount above this is not claimable)", "Max 2 visits/day", "Shares the annual 50-visit pool with Specialist/Physio/Chiro/Chinese Med"] 
+        } 
+      },
+      { id: "spec_physician", type: "visits", sharedPool: "outpatient", perVisitCap: 5000,
+        name: { zh: "專科醫生", en: "Specialist Physician" }, 
+        perVisitStr: { zh: "非網絡上限 $5,000", en: "Out-network limit $5,000" }, 
+        notes: { 
+          zh: ["每次診症最高 $5,000 (超出部分不可索償)", "無需轉介信 (No referral required)", "包括非網絡心理諮詢", "視像診症: 每年最多15次"], 
+          en: ["Max $5,000 per visit (amount above this is not claimable)", "No referral required", "Includes out-network psychologist", "Telemedicine: max 15 visits/yr"] 
+        } 
+      },
+      { id: "physio", type: "visits", sharedPool: "outpatient", perVisitCap: 2000,
+        name: { zh: "物理治療", en: "Physiotherapy" }, 
+        perVisitStr: { zh: "非網絡上限 $2,000", en: "Out-network limit $2,000" }, 
+        notes: { 
+          zh: ["每次診症最高 $2,000 (超出部分不可索償)", "必須提供醫生轉介信 (Referral REQUIRED)", "每天最多1次 (Max 1 visit/day)"], 
+          en: ["Max $2,000 per visit (amount above this is not claimable)", "Referral REQUIRED", "Max 1 visit/day"] 
+        } 
+      },
+      { id: "chiro", type: "visits", sharedPool: "outpatient", perVisitCap: 2000,
+        name: { zh: "脊骨神經科", en: "Chiropractor" }, 
+        perVisitStr: { zh: "非網絡上限 $2,000", en: "Out-network limit $2,000" }, 
+        notes: { 
+          zh: ["每次診症最高 $2,000 (超出部分不可索償)", "必須提供醫生轉介信 (Referral REQUIRED)", "每天最多1次 (Max 1 visit/day)"], 
+          en: ["Max $2,000 per visit (amount above this is not claimable)", "Referral REQUIRED", "Max 1 visit/day"] 
+        } 
+      },
+      { id: "chinese_med", type: "visits", sharedPool: "outpatient", perVisitCap: 500, categoryVisitCap: 10,
+        name: { zh: "中醫/跌打", en: "Chinese Med" }, 
+        perVisitStr: { zh: "非網絡上限 $500", en: "Out-network limit $500" }, 
+        notes: { 
+          zh: ["每次診症最高 $500 (超出部分不可索償)", "本類別全年上限10次 (與共用50次門診次數同時計算)"], 
+          en: ["Max $500 per visit (amount above this is not claimable)", "Category cap of 10 visits/yr (counts against the shared 50-visit pool too)"] 
+        } 
+      },
+      { id: "diagnostic", type: "amount", limitAmt: 6200, 
+        name: { zh: "基本診斷測試", en: "Basic Diagnostic" }, 
+        perVisitStr: { zh: "每病症上限 $6,200", en: "Limit $6,200 per disability" }, 
+        notes: { 
+          zh: ["每病症獨立計算 (Limit is per disability)", "包括X光、乳房造影、超聲波", "先進造影(MRI/CT)需預先核准並屬住院雜費"], 
+          en: ["Limit is per disability", "Includes X-Ray, mammograms, ultrasound", "Advanced imaging (MRI/CT) falls under Hospital Services"] 
+        } 
+      },
+      { id: "rx", type: "amount", limitAmt: 6200, 
+        name: { zh: "處方藥物", en: "Prescribed Medicine" }, 
+        perVisitStr: { zh: "全年上限 $6,200", en: "Annual Limit $6,200" }, 
+        notes: { 
+          zh: ["必須由非診所之註冊藥房購買", "需出示醫生處方 (Prescription required)"], 
+          en: ["Must be purchased from non-clinic source", "Prescription required"] 
+        } 
+      },
+      { id: "checkup", type: "amount", limitAmt: 3500, 
+        name: { zh: "例行身體檢查", en: "Routine Check-up" }, 
+        perVisitStr: { zh: "全年上限 $3,500", en: "Annual Limit $3,500" }, 
+        notes: { 
+          zh: ["每年最高賠償額 $3,500"], 
+          en: ["Max annual limit $3,500"] 
+        } 
+      }
+    ];
+
+    // --- DATA: Hospitalisation ---
+    const HOSPITAL_BENEFITS = [
+      {
+        section: { zh: "住院設施服務 (Facilities)", en: "Inpatient Facilities" },
+        items: [
+          { name: { zh: "膳宿費 (最高182日)", en: "Room and Board (Max 182 days)" }, limit: { zh: "每日 $2,500", en: "$2,500 / day" } },
+          { name: { zh: "深切治療病房 (最高7日)", en: "ICU (Max 7 days)" }, limit: { zh: "每日 $6,000", en: "$6,000 / day" } },
+          { name: { zh: "醫院雜費", en: "Other Hospital Services" }, limit: { zh: "$35,000", en: "$35,000" } },
+          { name: { zh: "醫管局住院保障(普通病房)", en: "HA Hospitals Reimbursement" }, limit: { zh: "每日 $1,500", en: "$1,500 / day" } },
+          { name: { zh: "每日現金保障 (最高182日)", en: "Daily Cash (Max 182 days)" }, limit: { zh: "每日 $2,500", en: "$2,500 / day" } }
+        ]
+      },
+      {
+        section: { zh: "醫生及手術費 (Physician & Surgical)", en: "Physician & Surgical" },
+        items: [
+          { name: { zh: "住院醫生服務 (最高182日)", en: "Inpatient Physician (Max 182 days)" }, limit: { zh: "每日 $3,000", en: "$3,000 / day" } },
+          { name: { zh: "專科醫生診症費", en: "Specialist Consultation" }, limit: { zh: "$15,000", en: "$15,000" } },
+          { name: { zh: "醫生手術費 (複雜/大型/中型/小型)", en: "Surgeon's Fee (Comp/Maj/Int/Min)" }, limit: { zh: "$120k / $60k / $30k / $15k", en: "$120k / $60k / $30k / $15k" } },
+          { name: { zh: "麻醉師費 (複雜/大型/中型/小型)", en: "Anesthetist's Fee" }, limit: { zh: "$36k / $18k / $9k / $4.5k", en: "$36k / $18k / $9k / $4.5k" } },
+          { name: { zh: "手術室費 (複雜/大型/中型/小型)", en: "Operating Room" }, limit: { zh: "$36k / $18k / $9k / $4.5k", en: "$36k / $18k / $9k / $4.5k" } }
+        ]
+      },
+      {
+        section: { zh: "額外醫療福利 (Supplementary)", en: "Supplementary Benefits" },
+        items: [
+          { name: { zh: "附加住院醫療福利", en: "Supplementary Major Medical" }, limit: { zh: "90% 賠償 (最高 $300,000)", en: "90% up to $300,000" } },
+          { name: { zh: "額外海外住院保障(只限意外)", en: "Increased Overseas Hosp. (Accident)" }, limit: { zh: "基本福利之 200%", en: "Up to 200% of Basic Benefits" } },
+          { name: { zh: "第二索償獎賞", en: "Second Claim Incentive" }, limit: { zh: "支付其他保險未賠償之餘額", en: "Pays balance from other insurers" } },
+          { name: { zh: "家居護理", en: "Home Care" }, limit: { zh: "全數支付 (只限網絡)", en: "100% (Network only)" } }
+        ]
+      },
+      {
+        section: { zh: "分娩福利 (適用於員工/配偶)", en: "Maternity (Eligible Emp/Spouse)" },
+        items: [
+          { name: { zh: "自然分娩", en: "Normal Delivery" }, limit: { zh: "$24,500", en: "$24,500" } },
+          { name: { zh: "流產或醫療所需人工流產", en: "Miscarriage / Medical Abortion" }, limit: { zh: "$12,500", en: "$12,500" } },
+          { name: { zh: "剖腹分娩", en: "Caesarian Section" }, limit: { zh: "$36,000", en: "$36,000" } }
+        ]
+      },
+      {
+        section: { zh: "其他福利 (Other Benefits)", en: "Other Benefits" },
+        items: [
+          { name: { zh: "緊急現金保障 (只限僱員)", en: "Emergency Cash (Employees only)" }, limit: { zh: "$10,000", en: "$10,000" } },
+          { name: { zh: "醫療運送及遺體運返", en: "Evacuation & Repatriation" }, limit: { zh: "全數支付", en: "100% Covered" } },
+          { name: { zh: "家屬恩恤探訪 (住院>7日)", en: "Compassionate Visit (>7 days hosp.)" }, limit: { zh: "每行程 $60,000", en: "$60,000 / trip" } }
+        ]
+      }
+    ];
+
+    const HOSPITAL_FOOTNOTES = {
+      zh: [
+        "網絡住院服務需預先核准 (緊急事故需24小時內通知)。",
+        "每日現金保障的最多賠償日數已包括在「每日膳宿費」內。",
+        "先進診斷造影(MRI/CT)於網絡服務需預先核准，賠償包含於醫院雜費內。",
+        "附加住院醫療福利(SMM)在計算時需扣除自付額，若平均房租超出限額需計算「調節因數」。",
+        "額外海外住院保障(上限為基本福利之200%)僅適用於意外引致的合資格費用。",
+        "第二索償獎賞適用於向其他保險公司索償後，向本公司索償之餘額。"
+      ],
+      en: [
+        "Network Hospitalisation requires prior authorisation (within 24 hrs for emergency).",
+        "Max days for Daily Cash are included in the Daily Room & Board max days.",
+        "Advanced imaging (MRI/CT) requires prior authorisation and falls under Other Hospital Services.",
+        "SMM is subject to coinsurance. An Adjustment Factor applies if average room charge exceeds the limit.",
+        "Increased Overseas Hosp. Benefit (up to 200%) applies only to eligible expenses due to accidental causes.",
+        "Second Claim Incentive is payable for the balance of expenses not covered by other insurers."
+      ]
+    };
+
+    const OUTPATIENT_MAX_VISITS = 50;
+    const STORAGE_KEY = "aia_plan002_vault_v4";
+    const HOSP_ID = "hospital_claim";
+
+    // --- POLICY YEAR (May 1 - Apr 30) ---
+    const POLICY_YEAR_START_MONTH = 5; // May (1-indexed)
+    const POLICY_YEAR_START_DAY = 1;
+
+    const getPolicyYearRange = (refDate = new Date()) => {
+      const y = refDate.getFullYear();
+      const m = refDate.getMonth() + 1;
+      const d = refDate.getDate();
+      const startYear = (m > POLICY_YEAR_START_MONTH || (m === POLICY_YEAR_START_MONTH && d >= POLICY_YEAR_START_DAY)) ? y : y - 1;
+      const start = new Date(startYear, POLICY_YEAR_START_MONTH - 1, POLICY_YEAR_START_DAY);
+      const end = new Date(startYear + 1, POLICY_YEAR_START_MONTH - 1, POLICY_YEAR_START_DAY);
+      end.setDate(end.getDate() - 1); // day before next cycle starts (Apr 30)
+      return { start, end };
+    };
+
+    const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const isInPolicyYear = (dateStr, range) => {
+      if (!dateStr) return false;
+      const d = new Date(dateStr + 'T00:00:00');
+      return d >= range.start && d <= range.end;
+    };
+
+    // --- CRYPTO UTILITIES ---
+    const generateKey = async (password, salt) => {
+      const encoder = new TextEncoder();
+      const keyMaterial = await window.crypto.subtle.importKey('raw', encoder.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']);
+      return window.crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+      );
+    };
+
+    const encryptData = async (password, dataStr) => {
+      const salt = window.crypto.getRandomValues(new Uint8Array(16));
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const key = await generateKey(password, salt);
+      const encoder = new TextEncoder();
+      const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(dataStr));
+      return { salt: Array.from(salt), iv: Array.from(iv), data: Array.from(new Uint8Array(encrypted)) };
+    };
+
+    const decryptData = async (password, encryptedObj) => {
+      const salt = new Uint8Array(encryptedObj.salt);
+      const iv = new Uint8Array(encryptedObj.iv);
+      const data = new Uint8Array(encryptedObj.data);
+      const key = await generateKey(password, salt);
+      const decrypted = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+      const decoder = new TextDecoder();
+      return decoder.decode(decrypted);
+    };
+
+    // --- REUSABLE RECORD CARD (view + inline edit) ---
+    function RecordCard({ record, lang, l, category, categoryLabel, showCategoryTag, isEditing, editDraft, onStartEdit, onChangeDraft, onSaveEdit, onCancelEdit, onToggleStatus, onDelete }) {
+      const isCapped = category && category.perVisitCap != null && record.amount > category.perVisitCap;
+      const claimable = category && category.perVisitCap != null ? Math.min(record.amount, category.perVisitCap) : record.amount;
+      const label = categoryLabel || (category ? category.name[lang] : '');
+
+      if (isEditing) {
+        return (
+          <div className="bg-white border border-blue-200 rounded-3xl p-4 shadow-sm flex flex-col gap-3">
+            <div className="flex gap-3">
+              <input type="date" value={editDraft.date} onChange={e => onChangeDraft({ ...editDraft, date: e.target.value })}
+                className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <div className="flex-1 relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                <input type="number" inputMode="decimal" step="0.01" min="0" value={editDraft.amount} onChange={e => onChangeDraft({ ...editDraft, amount: e.target.value })}
+                  className="w-full pl-8 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+            <input type="text" placeholder={l.procedure} value={editDraft.procedure} onChange={e => onChangeDraft({ ...editDraft, procedure: e.target.value })}
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div className="flex gap-2">
+              <button onClick={onSaveEdit} className="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-2xl active:bg-blue-700 text-sm">{l.updateRecord}</button>
+              <button onClick={onCancelEdit} className="flex-1 bg-gray-100 text-gray-600 font-bold py-2.5 rounded-2xl active:bg-gray-200 text-sm">{l.cancelEdit}</button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm flex flex-col gap-3">
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-gray-400 text-xs font-medium">{record.date}</span>
+                {showCategoryTag && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${record.categoryId === HOSP_ID ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-600'}`}>
+                    {label}
+                  </span>
+                )}
+              </div>
+              <div className="text-gray-800 text-sm font-medium">{record.procedure || '-'}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-gray-800">${record.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+              {isCapped && (
+                <div className="text-[10px] font-bold text-orange-500 mt-0.5">{l.cappedAt} ${claimable.toLocaleString()}</div>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-gray-50 flex justify-between items-center">
+            <div className="flex gap-2">
+              <button onClick={() => onToggleStatus(record.id, 'isSubmitted')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${record.isSubmitted ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'}`}>
+                {record.isSubmitted ? `✓ ${l.submitted}` : l.toSubmit}
+              </button>
+              <button onClick={() => onToggleStatus(record.id, 'isApproved')} disabled={!record.isSubmitted}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${record.isApproved ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'} ${!record.isSubmitted && 'opacity-40'}`}>
+                {record.isApproved ? `✓ ${l.approved}` : l.toApprove}
+              </button>
+            </div>
+            <div className="flex items-center">
+              <button onClick={() => onStartEdit(record)} aria-label="Edit" className="text-gray-400 p-2 text-base active:text-blue-600">✎</button>
+              <button onClick={() => onDelete(record.id)} aria-label="Delete" className="text-red-400 p-2 text-xl leading-none active:text-red-600">×</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- MAIN APP COMPONENT ---
+    function App() {
+      const [lang, setLang] = useState('zh');
+      const l = t[lang];
+
+      useEffect(() => {
+        document.documentElement.lang = lang === 'zh' ? 'zh-HK' : 'en';
+      }, [lang]);
+
+      const [isLocked, setIsLocked] = useState(true);
+      const [password, setPassword] = useState("");
+      const [errorMsg, setErrorMsg] = useState("");
+      const [restoreMsg, setRestoreMsg] = useState("");
+      const [activeTab, setActiveTab] = useState("dashboard"); // dashboard, hospital, history, settings
+      const [selectedCategory, setSelectedCategory] = useState(null);
+      const [records, setRecords] = useState([]);
+      
+      const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+      const [formAmount, setFormAmount] = useState("");
+      const [formProcedure, setFormProcedure] = useState("");
+      const [editingRecord, setEditingRecord] = useState(null); // { id, date, amount, procedure }
+
+      const handleUnlock = async (e) => {
+        e.preventDefault();
+        setErrorMsg(""); setRestoreMsg("");
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          if (!stored) {
+            const initialData = JSON.stringify([]);
+            const encrypted = await encryptData(password, initialData);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(encrypted));
+            setRecords([]); setIsLocked(false);
+          } else {
+            const encryptedObj = JSON.parse(stored);
+            const decryptedStr = await decryptData(password, encryptedObj);
+            setRecords(JSON.parse(decryptedStr)); setIsLocked(false);
+          }
+        } catch (err) {
+          setErrorMsg(lang === 'zh' ? "密碼錯誤或資料損毀" : "Incorrect password or corrupted data");
+        }
+      };
+
+      const handleLock = () => {
+        setIsLocked(true); setPassword(""); setRecords([]); setSelectedCategory(null); setActiveTab("dashboard");
+      };
+
+      const handleResetVault = () => {
+        if (confirm(l.resetConfirm)) {
+          localStorage.removeItem(STORAGE_KEY);
+          setPassword(""); setErrorMsg("");
+          setRestoreMsg(lang === 'zh' ? "系統已重設，請輸入新密碼以建立新資料庫。" : "Vault reset. Enter new password to initialize.");
+        }
+      };
+
+      const saveRecords = async (newRecords) => {
+        setRecords(newRecords);
+        try {
+          const encrypted = await encryptData(password, JSON.stringify(newRecords));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(encrypted));
+        } catch (err) { alert("Error saving data!"); }
+      };
+
+      const handleAddRecord = async (e, categoryIdOverride = null) => {
+        e.preventDefault();
+        const amt = parseFloat(formAmount);
+        if (!formAmount || isNaN(amt) || amt <= 0) {
+          alert(l.invalidAmount);
+          return;
+        }
+        const newRecord = {
+          id: self.crypto.randomUUID(), 
+          categoryId: categoryIdOverride || selectedCategory.id, 
+          date: formDate,
+          amount: amt, 
+          procedure: formProcedure, 
+          isSubmitted: false, 
+          isApproved: false
+        };
+        await saveRecords([...records, newRecord]);
+        setFormAmount(""); setFormProcedure("");
+        if (categoryIdOverride) setActiveTab('history'); 
+      };
+
+      const startEditRecord = (r) => {
+        setEditingRecord({ id: r.id, date: r.date, amount: String(r.amount), procedure: r.procedure || "" });
+      };
+
+      const cancelEditRecord = () => setEditingRecord(null);
+
+      const saveEditRecord = async () => {
+        if (!editingRecord) return;
+        const amt = parseFloat(editingRecord.amount);
+        if (!editingRecord.amount || isNaN(amt) || amt <= 0) {
+          alert(l.invalidAmount);
+          return;
+        }
+        if (!editingRecord.date) {
+          alert(l.invalidDate);
+          return;
+        }
+        const updated = records.map(r => r.id === editingRecord.id
+          ? { ...r, date: editingRecord.date, amount: amt, procedure: editingRecord.procedure }
+          : r
+        );
+        await saveRecords(updated);
+        setEditingRecord(null);
+      };
+
+      const toggleStatus = async (recordId, field) => {
+        const updated = records.map(r => r.id === recordId ? { ...r, [field]: !r[field] } : r);
+        await saveRecords(updated);
+      };
+
+      const deleteRecord = async (recordId) => {
+        if (confirm(l.deleteConfirm)) await saveRecords(records.filter(r => r.id !== recordId));
+      };
+
+      const exportCSV = () => {
+        const headers = ['Date', 'Category', 'Procedure', 'Amount', 'Claimable', 'PolicyYear', 'Submitted', 'Approved'];
+        const rows = [...records].sort((a,b) => new Date(b.date) - new Date(a.date)).map(r => {
+           const cat = CATEGORIES.find(c => c.id === r.categoryId);
+           const catName = r.categoryId === HOSP_ID ? l.tabHospital : (cat?.name[lang] || 'Unknown');
+           const claimable = cat && cat.perVisitCap != null ? Math.min(r.amount, cat.perVisitCap) : r.amount;
+           const yearTag = isInPolicyYear(r.date, policyYear) ? 'Current' : 'Prior';
+           const proc = (r.procedure || '').replace(/"/g, '""');
+           return `${r.date},"${catName}","${proc}",${r.amount},${claimable},${yearTag},${r.isSubmitted ? 'Y' : 'N'},${r.isApproved ? 'Y' : 'N'}`;
+        });
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(','), ...rows].join('\n');
+        const link = document.createElement("a");
+        link.setAttribute("href", encodeURI(csvContent));
+        link.setAttribute("download", `AIA_Claims_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      };
+
+      const downloadBackup = () => {
+        const data = localStorage.getItem(STORAGE_KEY);
+        if (!data) return alert("No data to backup.");
+        const blob = new Blob([data], { type: 'application/json' });
+        const link = document.createElement("a");
+        link.setAttribute("href", URL.createObjectURL(blob));
+        link.setAttribute("download", `AIA_Backup_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      };
+
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const existing = localStorage.getItem(STORAGE_KEY);
+        if (existing) {
+          const proceed = confirm(l.restoreOverwriteConfirm);
+          if (!proceed) { e.target.value = ''; return; }
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const content = event.target.result;
+            const parsed = JSON.parse(content);
+            if (parsed.salt && parsed.iv && parsed.data) {
+              localStorage.setItem(STORAGE_KEY, content);
+              setRestoreMsg(lang === 'zh' ? "備份已還原！請輸入原密碼解鎖。" : "Backup loaded! Enter password to unlock.");
+            } else setErrorMsg(lang === 'zh' ? "無效的備份檔案。" : "Invalid backup file.");
+          } catch (err) { setErrorMsg("File error."); }
+        };
+        reader.readAsText(file);
+      };
+
+      const policyYear = getPolicyYearRange();
+      const currentYearRecords = records.filter(r => isInPolicyYear(r.date, policyYear));
+
+      const sharedVisitsUsed = currentYearRecords.filter(r => CATEGORIES.find(c => c.id === r.categoryId)?.sharedPool === "outpatient").length;
+      const sharedVisitsRemaining = Math.max(OUTPATIENT_MAX_VISITS - sharedVisitsUsed, 0);
+      const sharedVisitsPct = Math.min((sharedVisitsUsed / OUTPATIENT_MAX_VISITS) * 100, 100);
+
+      const getCategoryStats = (category) => {
+        const catRecords = currentYearRecords.filter(r => r.categoryId === category.id);
+        const totalSpent = catRecords.reduce((sum, r) => sum + r.amount, 0);
+
+        if (category.type === "amount") {
+          const usagePct = (totalSpent / category.limitAmt) * 100;
+          const overLimit = totalSpent > category.limitAmt;
+          return {
+            isAmount: true,
+            totalSpent,
+            limit: category.limitAmt,
+            remaining: Math.max(category.limitAmt - totalSpent, 0),
+            exceededBy: overLimit ? totalSpent - category.limitAmt : 0,
+            overLimit,
+            usagePct: Math.min(usagePct, 100),
+            warning: usagePct > 80,
+            count: catRecords.length
+          };
+        }
+
+        // visit-based category sharing the outpatient pool
+        const categoryVisitsUsed = catRecords.length;
+        const claimableTotal = catRecords.reduce((sum, r) => sum + Math.min(r.amount, category.perVisitCap ?? r.amount), 0);
+        const categoryCap = category.categoryVisitCap || null;
+        const categoryCapRemaining = categoryCap != null ? Math.max(categoryCap - categoryVisitsUsed, 0) : null;
+        const remainingVisits = categoryCap != null ? Math.min(sharedVisitsRemaining, categoryCapRemaining) : sharedVisitsRemaining;
+        const usagePct = categoryCap != null
+          ? Math.min((categoryVisitsUsed / categoryCap) * 100, 100)
+          : sharedVisitsPct;
+        const warning = sharedVisitsPct > 80 || (categoryCap != null && (categoryVisitsUsed / categoryCap) > 0.8);
+
+        return {
+          isAmount: false,
+          count: categoryVisitsUsed,
+          usedVisits: categoryVisitsUsed,
+          totalSpent,
+          claimableTotal,
+          categoryCap,
+          categoryCapRemaining,
+          remainingVisits,
+          usagePct,
+          warning
+        };
+      };
+
+
+      // --- RENDER LOCK SCREEN ---
+      if (isLocked) {
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
+            <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} className="absolute top-6 right-6 font-bold text-gray-500 bg-white border border-gray-200 px-4 py-1.5 rounded-full shadow-sm text-sm active:bg-gray-100 transition-colors">
+              {lang === 'zh' ? 'EN' : '中文'}
+            </button>
+            <div className="bg-white max-w-[360px] w-full rounded-3xl shadow-xl overflow-hidden mt-8">
+              <div className="bg-blue-600 p-8 text-center text-white">
+                <div className="text-5xl mb-4">🛡️</div>
+                <h1 className="text-2xl font-bold">{l.appTitle}</h1>
+                <p className="text-blue-200 text-sm mt-1">Plan 002-Flexi-Max</p>
+              </div>
+              <div className="p-6">
+                <form onSubmit={handleUnlock}>
+                  <div className="mb-5">
+                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={l.masterPwd}
+                      className="block w-full text-center text-lg px-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:outline-none" required />
+                  </div>
+                  {errorMsg && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-xl text-center font-medium">{errorMsg}</div>}
+                  {restoreMsg && <div className="mb-4 p-3 bg-green-50 text-green-600 text-sm rounded-xl text-center font-medium">{restoreMsg}</div>}
+                  <button type="submit" className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl active:bg-blue-700 shadow-md">
+                    {l.unlock}
+                  </button>
+                </form>
+                
+                <div className="mt-8 flex flex-col gap-3 text-center">
+                  <label className="text-sm font-medium text-gray-500 active:text-blue-600 px-4 py-2 bg-gray-50 rounded-xl cursor-pointer">
+                    📥 {l.restore}
+                    <input type="file" accept=".json" className="hidden" onChange={handleFileUpload} />
+                  </label>
+                  <button onClick={handleResetVault} type="button" className="text-sm font-medium text-red-400 active:text-red-600 px-4 py-2">
+                    {l.reset}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // --- RENDER APP ---
+      return (
+        <div className="pb-24 max-w-[600px] mx-auto min-h-screen bg-gray-100 flex flex-col relative shadow-2xl">
+          
+          <header className="bg-white text-gray-800 sticky top-0 z-20 px-4 py-3 flex items-center justify-between shadow-sm">
+            <div className="font-bold text-lg flex items-center gap-2">
+              <span className="text-blue-600">🛡️</span> 
+              <span className="tracking-wide">{l.appTitle}</span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">
+                {lang === 'zh' ? 'EN' : '中'}
+              </button>
+              <button onClick={handleLock} className="text-sm font-medium bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full active:bg-gray-200">
+                🔒 {l.lock}
+              </button>
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-y-auto px-4 py-4">
+            
+            {/* --- VIEW: DASHBOARD (OUTPATIENT) --- */}
+            {!selectedCategory && activeTab === 'dashboard' && (
+              <div className="space-y-4 animate-[fadeIn_0.2s_ease-out]">
+                
+                <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-3xl p-5 text-white shadow-md">
+                  <div className="flex justify-between items-end mb-2">
+                    <div>
+                      <h3 className="text-sm text-blue-100 font-medium">{l.sharedPool}</h3>
+                      <div className="text-2xl font-bold mt-1">{sharedVisitsUsed} <span className="text-lg font-normal text-blue-200">/ {OUTPATIENT_MAX_VISITS} {l.visits}</span></div>
+                    </div>
+                  </div>
+                  <div className="w-full bg-blue-800/40 rounded-full h-2 mt-2">
+                    <div className={`h-full rounded-full ${sharedVisitsPct > 80 ? 'bg-orange-400' : 'bg-white'}`} style={{ width: `${sharedVisitsPct}%` }}></div>
+                  </div>
+                  <p className="text-[10px] text-blue-100 mt-2 opacity-80">{l.applicableTo}</p>
+                  <p className="text-[9px] text-blue-200 mt-1 opacity-70">{l.policyYearLabel}: {fmtDate(policyYear.start)} – {fmtDate(policyYear.end)}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  {CATEGORIES.map(cat => {
+                    const stats = getCategoryStats(cat);
+                    return (
+                      <button key={cat.id} onClick={() => setSelectedCategory(cat)} 
+                        className="bg-white rounded-3xl p-4 text-left shadow-sm active:scale-95 transition-transform border border-gray-100 flex flex-col h-full">
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between gap-1">
+                            <h3 className="font-bold text-gray-800 leading-tight">{cat.name[lang]}</h3>
+                            {stats.isAmount && stats.overLimit && (
+                              <span className="text-[9px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-md shrink-0">{l.limitExceeded}</span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-1 leading-tight h-6 overflow-hidden">{cat.perVisitStr[lang]}</p>
+                        </div>
+                        
+                        <div className="mt-3 pt-3 border-t border-gray-50">
+                          <div className="flex justify-between items-center text-[10px] font-bold mb-1.5 text-gray-500">
+                            <span>{stats.isAmount ? l.usedAmt : l.sharedUsed}</span>
+                            <span className={(stats.isAmount ? stats.overLimit : false) ? 'text-red-500' : stats.warning ? 'text-orange-500' : 'text-blue-600'}>
+                              {stats.isAmount ? `$${stats.totalSpent.toLocaleString()}` : `${stats.usedVisits} ${l.visits}`}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-1">
+                            <div className={`h-1 rounded-full ${(stats.isAmount && stats.overLimit) ? 'bg-red-500' : stats.warning ? 'bg-orange-500' : 'bg-blue-500'}`} style={{ width: `${stats.usagePct}%` }}></div>
+                          </div>
+                          {!stats.isAmount && (
+                            <p className="text-[9px] text-gray-400 mt-1.5 leading-tight">
+                              {l.sharedPoolLabel}: {sharedVisitsUsed}/{OUTPATIENT_MAX_VISITS}{stats.categoryCap != null ? ` · ${l.categoryCapLabel}: ${stats.usedVisits}/${stats.categoryCap}` : ''}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* --- VIEW: CATEGORY DETAILS --- */}
+            {selectedCategory && (
+              <div className="animate-[slideIn_0.2s_ease-out] pb-6">
+                
+                <button onClick={() => setSelectedCategory(null)} className="flex items-center text-gray-500 font-medium mb-3 active:text-blue-600 bg-white px-3 py-1.5 rounded-full shadow-sm text-sm w-fit border border-gray-100">
+                  ◀ {l.back}
+                </button>
+                
+                <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 mb-4">
+                  <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-2xl font-bold text-gray-800">{selectedCategory.name[lang]}</h2>
+                  </div>
+                  
+                  {(() => {
+                    const stats = getCategoryStats(selectedCategory);
+                    return (
+                      <>
+                        {stats.isAmount && stats.overLimit && (
+                          <div className="mb-3 p-3 bg-red-50 border border-red-100 rounded-2xl text-xs font-bold text-red-600 text-center">
+                            {l.limitExceeded}: {l.exceededBy} ${stats.exceededBy.toLocaleString()}
+                          </div>
+                        )}
+                        <div className="flex gap-4 p-4 bg-gray-50 rounded-2xl mb-3">
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500 mb-1">{stats.isAmount ? l.usedAmt : l.sharedUsed}</p>
+                            <p className="text-lg font-bold text-gray-800">
+                              {stats.isAmount ? `$${stats.totalSpent.toLocaleString()}` : `${stats.usedVisits} ${l.visits}`}
+                            </p>
+                          </div>
+                          <div className="w-px bg-gray-200"></div>
+                          <div className="flex-1">
+                            <p className="text-xs text-gray-500 mb-1">{stats.isAmount ? l.remainingAmt : l.sharedRemaining}</p>
+                            <p className={`text-lg font-bold ${stats.isAmount ? (stats.overLimit ? 'text-red-500' : stats.warning ? 'text-orange-500' : 'text-blue-600') : (stats.warning ? 'text-orange-500' : 'text-blue-600')}`}>
+                              {stats.isAmount ? `$${stats.remaining.toLocaleString()}` : `${stats.remainingVisits} ${l.visits}`}
+                            </p>
+                          </div>
+                        </div>
+                        {!stats.isAmount && (
+                          <div className="mb-4 p-3 bg-blue-50/60 rounded-2xl text-[11px] text-blue-700 leading-relaxed">
+                            <div className="flex justify-between">
+                              <span>{l.sharedPoolLabel}</span>
+                              <span className="font-bold">{sharedVisitsUsed} / {OUTPATIENT_MAX_VISITS}</span>
+                            </div>
+                            {stats.categoryCap != null && (
+                              <div className="flex justify-between mt-1">
+                                <span>{l.categoryCapLabel}</span>
+                                <span className="font-bold">{stats.usedVisits} / {stats.categoryCap}</span>
+                              </div>
+                            )}
+                            {stats.totalSpent > 0 && (
+                              <div className="flex justify-between mt-1 pt-1 border-t border-blue-100">
+                                <span>{l.estReimbursement}</span>
+                                <span className="font-bold">
+                                  ${stats.claimableTotal.toLocaleString()}
+                                  {stats.claimableTotal !== stats.totalSpent ? ` (${l.billed} $${stats.totalSpent.toLocaleString()})` : ''}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-gray-600 mb-1">{l.notes}</p>
+                    {selectedCategory.notes[lang].map((n, i) => (
+                      <p key={i} className="text-xs text-gray-500 flex items-start gap-1">
+                        <span className="text-blue-400 mt-[2px]">•</span>{n}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Data Entrance / Form Screen */}
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-gray-800 text-sm flex items-center">
+                      <span className="text-blue-500 text-lg mr-2">+</span> {l.addRecord}
+                    </h3>
+                    {/* High visibility inline reference limit context right at form block */}
+                    <span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-xl">
+                      {selectedCategory.perVisitStr[lang]}
+                    </span>
+                  </div>
+                  <form onSubmit={handleAddRecord} className="space-y-3">
+                    <div className="flex gap-3">
+                      <input type="date" required value={formDate} onChange={e => setFormDate(e.target.value)} 
+                        className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <div className="flex-1 relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <input type="number" required inputMode="decimal" step="0.01" min="0" placeholder={l.amount} value={formAmount} onChange={e => setFormAmount(e.target.value)} 
+                          className="w-full pl-8 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    </div>
+                    <input type="text" placeholder={l.procedure} value={formProcedure} onChange={e => setFormProcedure(e.target.value)} 
+                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-2xl active:bg-gray-800 mt-2">
+                      {l.saveRecord}
+                    </button>
+                  </form>
+                </div>
+
+                {(() => {
+                  const catRecordsAll = [...records].filter(r => r.categoryId === selectedCategory.id).sort((a,b) => new Date(b.date) - new Date(a.date));
+                  return (
+                    <>
+                      <h3 className="font-bold text-gray-500 mb-3 px-1 text-sm">{l.pastRecords} ({catRecordsAll.length})</h3>
+                      <div className="space-y-3">
+                        {catRecordsAll.map(r => (
+                          <RecordCard key={r.id} record={r} lang={lang} l={l} category={selectedCategory}
+                            showCategoryTag={false}
+                            isEditing={editingRecord?.id === r.id} editDraft={editingRecord}
+                            onStartEdit={startEditRecord} onChangeDraft={setEditingRecord}
+                            onSaveEdit={saveEditRecord} onCancelEdit={cancelEditRecord}
+                            onToggleStatus={toggleStatus} onDelete={deleteRecord} />
+                        ))}
+                        {catRecordsAll.length === 0 && (
+                          <div className="text-center py-8 text-gray-400 text-sm">{l.noRecords}</div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* --- VIEW: HOSPITAL REFERENCE --- */}
+            {!selectedCategory && activeTab === 'hospital' && (
+              <div className="animate-[fadeIn_0.2s_ease-out] pb-6">
+                <div className="mb-4 px-1">
+                  <h2 className="text-xl font-bold text-gray-800">{l.hospitalTitle}</h2>
+                  <p className="text-xs text-gray-500 mt-1 leading-tight">{l.hospitalNote}</p>
+                </div>
+                
+                <div className="space-y-4 mb-6">
+                  {HOSPITAL_BENEFITS.map((section, idx) => (
+                    <div key={idx} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                      <div className="bg-blue-50 text-blue-800 font-bold px-4 py-3 text-sm border-b border-blue-100">
+                        {section.section[lang]}
+                      </div>
+                      <div className="divide-y divide-gray-50">
+                        {section.items.map((item, i) => (
+                          <div key={i} className="px-4 py-3 flex justify-between items-center gap-4">
+                            <span className="text-sm font-medium text-gray-700 leading-tight flex-1">{item.name[lang]}</span>
+                            <span className="text-sm font-bold text-blue-600 text-right shrink-0">{item.limit[lang]}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-blue-50/50 p-5 rounded-3xl border border-blue-100 mb-6 space-y-2">
+                  <p className="font-bold text-sm text-blue-800 mb-2">{l.notes}</p>
+                  {HOSPITAL_FOOTNOTES[lang].map((note, idx) => (
+                    <p key={idx} className="text-xs text-gray-600 leading-snug flex items-start gap-1">
+                       <span className="text-blue-400 mt-[1px]">•</span>{note}
+                    </p>
+                  ))}
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-800 mb-2 text-sm flex items-center">
+                    <span className="text-blue-500 text-lg mr-2">+</span> {l.hospLogBtn}
+                  </h3>
+                  <p className="text-xs text-orange-600 mb-4 bg-orange-50 p-3 rounded-xl leading-snug">
+                    {l.hospRecordNote}
+                  </p>
+                  <form onSubmit={(e) => handleAddRecord(e, HOSP_ID)} className="space-y-3">
+                    <div className="flex gap-3">
+                      <input type="date" required value={formDate} onChange={e => setFormDate(e.target.value)} 
+                        className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <div className="flex-1 relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                        <input type="number" required inputMode="decimal" step="0.01" min="0" placeholder={l.amount} value={formAmount} onChange={e => setFormAmount(e.target.value)} 
+                          className="w-full pl-8 p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    </div>
+                    <input type="text" placeholder={l.procedure} value={formProcedure} onChange={e => setFormProcedure(e.target.value)} 
+                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-2xl active:bg-blue-700 mt-2">
+                      {l.saveRecord}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* --- VIEW: FULL HISTORY --- */}
+            {!selectedCategory && activeTab === 'history' && (
+              <div className="animate-[fadeIn_0.2s_ease-out] pb-6">
+                <div className="flex justify-between items-end mb-4 px-1">
+                  <h2 className="text-xl font-bold text-gray-800">{l.allRecords}</h2>
+                  <div className="text-sm font-bold text-blue-600">
+                    {l.total}: ${records.reduce((sum, r) => sum + r.amount, 0).toLocaleString()}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  {[...records].sort((a,b) => new Date(b.date) - new Date(a.date)).map(r => {
+                    const cat = CATEGORIES.find(c => c.id === r.categoryId);
+                    const catName = r.categoryId === HOSP_ID ? l.tabHospital : (cat?.name[lang] || 'Unknown');
+                    const isPrior = !isInPolicyYear(r.date, policyYear);
+                    return (
+                      <div key={r.id} className="relative">
+                        {isPrior && !(editingRecord?.id === r.id) && (
+                          <span className="absolute -top-2 right-3 z-10 text-[9px] font-bold text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">{l.priorYear}</span>
+                        )}
+                        <RecordCard record={r} lang={lang} l={l} category={cat} categoryLabel={catName}
+                          showCategoryTag={true}
+                          isEditing={editingRecord?.id === r.id} editDraft={editingRecord}
+                          onStartEdit={startEditRecord} onChangeDraft={setEditingRecord}
+                          onSaveEdit={saveEditRecord} onCancelEdit={cancelEditRecord}
+                          onToggleStatus={toggleStatus} onDelete={deleteRecord} />
+                      </div>
+                    );
+                  })}
+                  {records.length === 0 && <div className="text-center py-10 text-gray-400 text-sm bg-white rounded-3xl border border-gray-100 border-dashed">{l.noRecords}</div>}
+                </div>
+              </div>
+            )}
+
+            {/* --- VIEW: SETTINGS --- */}
+            {!selectedCategory && activeTab === 'settings' && (
+              <div className="animate-[fadeIn_0.2s_ease-out]">
+                <h2 className="text-xl font-bold text-gray-800 mb-4 px-1">{l.tabSettings}</h2>
+                
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col divide-y divide-gray-50">
+                  <button onClick={exportCSV} className="p-4 flex items-center justify-between text-left active:bg-gray-50 rounded-t-3xl">
+                    <div>
+                      <div className="font-bold text-gray-800 text-sm">{l.exportCsv}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">{l.exportDesc}</div>
+                    </div>
+                    <span className="text-xl">📊</span>
+                  </button>
+                  
+                  <button onClick={downloadBackup} className="p-4 flex items-center justify-between text-left active:bg-gray-50 rounded-b-3xl">
+                    <div>
+                      <div className="font-bold text-gray-800 text-sm">{l.backup}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">{l.backupDesc}</div>
+                    </div>
+                    <span className="text-xl">💾</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </main>
+          
+          {/* iOS-Style Bottom Navigation */}
+          {!selectedCategory && (
+            <nav className="fixed bottom-0 w-full max-w-[600px] bg-white/95 backdrop-blur-md border-t border-gray-200 pb-safe z-30 flex">
+              <button onClick={() => setActiveTab('dashboard')} className={`flex-1 py-4 flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-blue-600' : 'text-gray-400 active:text-gray-600'}`}>
+                <span className="text-xl leading-none">🏠</span>
+                <span className="text-[10px] font-bold">{l.tabHome}</span>
+              </button>
+              <button onClick={() => setActiveTab('hospital')} className={`flex-1 py-4 flex flex-col items-center gap-1 transition-colors ${activeTab === 'hospital' ? 'text-blue-600' : 'text-gray-400 active:text-gray-600'}`}>
+                <span className="text-xl leading-none">🏥</span>
+                <span className="text-[10px] font-bold">{l.tabHospital}</span>
+              </button>
+              <button onClick={() => setActiveTab('history')} className={`flex-1 py-4 flex flex-col items-center gap-1 transition-colors ${activeTab === 'history' ? 'text-blue-600' : 'text-gray-400 active:text-gray-600'}`}>
+                <span className="text-xl leading-none">📋</span>
+                <span className="text-[10px] font-bold">{l.tabHistory}</span>
+              </button>
+              <button onClick={() => setActiveTab('settings')} className={`flex-1 py-4 flex flex-col items-center gap-1 transition-colors ${activeTab === 'settings' ? 'text-blue-600' : 'text-gray-400 active:text-gray-600'}`}>
+                <span className="text-xl leading-none">⚙️</span>
+                <span className="text-[10px] font-bold">{l.tabSettings}</span>
+              </button>
+            </nav>
+          )}
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => console.warn('Service worker registration failed:', err));
+      });
+    }
+  </script>
+
+</body>
+</html>

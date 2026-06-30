@@ -1,0 +1,17 @@
+{
+  "name": "AIA Flexi-Max Tracker",
+  "short_name": "Flexi-Max",
+  "description": "Track outpatient and hospital insurance claims against your AIA Flexi-Max plan limits.",
+  "start_url": "./aiamax.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f4f6",
+  "theme_color": "#2563eb",
+  "lang": "zh-HK",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
