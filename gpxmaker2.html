@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPX Maker - Advanced GPX Builder & Route Optimizer</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f5f7ff',
+              100: '#ebf0ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    /* Custom Scrollbar for sleek UI */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #4b5563;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #6b7280;
+    }
+    /* Map Container Fixes */
+    .leaflet-container {
+      background: #1e293b !important;
+    }
+    .leaflet-bar a {
+      background-color: #1e293b !important;
+      color: #f8fafc !important;
+      border-bottom: 1px solid #334155 !important;
+    }
+    .leaflet-bar a:hover {
+      background-color: #334155 !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+  <header class="border-b border-slate-800 bg-slate-900 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-brand-600 rounded-lg text-white">
+          <i data-lucide="map-pin" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">GPX Maker</h1>
+          <p class="text-xs text-slate-400">Transform coordinates into optimized GPX routes</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <button id="themeToggle" class="p-2 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-300 transition" title="Toggle Light/Dark Theme">
+          <i data-lucide="sun" id="themeSun" class="w-5 h-5 hidden"></i>
+          <i data-lucide="moon" id="themeMoon" class="w-5 h-5"></i>
+        </button>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">v2.0.0 Standalone</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="toastContainer" class="fixed top-20 right-4 z-[9999] flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <section class="lg:col-span-5 flex flex-col gap-6">
+      
+      <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col gap-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="text-quote" class="w-5 h-5 text-brand-500"></i>
+            <h2 class="font-semibold text-base text-slate-100">Coordinate Input</h2>
+          </div>
+          <button id="clearInputBtn" class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 transition">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear
+          </button>
+        </div>
+
+        <p class="text-xs text-slate-400 -mt-2">
+          Paste coordinates. List numbers, keycaps, brackets, and emojis are ignored. Period-separated coordinate typos are auto-corrected.
+        </p>
+
+        <textarea 
+          id="coordInput" 
+          rows="8" 
+          placeholder="Paste coordinates here...&#10;&#10;Supported Format Examples:&#10;1️⃣ 64.147609, -21.922327&#10;2️⃣ 64.152840, -21.932219&#10;10. 📍39.035763, -8.872782&#10;23.627875.86.180014 (Auto-fixed!)"
+          class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition resize-y min-h-[140px]"
+        ></textarea>
+
+        <div class="flex flex-wrap gap-2 justify-between items-center text-xs">
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input type="checkbox" id="swapLatLon" class="rounded border-slate-700 text-brand-600 bg-slate-900 focus:ring-brand-500 w-4 h-4">
+              <span>Swap Lat/Lon</span>
+            </label>
+          </div>
+          <button id="parseBtn" class="bg-brand-600 hover:bg-brand-500 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-1.5 shadow-lg shadow-brand-600/10 transition active:scale-95">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Parse Coordinates
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col gap-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="settings-2" class="w-5 h-5 text-brand-500"></i>
+          <h2 class="font-semibold text-base text-slate-100">Export Settings & Optimization</h2>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">Custom Route / POI Identifier Name</label>
+          <div class="relative">
+            <input type="text" id="unifiedName" value="Flowers" placeholder="e.g. Flowers, Morning Hike, Tour"
+              class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-3 pr-24 py-2.5 text-sm font-medium text-slate-200 focus:outline-none focus:border-brand-500">
+            <div class="absolute right-2 top-2 text-[10px] bg-slate-800 border border-slate-700 text-slate-400 rounded px-2 py-0.5 pointer-events-none select-none font-mono">
+              filename prefix
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1">
+            Setting this to <span class="text-slate-300 font-semibold italic">"Flowers"</span> auto-configures: File name to <span class="text-brand-400 font-semibold">"Flowers"</span>, Route name to <span class="text-brand-400 font-semibold">"Flowers Route"</span>, and Waypoints to <span class="text-brand-400 font-semibold">"Flowers POI"</span>. For JSON, flags <span class="text-brand-400 font-semibold">"isFlower": true</span>.
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">GPX Structure Type</label>
+          <div class="grid grid-cols-3 gap-2">
+            <label class="border border-slate-800 bg-slate-950/50 p-2.5 rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-slate-700 transition" id="labelTypeRte">
+              <input type="radio" name="gpxType" value="route" checked class="sr-only">
+              <i data-lucide="git-commit" class="w-4 h-4 text-brand-500"></i>
+              <span class="text-xs font-medium mt-1">Route</span>
+              <span class="text-[9px] text-slate-500 text-center">&lt;rte&gt; node</span>
+            </label>
+            <label class="border border-slate-800 bg-slate-950/50 p-2.5 rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-slate-700 transition" id="labelTypeTrk">
+              <input type="radio" name="gpxType" value="track" class="sr-only">
+              <i data-lucide="route" class="w-4 h-4 text-teal-500"></i>
+              <span class="text-xs font-medium mt-1">Track</span>
+              <span class="text-[9px] text-slate-500 text-center">&lt;trk&gt; node</span>
+            </label>
+            <label class="border border-slate-800 bg-slate-950/50 p-2.5 rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-slate-700 transition" id="labelTypeWpt">
+              <input type="radio" name="gpxType" value="poi" class="sr-only">
+              <i data-lucide="map-pinned" class="w-4 h-4 text-amber-500"></i>
+              <span class="text-xs font-medium mt-1">POI List</span>
+              <span class="text-[9px] text-slate-500 text-center">&lt;wpt&gt; nodes</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="bg-slate-950/40 border border-slate-800 rounded-lg p-3.5 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer text-slate-200 font-medium text-sm">
+              <input type="checkbox" id="sortProximity" class="rounded border-slate-700 text-brand-600 bg-slate-900 focus:ring-brand-500 w-4.5 h-4.5">
+              <span>Optimize Proximity Sequence</span>
+            </label>
+            <span class="text-[10px] uppercase font-bold tracking-wider text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded">Smart Route</span>
+          </div>
+          <p class="text-xs text-slate-400">
+            Re-orders waypoints using a Nearest-Neighbor traveling trajectory solver. Ideal for messy files to ensure a smooth, contiguous visual route instead of zig-zag lines.
+          </p>
+          <div id="sortOptions" class="hidden flex flex-col gap-2 mt-2 pt-2 border-t border-slate-800">
+            <label class="block text-[11px] font-semibold uppercase text-slate-500 tracking-wider">Start Point Strategy</label>
+            <select id="sortStart" class="bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-brand-500">
+              <option value="first">Keep current first point as Starting point</option>
+              <option value="optimal">Identify best logical perimeter starting point</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
+          <button id="copyBtn" class="bg-slate-950 hover:bg-slate-900 border border-slate-700 text-slate-200 font-semibold py-3 px-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-[0.98] text-sm">
+            <i data-lucide="copy" class="w-4 h-4"></i> Copy
+          </button>
+          
+          <div class="flex rounded-xl shadow-lg shadow-brand-600/20 transition overflow-hidden">
+            <button id="shareGpxBtn" class="flex-[3] bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-semibold py-3 px-2 flex items-center justify-center gap-1.5 text-sm active:scale-[0.98]">
+              <i data-lucide="share-2" class="w-4 h-4"></i> GPX
+            </button>
+            <div class="w-[1px] bg-brand-800/50 z-10"></div>
+            <button id="downloadGpxBtn" class="flex-1 bg-brand-700 hover:bg-brand-600 text-white flex items-center justify-center active:scale-[0.98]" title="Download GPX Directly">
+              <i data-lucide="download" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <div class="flex rounded-xl shadow-lg shadow-emerald-600/20 transition overflow-hidden">
+            <button id="shareJsonBtn" class="flex-[3] bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-semibold py-3 px-2 flex items-center justify-center gap-1.5 text-sm active:scale-[0.98]">
+              <i data-lucide="share-2" class="w-4 h-4"></i> JSON
+            </button>
+            <div class="w-[1px] bg-emerald-800/50 z-10"></div>
+            <button id="downloadJsonBtn" class="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white flex items-center justify-center active:scale-[0.98]" title="Download JSON Directly">
+              <i data-lucide="download" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lg:col-span-7 flex flex-col gap-6">
+      
+      <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-3 shadow-xl flex flex-col gap-3 min-h-[400px] lg:h-[450px]">
+        <div class="flex items-center justify-between px-2">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="font-semibold text-base text-slate-100">Interactive Map Preview</span>
+          </div>
+          <span class="text-xs text-slate-400 flex items-center gap-1">
+            <i data-lucide="info" class="w-3.5 h-3.5"></i> Click map to append point
+          </span>
+        </div>
+        
+        <div id="map" class="w-full flex-1 rounded-lg border border-slate-750 overflow-hidden relative min-h-[300px]"></div>
+      </div>
+
+      <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col gap-3 flex-1">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="list-ordered" class="w-5 h-5 text-brand-500"></i>
+            <h3 class="font-semibold text-base text-slate-100">Manage Route Points</h3>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20" id="pointCounter">
+            0 Points Loaded
+          </span>
+        </div>
+
+        <div class="border border-slate-800 bg-slate-950/30 rounded-lg overflow-hidden max-h-[220px] overflow-y-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 bg-slate-950/80 text-[10px] uppercase tracking-wider font-semibold text-slate-400">
+                <th class="py-2.5 px-3 w-12 text-center">#</th>
+                <th class="py-2.5 px-3">Latitude</th>
+                <th class="py-2.5 px-3">Longitude</th>
+                <th class="py-2.5 px-3 w-32">Proximity Dist.</th>
+                <th class="py-2.5 px-3 w-16 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="coordinateTableBody" class="divide-y divide-slate-800/50 text-xs">
+              <tr id="emptyTableRow">
+                <td colspan="5" class="py-8 text-center text-slate-500 italic">
+                  No coordinates parsed yet. Add/paste above or click on the map to start building your route.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex justify-between items-center text-xs mt-1">
+          <div class="flex gap-2">
+            <button id="reversePointsBtn" class="border border-slate-800 hover:border-slate-700 bg-slate-950/40 text-slate-300 font-medium px-3 py-1.5 rounded transition flex items-center gap-1">
+              <i data-lucide="arrow-up-down" class="w-3.5 h-3.5"></i> Reverse Path
+            </button>
+            <button id="shiftPointsBtn" class="border border-slate-800 hover:border-slate-700 bg-slate-950/40 text-slate-300 font-medium px-3 py-1.5 rounded transition flex items-center gap-1" title="Shifts sequence forward by 1 point">
+              <i data-lucide="shuffle" class="w-3.5 h-3.5"></i> Shift Cycle
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-500" id="routeStats">Total distance: 0.00 km</p>
+        </div>
+      </div>
+      
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-800 bg-slate-950 py-4 px-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+      <p>GPX Maker Utility &bull; Standalone browser solution. No data is sent to external servers.</p>
+      <p class="flex items-center gap-1.5 justify-center">
+        <span>Made for high-precision GPS data workflows</span>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    // --- Global State ---
+    let coordinates = []; // Array of {lat: val, lon: val}
+    let map = null;
+    let markersGroup = null;
+    let routeLine = null;
+    let activeTheme = 'dark';
+
+    // --- DOM Elements ---
+    const coordInput = document.getElementById('coordInput');
+    const parseBtn = document.getElementById('parseBtn');
+    const clearInputBtn = document.getElementById('clearInputBtn');
+    const swapLatLonCheckbox = document.getElementById('swapLatLon');
+    const sortProximityCheckbox = document.getElementById('sortProximity');
+    const sortOptionsDiv = document.getElementById('sortOptions');
+    const sortStartSelect = document.getElementById('sortStart');
+    
+    const unifiedNameInput = document.getElementById('unifiedName');
+    const gpxTypeRadios = document.getElementsByName('gpxType');
+    
+    const copyBtn = document.getElementById('copyBtn');
+    const shareGpxBtn = document.getElementById('shareGpxBtn');
+    const downloadGpxBtn = document.getElementById('downloadGpxBtn');
+    const shareJsonBtn = document.getElementById('shareJsonBtn');
+    const downloadJsonBtn = document.getElementById('downloadJsonBtn');
+    
+    const pointCounter = document.getElementById('pointCounter');
+    const coordinateTableBody = document.getElementById('coordinateTableBody');
+    const emptyTableRow = document.getElementById('emptyTableRow');
+    const reversePointsBtn = document.getElementById('reversePointsBtn');
+    const shiftPointsBtn = document.getElementById('shiftPointsBtn');
+    const routeStats = document.getElementById('routeStats');
+    
+    const themeToggle = document.getElementById('themeToggle');
+    const themeSun = document.getElementById('themeSun');
+    const themeMoon = document.getElementById('themeMoon');
+
+    // --- Init Icons ---
+    lucide.createIcons();
+
+    // --- Theme Control ---
+    themeToggle.addEventListener('click', () => {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        themeSun.classList.remove('hidden');
+        themeMoon.classList.add('hidden');
+        activeTheme = 'light';
+        updateMapTheme();
+      } else {
+        document.documentElement.classList.add('dark');
+        themeSun.classList.add('hidden');
+        themeMoon.classList.remove('hidden');
+        activeTheme = 'dark';
+        updateMapTheme();
+      }
+    });
+
+    // --- Toast Notifications ---
+    function showToast(message, type = 'info') {
+      const toastContainer = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `flex items-center gap-2 px-4 py-3 rounded-xl border shadow-2xl transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto min-w-[280px]`;
+      
+      let bg, border, text, icon;
+      if (type === 'success') {
+        bg = 'bg-emerald-950/90';
+        border = 'border-emerald-800';
+        text = 'text-emerald-100';
+        icon = 'check-circle';
+      } else if (type === 'error') {
+        bg = 'bg-rose-950/90';
+        border = 'border-rose-800';
+        text = 'text-rose-100';
+        icon = 'alert-triangle';
+      } else {
+        bg = 'bg-slate-800/90';
+        border = 'border-slate-750';
+        text = 'text-slate-100';
+        icon = 'info';
+      }
+      
+      toast.className += ` ${bg} ${border} ${text}`;
+      toast.innerHTML = `
+        <i data-lucide="${icon}" class="w-5 h-5 shrink-0"></i>
+        <div class="text-xs font-medium flex-1">${message}</div>
+        <button class="text-slate-400 hover:text-white transition focus:outline-none" onclick="this.parentElement.remove()">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      `;
+      
+      toastContainer.appendChild(toast);
+      lucide.createIcons({ attrs: { class: 'lucide-custom' } });
+      
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+      
+      setTimeout(() => {
+        toast.classList.add('translate-y-[-10px]', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // --- Leaflet Map Initialization ---
+    let tileLayer = null;
+    const darkTiles = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    const lightTiles = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+    function initMap() {
+      map = L.map('map', { zoomControl: true }).setView([23.633880, 86.178140], 13);
+      
+      tileLayer = L.tileLayer(darkTiles, {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+      }).addTo(map);
+
+      markersGroup = L.layerGroup().addTo(map);
+      routeLine = L.polyline([], { color: '#6366f1', weight: 4, opacity: 0.85 }).addTo(map);
+
+      map.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+        addCoordinate(lat, lng);
+        showToast(`Point added: ${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'success');
+      });
+    }
+
+    function updateMapTheme() {
+      if (!map) return;
+      map.removeLayer(tileLayer);
+      const url = activeTheme === 'dark' ? darkTiles : lightTiles;
+      tileLayer = L.tileLayer(url, {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+      }).addTo(map);
+    }
+
+    window.onload = function() {
+      initMap();
+      coordInput.value = '';
+      processAndRender(false);
+    };
+
+    window.addEventListener('resize', () => {
+      if (map) {
+        map.invalidateSize();
+      }
+    });
+
+    // --- Distance Calculator (Haversine Formula) ---
+    function haversineDistance(pt1, pt2) {
+      const R = 6371e3;
+      const phi1 = pt1.lat * Math.PI/180;
+      const phi2 = pt2.lat * Math.PI/180;
+      const deltaPhi = (pt2.lat - pt1.lat) * Math.PI/180;
+      const deltaLambda = (pt2.lon - pt1.lon) * Math.PI/180;
+
+      const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+                Math.cos(phi1) * Math.cos(phi2) *
+                Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+      return R * c;
+    }
+
+    // --- Parse Text Inputs into Coordinates array ---
+    function parseCoordinates(silent = false) {
+      const text = coordInput.value;
+      const lines = text.split(/[\r\n]+/);
+      const newCoordinates = [];
+      const swap = swapLatLonCheckbox.checked;
+
+      lines.forEach((line) => {
+        let cleanedLine = line.trim();
+        if (!cleanedLine) return;
+
+        cleanedLine = cleanedLine.replace(/\d\ufe0f?\u20e3|\uD83D\uDD1F/g, '');
+        cleanedLine = cleanedLine.replace(/([-+]?\d+\.\d+)\s*\.\s*([-+]?\d+\.\d+)/g, '$1,$2');
+        cleanedLine = cleanedLine.replace(/[^0-9\-+.,\s\[\]\(\)\{\}]/g, '');
+        cleanedLine = cleanedLine.trim();
+        cleanedLine = cleanedLine.replace(/^\s*\d+(?:(?:\.(?!\d)|[\)\-:])+\s*|\s+)/, '');
+        cleanedLine = cleanedLine.trim();
+
+        const matches = cleanedLine.match(/[-+]?[0-9]*\.?[0-9]+/g);
+        
+        if (matches && matches.length >= 2) {
+          let latVal = parseFloat(matches[0]);
+          let lonVal = parseFloat(matches[1]);
+          
+          if (swap) {
+            const temp = latVal;
+            latVal = lonVal;
+            lonVal = temp;
+          }
+
+          if (Math.abs(latVal) <= 90 && Math.abs(lonVal) <= 180) {
+            newCoordinates.push({ lat: latVal, lon: lonVal });
+          }
+        }
+      });
+
+      if (newCoordinates.length === 0) {
+        if (!silent) showToast("Could not find any valid coordinate patterns in the text input.", "error");
+        return;
+      }
+
+      coordinates = newCoordinates;
+      processAndRender(true);
+      if (!silent) showToast(`Successfully parsed ${coordinates.length} points.`, 'success');
+    }
+
+    function addCoordinate(lat, lon) {
+      coordinates.push({ lat, lon });
+      processAndRender(true);
+    }
+
+    function processAndRender(syncInputBox = false) {
+      if (sortProximityCheckbox.checked && coordinates.length > 2) {
+        applyNearestNeighborOptimization();
+      }
+
+      if (syncInputBox) {
+        syncTextareaWithCoordinates();
+      }
+
+      renderPointTable();
+      renderMapElements();
+
+      pointCounter.innerText = `${coordinates.length} Point${coordinates.length === 1 ? '' : 's'} Loaded`;
+    }
+
+    function applyNearestNeighborOptimization() {
+      if (coordinates.length <= 1) return;
+
+      const unvisited = [...coordinates];
+      const sorted = [];
+      const strategy = sortStartSelect.value;
+      
+      let currentIdx = 0;
+      
+      if (strategy === 'optimal') {
+        let minVal = Infinity;
+        let startIndex = 0;
+        for (let i = 0; i < unvisited.length; i++) {
+          const distanceSum = unvisited[i].lat + unvisited[i].lon;
+          if (distanceSum < minVal) {
+            minVal = distanceSum;
+            startIndex = i;
+          }
+        }
+        currentIdx = startIndex;
+      }
+
+      let current = unvisited.splice(currentIdx, 1)[0];
+      sorted.push(current);
+
+      while (unvisited.length > 0) {
+        let bestIndex = 0;
+        let bestDistance = Infinity;
+
+        for (let i = 0; i < unvisited.length; i++) {
+          const d = haversineDistance(current, unvisited[i]);
+          if (d < bestDistance) {
+            bestDistance = d;
+            bestIndex = i;
+          }
+        }
+
+        current = unvisited.splice(bestIndex, 1)[0];
+        sorted.push(current);
+      }
+
+      coordinates = sorted;
+    }
+
+    function syncTextareaWithCoordinates() {
+      if (coordinates.length === 0) {
+        coordInput.value = '';
+        return;
+      }
+      const lines = coordinates.map(c => `${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}`);
+      coordInput.value = lines.join('\n');
+    }
+
+    function renderPointTable() {
+      coordinateTableBody.innerHTML = '';
+      
+      if (coordinates.length === 0) {
+        coordinateTableBody.appendChild(emptyTableRow);
+        routeStats.innerText = "Total distance: 0.00 km";
+        return;
+      }
+
+      let totalDistanceMeters = 0;
+
+      coordinates.forEach((pt, index) => {
+        let distanceStr = '-';
+        if (index > 0) {
+          const segmentDist = haversineDistance(coordinates[index - 1], pt);
+          totalDistanceMeters += segmentDist;
+          
+          if (segmentDist >= 1000) {
+            distanceStr = `${(segmentDist / 1000).toFixed(2)} km`;
+          } else {
+            distanceStr = `${Math.round(segmentDist)} m`;
+          }
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-800/40 transition group";
+        tr.innerHTML = `
+          <td class="py-2 px-3 text-center text-slate-500 font-mono text-[10px]">${index + 1}</td>
+          <td class="py-2 px-3 font-mono text-slate-200">
+            <input type="number" step="any" value="${pt.lat}" 
+              class="bg-transparent border border-transparent focus:border-slate-700 focus:bg-slate-900 rounded px-1.5 py-0.5 w-full text-xs font-mono focus:outline-none" 
+              onchange="updatePointLat(${index}, this.value)">
+          </td>
+          <td class="py-2 px-3 font-mono text-slate-200">
+            <input type="number" step="any" value="${pt.lon}" 
+              class="bg-transparent border border-transparent focus:border-slate-700 focus:bg-slate-900 rounded px-1.5 py-0.5 w-full text-xs font-mono focus:outline-none" 
+              onchange="updatePointLon(${index}, this.value)">
+          </td>
+          <td class="py-2 px-3 font-mono text-slate-400 text-[11px]">${distanceStr}</td>
+          <td class="py-2 px-3 text-center">
+            <button onclick="removePoint(${index})" class="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-slate-800/50 transition duration-150 inline-block" title="Remove point">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </td>
+        `;
+        coordinateTableBody.appendChild(tr);
+      });
+
+      const km = totalDistanceMeters / 1000;
+      routeStats.innerText = `Total distance: ${km.toFixed(2)} km (${(km * 0.621371).toFixed(2)} mi)`;
+      lucide.createIcons();
+    }
+
+    window.updatePointLat = function(index, value) {
+      const parsedVal = parseFloat(value);
+      if (!isNaN(parsedVal) && Math.abs(parsedVal) <= 90) {
+        coordinates[index].lat = parsedVal;
+        processAndRender(true);
+      } else {
+        showToast("Invalid latitude values must be between -90 and 90.", "error");
+        renderPointTable();
+      }
+    };
+
+    window.updatePointLon = function(index, value) {
+      const parsedVal = parseFloat(value);
+      if (!isNaN(parsedVal) && Math.abs(parsedVal) <= 180) {
+        coordinates[index].lon = parsedVal;
+        processAndRender(true);
+      } else {
+        showToast("Invalid longitude values must be between -180 and 180.", "error");
+        renderPointTable();
+      }
+    };
+
+    window.removePoint = function(index) {
+      coordinates.splice(index, 1);
+      processAndRender(true);
+      showToast(`Point #${index+1} removed`, 'info');
+    };
+
+    function renderMapElements() {
+      if (!map) return;
+
+      markersGroup.clearLayers();
+      
+      if (coordinates.length === 0) {
+        routeLine.setLatLngs([]);
+        return;
+      }
+
+      const latlngs = coordinates.map(pt => [pt.lat, pt.lon]);
+      routeLine.setLatLngs(latlngs);
+
+      coordinates.forEach((pt, index) => {
+        let markerColor = '#6366f1';
+        let fillOpacity = 0.8;
+        let radius = 6;
+
+        if (index === 0) {
+          markerColor = '#10b981';
+          radius = 8;
+        } else if (index === coordinates.length - 1) {
+          markerColor = '#f43f5e';
+          radius = 8;
+        }
+
+        const marker = L.circleMarker([pt.lat, pt.lon], {
+          radius: radius,
+          fillColor: markerColor,
+          color: '#ffffff',
+          weight: 1.5,
+          opacity: 1,
+          fillOpacity: fillOpacity
+        });
+
+        marker.bindPopup(`
+          <div class="text-xs text-slate-100 font-sans">
+            <div class="font-bold border-b border-slate-700 pb-1 mb-1">Point #${index + 1}</div>
+            <div class="font-mono">Lat: ${pt.lat.toFixed(6)}</div>
+            <div class="font-mono">Lon: ${pt.lon.toFixed(6)}</div>
+            <button onclick="removePoint(${index})" class="mt-2 text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1">
+               Remove Point
+            </button>
+          </div>
+        `, { closeButton: false });
+
+        markersGroup.addLayer(marker);
+      });
+
+      try {
+        const bounds = L.latLngBounds(latlngs);
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+      } catch (err) {}
+    }
+
+    reversePointsBtn.addEventListener('click', () => {
+      if (coordinates.length <= 1) return;
+      coordinates.reverse();
+      processAndRender(true);
+      showToast("Route sequence reversed successfully", "success");
+    });
+
+    shiftPointsBtn.addEventListener('click', () => {
+      if (coordinates.length <= 1) return;
+      const first = coordinates.shift();
+      coordinates.push(first);
+      processAndRender(true);
+      showToast("Shifted route nodes by 1 cycle position", "info");
+    });
+
+    parseBtn.addEventListener('click', () => parseCoordinates(false));
+
+    clearInputBtn.addEventListener('click', () => {
+      coordInput.value = '';
+      coordinates = [];
+      processAndRender(true);
+      showToast("Cleared point database.", "info");
+    });
+
+    sortProximityCheckbox.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        sortOptionsDiv.classList.remove('hidden');
+      } else {
+        sortOptionsDiv.classList.add('hidden');
+      }
+      processAndRender(true);
+    });
+
+    sortStartSelect.addEventListener('change', () => {
+      processAndRender(true);
+    });
+
+    function buildGPXString() {
+      const xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>`;
+      const creator = "GPX Maker Builder";
+      const timestamp = new Date().toISOString();
+      const baseName = unifiedNameInput.value.trim() || "Flowers";
+      const safeBaseName = baseName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      
+      const selectedType = Array.from(gpxTypeRadios).find(r => r.checked).value;
+
+      let body = '';
+
+      if (selectedType === 'route') {
+        body += `  <rte>\n`;
+        body += `    <name>${safeBaseName} Route</name>\n`;
+        coordinates.forEach((pt, i) => {
+          body += `    <rtept lat="${pt.lat.toFixed(7)}" lon="${pt.lon.toFixed(7)}">\n`;
+          body += `      <name>${safeBaseName} Route - Pt_${i + 1}</name>\n`;
+          body += `    </rtept>\n`;
+        });
+        body += `  </rte>\n`;
+      } 
+      else if (selectedType === 'track') {
+        body += `  <trk>\n`;
+        body += `    <name>${safeBaseName} Track</name>\n`;
+        body += `    <trkseg>\n`;
+        coordinates.forEach((pt) => {
+          body += `      <trkpt lat="${pt.lat.toFixed(7)}" lon="${pt.lon.toFixed(7)}" />\n`;
+        });
+        body += `    </trkseg>\n`;
+        body += `  </trk>\n`;
+      } 
+      else if (selectedType === 'poi') {
+        coordinates.forEach((pt, i) => {
+          body += `  <wpt lat="${pt.lat.toFixed(7)}" lon="${pt.lon.toFixed(7)}">\n`;
+          body += `    <name>${safeBaseName} POI - ${i + 1}</name>\n`;
+          body += `  </wpt>\n`;
+        });
+      }
+
+      return `${xmlHeader}
+<gpx version="1.1" creator="${creator}" 
+     xmlns="http://www.topografix.com/GPX/1/1" 
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>${safeBaseName}</name>
+    <desc>Generated &amp; optimized dynamically using GPX Maker on ${timestamp}</desc>
+    <time>${timestamp}</time>
+  </metadata>
+${body}</gpx>`;
+    }
+
+    function buildJSONString() {
+      const baseName = unifiedNameInput.value.trim() || "route";
+      const generateId = () => {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+
+      const jsonStructure = [{
+        id: generateId(),
+        name: baseName,
+        isFlower: baseName.toLowerCase() === 'flowers',
+        isPinned: false,
+        points: coordinates.map(pt => ({ lat: pt.lat, lng: pt.lon }))
+      }];
+
+      return JSON.stringify(jsonStructure, null, 4);
+    }
+
+    copyBtn.addEventListener('click', () => {
+      if (coordinates.length === 0) {
+        showToast("No coordinate data to copy. Please input or plot some coordinates first.", "error");
+        return;
+      }
+      const dummy = document.createElement("textarea");
+      document.body.appendChild(dummy);
+      dummy.value = buildGPXString();
+      dummy.select();
+      try {
+        const success = document.execCommand("copy");
+        if (success) showToast("GPX XML Markup copied to clipboard!", "success");
+        else showToast("Clipboard write permission blocked.", "error");
+      } catch (err) {
+        showToast("Error executing copy protocol.", "error");
+      }
+      document.body.removeChild(dummy);
+    });
+
+    // --- Core Action: Native Share File ---
+    async function shareFile(textData, defaultFilename, mimeType) {
+      if (coordinates.length === 0) {
+        showToast("No coordinate data to export. Please input or plot coordinates first.", "error");
+        return;
+      }
+
+      let filename = unifiedNameInput.value.trim() || "route";
+      const ext = defaultFilename.split('.').pop();
+      if (!filename.toLowerCase().endsWith(`.${ext}`)) filename += `.${ext}`;
+
+      const blob = new Blob([textData], { type: mimeType });
+      const file = new File([blob], filename, { type: mimeType });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: `Exported Route (${ext.toUpperCase()})`,
+            text: 'Here is your exported route file.'
+          });
+          showToast(`Opened share menu for "${filename}"!`, "success");
+        } catch (error) {
+          if (error.name !== 'AbortError') {
+             console.warn('Share API failed', error);
+             showToast("Sharing failed.", "error");
+          }
+        }
+      } else {
+        showToast("Native sharing is not supported on this browser. Please use the download button instead.", "error");
+      }
+    }
+
+    // --- Core Action: Direct Download File ---
+    function downloadFile(textData, defaultFilename, mimeType) {
+      if (coordinates.length === 0) {
+        showToast("No coordinate data to export. Please input or plot coordinates first.", "error");
+        return;
+      }
+
+      let filename = unifiedNameInput.value.trim() || "route";
+      const ext = defaultFilename.split('.').pop();
+      if (!filename.toLowerCase().endsWith(`.${ext}`)) filename += `.${ext}`;
+
+      try {
+        const blob = new Blob([textData], { type: mimeType });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = "hidden";
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        showToast(`Downloaded "${filename}" successfully!`, "success");
+      } catch (err) {
+        showToast("Generating output stream failed.", "error");
+      }
+    }
+
+    // Attach Action Listeners
+    shareGpxBtn.addEventListener('click', () => shareFile(buildGPXString(), "route.gpx", "application/gpx+xml"));
+    downloadGpxBtn.addEventListener('click', () => downloadFile(buildGPXString(), "route.gpx", "application/gpx+xml"));
+    shareJsonBtn.addEventListener('click', () => shareFile(buildJSONString(), "route.json", "application/json"));
+    downloadJsonBtn.addEventListener('click', () => downloadFile(buildJSONString(), "route.json", "application/json"));
+
+    const radioTypeRte = document.getElementById('labelTypeRte');
+    const radioTypeTrk = document.getElementById('labelTypeTrk');
+    const radioTypeWpt = document.getElementById('labelTypeWpt');
+
+    function updateRadioVisuals() {
+      const selectedType = Array.from(gpxTypeRadios).find(r => r.checked).value;
+      
+      [radioTypeRte, radioTypeTrk, radioTypeWpt].forEach(el => {
+        el.classList.remove('border-brand-500', 'bg-brand-500/5', 'ring-1', 'ring-brand-500');
+        el.classList.add('border-slate-800', 'bg-slate-950/50');
+      });
+
+      if (selectedType === 'route') {
+        radioTypeRte.classList.add('border-brand-500', 'bg-brand-500/5', 'ring-1', 'ring-brand-500');
+        radioTypeRte.classList.remove('border-slate-800', 'bg-slate-950/50');
+      } else if (selectedType === 'track') {
+        radioTypeTrk.classList.add('border-teal-500', 'bg-teal-500/5', 'ring-1', 'ring-teal-500');
+        radioTypeTrk.classList.remove('border-slate-800', 'bg-slate-950/50');
+      } else if (selectedType === 'poi') {
+        radioTypeWpt.classList.add('border-amber-500', 'bg-amber-500/5', 'ring-1', 'ring-amber-500');
+        radioTypeWpt.classList.remove('border-slate-800', 'bg-slate-950/50');
+      }
+    }
+
+    gpxTypeRadios.forEach(radio => radio.addEventListener('change', updateRadioVisuals));
+    updateRadioVisuals();
+
+  </script>
+</body>
+</html>
