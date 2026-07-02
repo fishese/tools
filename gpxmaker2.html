@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GPX Maker - Advanced GPX Builder & Route Optimizer</title>
   
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -25,8 +26,10 @@
     }
   </script>
 
+  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
+  <!-- Leaflet Map CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -62,6 +65,7 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
 
+  <!-- Non-Sticky Header to save screen space on mobile -->
   <header class="border-b border-slate-800 bg-slate-900 px-4 py-3">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
       <div class="flex items-center gap-3">
@@ -74,22 +78,27 @@
         </div>
       </div>
       
+      <!-- Theme Switcher & Links -->
       <div class="flex items-center gap-3">
         <button id="themeToggle" class="p-2 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-300 transition" title="Toggle Light/Dark Theme">
           <i data-lucide="sun" id="themeSun" class="w-5 h-5 hidden"></i>
           <i data-lucide="moon" id="themeMoon" class="w-5 h-5"></i>
         </button>
-        <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">v2.0.0 Standalone</span>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300">v2.0.1 Standalone</span>
       </div>
     </div>
   </header>
 
+  <!-- Toast Notification System -->
   <div id="toastContainer" class="fixed top-20 right-4 z-[9999] flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
+  <!-- Main Workspace -->
   <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
     
+    <!-- Left Panel: Input & Control Center -->
     <section class="lg:col-span-5 flex flex-col gap-6">
       
+      <!-- Parser Card -->
       <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col gap-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -108,10 +117,11 @@
         <textarea 
           id="coordInput" 
           rows="8" 
-          placeholder="Paste coordinates here...&#10;&#10;Supported Format Examples:&#10;1️⃣ 64.147609, -21.922327&#10;2️⃣ 64.152840, -21.932219&#10;10. 📍39.035763, -8.872782&#10;23.627875.86.180014 (Auto-fixed!)"
+          placeholder="Paste coordinates here...&#10;&#10;Supported Format Examples:&#10;1️⃣ 64.147609, -21.922327&#10;2️⃣ 64.152840, -21.932219&#10;10. 📍 39.035763, -8.872782&#10;23.627875.86.180014 (Auto-fixed!)"
           class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition resize-y min-h-[140px]"
         ></textarea>
 
+        <!-- Parsing Helpers -->
         <div class="flex flex-wrap gap-2 justify-between items-center text-xs">
           <div class="flex items-center gap-3">
             <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
@@ -125,12 +135,14 @@
         </div>
       </div>
 
+      <!-- Settings & Optimization Card -->
       <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col gap-4">
         <div class="flex items-center gap-2">
           <i data-lucide="settings-2" class="w-5 h-5 text-brand-500"></i>
           <h2 class="font-semibold text-base text-slate-100">Export Settings & Optimization</h2>
         </div>
 
+        <!-- File Settings -->
         <div>
           <label class="block text-xs font-medium text-slate-400 mb-1">Custom Route / POI Identifier Name</label>
           <div class="relative">
@@ -145,6 +157,7 @@
           </p>
         </div>
 
+        <!-- Export Type Selection -->
         <div>
           <label class="block text-xs font-medium text-slate-400 mb-1.5">GPX Structure Type</label>
           <div class="grid grid-cols-3 gap-2">
@@ -169,6 +182,7 @@
           </div>
         </div>
 
+        <!-- Proximity Sorting Engine Options -->
         <div class="bg-slate-950/40 border border-slate-800 rounded-lg p-3.5 flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <label class="flex items-center gap-2 cursor-pointer text-slate-200 font-medium text-sm">
@@ -183,12 +197,13 @@
           <div id="sortOptions" class="hidden flex flex-col gap-2 mt-2 pt-2 border-t border-slate-800">
             <label class="block text-[11px] font-semibold uppercase text-slate-500 tracking-wider">Start Point Strategy</label>
             <select id="sortStart" class="bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-brand-500">
+              <option value="optimal" selected>Identify best logical perimeter starting point</option>
               <option value="first">Keep current first point as Starting point</option>
-              <option value="optimal">Identify best logical perimeter starting point</option>
             </select>
           </div>
         </div>
 
+        <!-- Action Panel: Split Buttons for Share & Download -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
           <button id="copyBtn" class="bg-slate-950 hover:bg-slate-900 border border-slate-700 text-slate-200 font-semibold py-3 px-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-[0.98] text-sm">
             <i data-lucide="copy" class="w-4 h-4"></i> Copy
@@ -217,8 +232,10 @@
       </div>
     </section>
 
+    <!-- Right Panel: Visualizer & Points Table -->
     <section class="lg:col-span-7 flex flex-col gap-6">
       
+      <!-- Live Map Card -->
       <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-3 shadow-xl flex flex-col gap-3 min-h-[400px] lg:h-[450px]">
         <div class="flex items-center justify-between px-2">
           <div class="flex items-center gap-2">
@@ -230,9 +247,11 @@
           </span>
         </div>
         
+        <!-- Interactive Leaflet Map -->
         <div id="map" class="w-full flex-1 rounded-lg border border-slate-750 overflow-hidden relative min-h-[300px]"></div>
       </div>
 
+      <!-- Point Manager / Coordinate Table -->
       <div class="bg-slate-800/50 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col gap-3 flex-1">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -244,6 +263,7 @@
           </span>
         </div>
 
+        <!-- Table View of Parsed Coordinates -->
         <div class="border border-slate-800 bg-slate-950/30 rounded-lg overflow-hidden max-h-[220px] overflow-y-auto">
           <table class="w-full text-left border-collapse">
             <thead>
@@ -256,6 +276,7 @@
               </tr>
             </thead>
             <tbody id="coordinateTableBody" class="divide-y divide-slate-800/50 text-xs">
+              <!-- Dynamically populated rows -->
               <tr id="emptyTableRow">
                 <td colspan="5" class="py-8 text-center text-slate-500 italic">
                   No coordinates parsed yet. Add/paste above or click on the map to start building your route.
@@ -265,6 +286,7 @@
           </table>
         </div>
 
+        <!-- Bulk Manipulation Actions -->
         <div class="flex justify-between items-center text-xs mt-1">
           <div class="flex gap-2">
             <button id="reversePointsBtn" class="border border-slate-800 hover:border-slate-700 bg-slate-950/40 text-slate-300 font-medium px-3 py-1.5 rounded transition flex items-center gap-1">
@@ -281,6 +303,7 @@
     </section>
   </main>
 
+  <!-- Footer Info -->
   <footer class="border-t border-slate-800 bg-slate-950 py-4 px-4 text-center text-xs text-slate-500">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
       <p>GPX Maker Utility &bull; Standalone browser solution. No data is sent to external servers.</p>
@@ -847,25 +870,31 @@ ${body}</gpx>`;
       const ext = defaultFilename.split('.').pop();
       if (!filename.toLowerCase().endsWith(`.${ext}`)) filename += `.${ext}`;
 
-      const blob = new Blob([textData], { type: mimeType });
-      const file = new File([blob], filename, { type: mimeType });
+      // FIX: Coerce the MIME type to text/plain to bypass Chrome's strict file sharing whitelist.
+      const safeMimeType = "text/plain";
+
+      const blob = new Blob([textData], { type: safeMimeType });
+      
+      // FIX: Add lastModified to the File constructor, as some Android versions require it to validate the file object.
+      const file = new File([blob], filename, { type: safeMimeType, lastModified: Date.now() });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
             files: [file],
-            title: `Exported Route (${ext.toUpperCase()})`,
-            text: 'Here is your exported route file.'
+            title: `Exported Route (${ext.toUpperCase()})`
+            // FIX: Removed the 'text' parameter. Including both text and files causes Android intent collisions.
           });
           showToast(`Opened share menu for "${filename}"!`, "success");
         } catch (error) {
+          // If the user simply closed the share menu, do nothing.
           if (error.name !== 'AbortError') {
              console.warn('Share API failed', error);
-             showToast("Sharing failed.", "error");
+             showToast("File sharing blocked by browser or OS. Please use the direct download button.", "error");
           }
         }
       } else {
-        showToast("Native sharing is not supported on this browser. Please use the download button instead.", "error");
+        showToast("Native sharing is not supported on this browser. Please use the direct download button.", "error");
       }
     }
 
