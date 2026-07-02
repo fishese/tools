@@ -69,7 +69,7 @@
             <span class="text-zinc-400 text-xs truncate">{{ t('needHint') }}</span>
         </div>
 
-        <!-- Sticky Best Deal Summary -->
+        <!-- Sticky Best Deal Summary (Tighter Padding) -->
         <div v-if="hasActiveDeals" class="space-y-1 sticky top-0 z-40 bg-white/95 backdrop-blur-md pt-1 pb-1.5 px-1.5 md:px-4 -mx-1.5 md:-mx-4 border-b shadow-sm mb-1">
             <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5 max-w-7xl mx-auto">
                 <div v-for="(deal, dIndex) in deals" :key="'sum-' + deal.id" class="px-2 py-1.5 rounded-md flex flex-col shadow-sm overflow-hidden border" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-400 ring-1 ring-emerald-400' : 'bg-zinc-50 border-zinc-200 opacity-95'">
@@ -376,9 +376,11 @@
                     return lang.value === 'zh' ? `最少需買 ${buy} 件` : `Min. ${buy} paid sets required`;
                 };
 
-                const addDeal = () => {
+                const addDeal = (scrollToBottom = true) => {
                     deals.value.push({ id: generateId(), name: '', price: null, showDiscount: false, discountPercent: null, discountFlat: null, bogoBuy: null, bogoFree: null, items: [{ id: generateId(), qty: 1, size: null, unit: 'pcs' }] });
-                    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
+                    if (scrollToBottom !== false) {
+                        setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
+                    }
                 };
 
                 const duplicateDeal = (id) => {
@@ -390,7 +392,7 @@
                     deals.value.splice(idx + 1, 0, copy);
                 };
 
-                const initBlankState = () => { deals.value = []; addDeal(); addDeal(); };
+                const initBlankState = () => { deals.value = []; addDeal(false); addDeal(false); };
                 const clearAll = () => { if (confirm(t('confirmClear'))) initBlankState(); };
                 const hasData = () => deals.value.some(d => d.price || d.items[0]?.size);
 
