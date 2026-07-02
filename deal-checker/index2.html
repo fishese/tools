@@ -31,29 +31,29 @@
     </style>
 </head>
 <body class="min-h-screen p-1.5 md:p-4 text-zinc-800 font-sans flex flex-col antialiased relative">
-    <div id="app" v-cloak class="max-w-7xl mx-auto w-full space-y-2 flex-grow flex flex-col pb-24 relative">
+    <div id="app" v-cloak class="max-w-7xl mx-auto w-full space-y-1.5 flex-grow flex flex-col pb-24 relative">
 
-        <div class="flex flex-col md:flex-row justify-between items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-md border-b border-zinc-200">
-            <h1 class="text-base font-black text-indigo-900 tracking-tight flex items-center gap-1.5 w-full md:w-auto pl-1">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-indigo-600 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <!-- Header with Natural Flex-Wrap -->
+        <div class="flex flex-wrap justify-between items-center gap-1.5 bg-white px-2 py-1.5 rounded-xl shadow-md border-b border-zinc-200">
+            <h1 class="text-sm md:text-base font-black text-indigo-900 tracking-tight flex items-center gap-1 pl-0.5 flex-shrink-0 whitespace-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5 text-indigo-600 flex-shrink-0 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                {{ t('title') }}
+                <span>{{ t('title') }}</span>
             </h1>
 
-            <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto justify-end">
-                <div class="flex items-center justify-center bg-zinc-100 rounded px-1 py-1 shadow-inner border border-zinc-200">
-                    <button @click="adjustZoom(-10)" class="min-w-[32px] min-h-[32px] text-zinc-500 hover:text-indigo-700 hover:bg-zinc-200 rounded text-sm font-bold transition-colors flex items-center justify-center">A-</button>
-                    <div class="w-[1px] h-4 bg-zinc-300 mx-0.5"></div>
-                    <button @click="adjustZoom(10)" class="min-w-[32px] min-h-[32px] text-zinc-500 hover:text-indigo-700 hover:bg-zinc-200 rounded text-base font-bold transition-colors flex items-center justify-center">A+</button>
+            <div class="flex flex-wrap items-center gap-1 justify-end">
+                <div class="flex items-center justify-center bg-zinc-100 rounded shadow-inner border border-zinc-200">
+                    <button @click="adjustZoom(-10)" class="w-7 h-7 sm:w-8 sm:h-8 text-zinc-500 hover:text-indigo-700 hover:bg-zinc-200 rounded text-xs font-bold transition-colors flex items-center justify-center">A-</button>
+                    <div class="w-[1px] h-3 bg-zinc-300 mx-0"></div>
+                    <button @click="adjustZoom(10)" class="w-7 h-7 sm:w-8 sm:h-8 text-zinc-500 hover:text-indigo-700 hover:bg-zinc-200 rounded text-sm font-bold transition-colors flex items-center justify-center">A+</button>
                 </div>
-                <button v-if="canInstall" @click="triggerInstall" class="flex items-center gap-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded transition-colors shadow-sm border border-emerald-600">
+                <button v-if="canInstall" @click="triggerInstall" class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 px-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors shadow-sm border border-emerald-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" /></svg>
-                    <span class="hidden sm:inline">{{ t('install') }}</span>
                 </button>
-                <button @click="toggleNeed" class="flex items-center justify-center px-3 py-2 text-xs font-bold rounded transition-colors shadow-sm border" :class="showNeed ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-zinc-200'">🎯</button>
-                <button @click="toggleLang" class="flex items-center justify-center px-3 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-bold rounded transition-colors shadow-sm border border-zinc-200">
-                    <span :class="{'text-indigo-600': lang === 'en'}">EN</span><span class="mx-1 text-zinc-300">/</span><span :class="{'text-indigo-600': lang === 'zh'}">繁</span>
+                <button @click="toggleNeed" class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 text-xs font-bold rounded transition-colors shadow-sm border" :class="showNeed ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-zinc-200'">🎯</button>
+                <button @click="toggleLang" class="flex items-center justify-center px-1.5 h-7 sm:h-8 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[0.65rem] sm:text-xs font-bold rounded transition-colors shadow-sm border border-zinc-200 whitespace-nowrap">
+                    <span :class="{'text-indigo-600': lang === 'en'}">EN</span><span class="mx-0.5 text-zinc-300">/</span><span :class="{'text-indigo-600': lang === 'zh'}">繁</span>
                 </button>
             </div>
         </div>
@@ -69,7 +69,8 @@
             <span class="text-zinc-400 text-xs truncate">{{ t('needHint') }}</span>
         </div>
 
-        <div v-if="hasActiveDeals" class="space-y-1 sticky top-0 z-40 bg-white/95 backdrop-blur-md pt-2 pb-2 px-1.5 md:px-4 -mx-1.5 md:-mx-4 border-b shadow-sm mb-2">
+        <!-- Sticky Best Deal Summary -->
+        <div v-if="hasActiveDeals" class="space-y-1 sticky top-0 z-40 bg-white/95 backdrop-blur-md pt-1 pb-1.5 px-1.5 md:px-4 -mx-1.5 md:-mx-4 border-b shadow-sm mb-1">
             <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5 max-w-7xl mx-auto">
                 <div v-for="(deal, dIndex) in deals" :key="'sum-' + deal.id" class="px-2 py-1.5 rounded-md flex flex-col shadow-sm overflow-hidden border" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-400 ring-1 ring-emerald-400' : 'bg-zinc-50 border-zinc-200 opacity-95'">
                      <div class="flex justify-between items-center gap-1">
@@ -92,7 +93,7 @@
             </div>
             <div v-if="activeTypes.size > 1" class="flex items-start gap-1.5 bg-amber-50 border border-amber-300 text-amber-800 rounded-md px-2 py-1.5 shadow-sm max-w-7xl mx-auto mt-1" role="alert">
                 <span class="text-sm leading-none mt-px" aria-hidden="true">⚠</span>
-                <p class="text-xs leading-snug">
+                <p class="text-[0.7rem] leading-snug">
                     <span class="font-bold">{{ t('warnMixedTitle') }}:</span>
                     <span class="font-semibold">{{ activeTypeLabels.join(' · ') }}</span>.
                     <span class="text-amber-700">{{ t('warnMixedHint') }}</span>
@@ -100,7 +101,8 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 pb-2">
+        <!-- Deal Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 pb-2 mt-1">
             <div v-for="(deal, dIndex) in deals" :key="deal.id" class="rounded-xl shadow-lg border flex flex-col relative transition-colors duration-300" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-white border-zinc-200'">
 
                 <div class="px-2 py-1 flex-grow flex flex-col gap-1">
@@ -128,19 +130,26 @@
                         <div class="grid grid-cols-2 gap-2">
                             <div class="flex items-center gap-1">
                                 <label class="text-[0.625rem] font-bold text-indigo-500 uppercase w-10 text-right leading-none">{{ t('percentOff') }}</label>
-                                <input type="text" inputmode="decimal" v-model="deal.discountPercent" @input="clearBogo(deal)" @focus="$event.target.select()" placeholder="0" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-1 text-sm font-bold outline-none focus:border-indigo-500 min-w-0">
+                                <input type="text" inputmode="decimal" v-model="deal.discountPercent" @focus="$event.target.select()" placeholder="0" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-1 text-sm font-bold outline-none focus:border-indigo-500 min-w-0">
                             </div>
                             <div class="flex items-center gap-1">
                                 <label class="text-[0.625rem] font-bold text-indigo-500 uppercase w-10 text-right leading-none">{{ t('coupon') }}</label>
                                 <input type="text" inputmode="decimal" v-model="deal.discountFlat" @focus="$event.target.select()" placeholder="0" class="w-full bg-white border border-indigo-200 rounded px-1.5 py-1 text-sm font-bold outline-none focus:border-indigo-500 min-w-0">
                             </div>
                         </div>
+                        
+                        <!-- BOGO Inputs -->
                         <div class="flex items-center justify-center gap-1.5 pt-1.5 border-t border-indigo-100 mt-0.5">
                             <label class="text-[0.625rem] font-bold text-indigo-500 uppercase leading-none">{{ t('bogoBuy') }}</label>
                             <input type="text" inputmode="decimal" v-model="deal.bogoBuy" @input="applyBogo(deal)" @focus="$event.target.select()" placeholder="0" class="w-12 bg-white border border-indigo-200 rounded px-1.5 py-1 text-sm font-bold outline-none focus:border-indigo-500 text-center">
                             <label class="text-[0.625rem] font-bold text-indigo-500 uppercase leading-none">{{ t('bogoGet') }}</label>
                             <input type="text" inputmode="decimal" v-model="deal.bogoFree" @input="applyBogo(deal)" @focus="$event.target.select()" placeholder="0" class="w-12 bg-white border border-indigo-200 rounded px-1.5 py-1 text-sm font-bold outline-none focus:border-indigo-500 text-center">
                             <label class="text-[0.625rem] font-bold text-indigo-500 uppercase leading-none">{{ t('bogoFree') }}</label>
+                        </div>
+
+                        <!-- Static BOGO Warning -->
+                        <div v-if="bogoWarning(deal)" class="flex items-center justify-center gap-2 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-1 shadow-sm">
+                            <span class="text-[0.65rem] text-amber-700 font-bold leading-snug">⚠ {{ bogoWarning(deal) }}</span>
                         </div>
                         
                         <div v-if="deal.price > 0 && (deal.discountPercent > 0 || deal.discountFlat > 0)" class="flex justify-end pt-1">
@@ -150,28 +159,28 @@
 
                     <div class="flex-grow flex flex-col mt-2">
                         <div class="grid grid-cols-12 gap-1 px-0.5 mb-1" v-if="deal.items.length > 0">
-                            <div class="col-span-5 text-xs font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('qty') }}</div>
-                            <div class="col-span-3 text-xs font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('size') }}</div>
-                            <div class="col-span-4 text-xs font-bold uppercase pl-1" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('unit') }}</div>
+                            <div class="col-span-5 text-[0.65rem] sm:text-xs font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('qty') }}</div>
+                            <div class="col-span-3 text-[0.65rem] sm:text-xs font-bold uppercase" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('size') }}</div>
+                            <div class="col-span-4 text-[0.65rem] sm:text-xs font-bold uppercase pl-1" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('unit') }}</div>
                         </div>
 
                         <div class="space-y-2">
                             <div v-for="(item, iIndex) in deal.items" :key="item.id" class="grid grid-cols-12 gap-1.5 items-center">
                                 <div class="col-span-5 flex items-stretch rounded border overflow-hidden bg-white shadow-sm" :class="dealStats[deal.id]?.isBest ? 'border-emerald-300' : 'border-zinc-300'">
-                                    <button type="button" @click="stepQty(item, -1)" class="w-[44px] flex items-center justify-center text-zinc-500 hover:bg-zinc-100 active:bg-zinc-200 font-black text-xl select-none transition-colors">−</button>
+                                    <button type="button" @click="stepQty(item, -1)" class="w-[36px] sm:w-[44px] flex items-center justify-center text-zinc-500 hover:bg-zinc-100 active:bg-zinc-200 font-black text-xl select-none transition-colors">−</button>
                                     <input type="text" inputmode="decimal" v-model="item.qty" @focus="$event.target.select()" placeholder="1" class="w-full min-w-0 text-center py-2 text-sm font-bold bg-transparent border-x outline-none focus:bg-zinc-50" :class="dealStats[deal.id]?.isBest ? 'border-emerald-200' : 'border-zinc-200'">
-                                    <button type="button" @click="stepQty(item, 1)" class="w-[44px] flex items-center justify-center text-zinc-500 hover:bg-zinc-100 active:bg-zinc-200 font-black text-xl select-none transition-colors">+</button>
+                                    <button type="button" @click="stepQty(item, 1)" class="w-[36px] sm:w-[44px] flex items-center justify-center text-zinc-500 hover:bg-zinc-100 active:bg-zinc-200 font-black text-xl select-none transition-colors">+</button>
                                 </div>
                                 
                                 <input type="text" inputmode="decimal" v-model="item.size" @focus="$event.target.select()" placeholder="--" class="col-span-3 border rounded px-1 py-2 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white min-w-0 transition-colors shadow-sm" :class="dealStats[deal.id]?.isBest ? 'bg-white/90 border-emerald-300' : 'bg-zinc-50 border-zinc-300'">
 
                                 <div class="col-span-4 relative flex items-center">
-                                    <select v-model="item.unit" @change="iIndex === 0 ? syncUnits(deal) : null" class="w-full border rounded px-1 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm appearance-none pr-6 text-ellipsis overflow-hidden whitespace-nowrap" :class="[unitColorClass(item.unit), dealStats[deal.id]?.isBest ? 'border-emerald-400' : 'border-zinc-300']">
+                                    <select v-model="item.unit" @change="iIndex === 0 ? syncUnits(deal) : null" class="w-full border rounded pl-1 pr-5 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-colors shadow-sm appearance-none text-ellipsis overflow-hidden whitespace-nowrap" :class="[unitColorClass(item.unit), dealStats[deal.id]?.isBest ? 'border-emerald-400' : 'border-zinc-300']">
                                         <optgroup v-for="group in getOrderedGroups(deal)" :key="'opt-'+group.type" :label="t(group.labelKey)">
                                             <option v-for="opt in group.options" :key="opt" :value="opt">{{ t('unit_' + (opt === 'fl oz' ? 'floz' : opt)) }}</option>
                                         </optgroup>
                                     </select>
-                                    <div class="absolute right-1.5 pointer-events-none text-opacity-50" :class="unitColorClass(item.unit)">▼</div>
+                                    <div class="absolute right-1 pointer-events-none text-opacity-50 text-xs" :class="unitColorClass(item.unit)">▼</div>
                                 </div>
                                 
                                 <button v-if="deal.items.length > 1" @click="removeItem(deal.id, item.id)" class="absolute right-1 -mt-10 min-w-[32px] min-h-[32px] flex items-center justify-center text-zinc-300 hover:text-red-500 text-2xl font-bold transition-colors bg-white rounded-full shadow-sm border border-zinc-100">×</button>
@@ -218,6 +227,7 @@
             <a href="../" class="text-xs text-slate-400 hover:text-slate-600 tracking-wide transition-colors">0oo.fish.oo0</a>
         </div>
 
+        <!-- Fixed Bottom Bar -->
         <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-zinc-200 p-2 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
             <div class="max-w-7xl mx-auto w-full flex justify-between items-center px-1 gap-2">
                 <button @click="clearAll" class="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg transition-colors shadow-sm border border-red-100 font-bold text-sm min-h-[48px] whitespace-nowrap">
@@ -283,7 +293,7 @@
             'pcs': { type: 'count', factor: 1, display: 'pcs' }
         };
 
-        const STORAGE_KEY = 'dealComparatorState_v2'; // Bumped version for new schema
+        const STORAGE_KEY = 'dealComparatorState_v2'; 
 
         createApp({
             setup() {
@@ -358,7 +368,13 @@
                     }
                 };
 
-                const clearBogo = (deal) => { deal.bogoBuy = null; deal.bogoFree = null; };
+                const bogoWarning = (deal) => {
+                    const buy = parseFloat(deal.bogoBuy) || 0;
+                    const free = parseFloat(deal.bogoFree) || 0;
+                    if (buy <= 0 || free <= 0) return null;
+                    
+                    return lang.value === 'zh' ? `最少需買 ${buy} 件` : `Min. ${buy} paid sets required`;
+                };
 
                 const addDeal = () => {
                     deals.value.push({ id: generateId(), name: '', price: null, showDiscount: false, discountPercent: null, discountFlat: null, bogoBuy: null, bogoFree: null, items: [{ id: generateId(), qty: 1, size: null, unit: 'pcs' }] });
@@ -415,8 +431,14 @@
                             let uInfo = unitsInfo[item.unit];
                             if (uInfo && uInfo.type === firstItemType) totalBaseUnits += Math.max(0, parseFloat(item.qty) || 0) * Math.max(0, parseFloat(item.size) || 0) * uInfo.factor;
                         });
+                        
                         let rawPrice = Math.max(0, parseFloat(deal.price) || 0);
-                        let finalPrice = Math.max(0, (rawPrice * (1 - (Math.min(100, Math.max(0, parseFloat(deal.discountPercent) || 0))) / 100)) - (Math.max(0, parseFloat(deal.discountFlat) || 0)));
+                        let finalPrice = rawPrice;
+                        
+                        if (deal.showDiscount) {
+                            finalPrice = Math.max(0, (rawPrice * (1 - (Math.min(100, Math.max(0, parseFloat(deal.discountPercent) || 0))) / 100)) - (Math.max(0, parseFloat(deal.discountFlat) || 0)));
+                        }
+                        
                         return { id: deal.id, type: firstItemType, baseDisplay, totalBaseUnits, finalPrice, unitPrice: totalBaseUnits > 0 ? (finalPrice / totalBaseUnits) : 0 };
                     });
 
@@ -459,7 +481,7 @@
                 return {
                     deals, lang, t, toggleLang, adjustZoom, syncUnits, getOrderedGroups, getAllGroups, unitColorClass,
                     addDeal, removeDeal, duplicateDeal, addItem, removeItem, clearAll, loadSodaExample, loadDetergentExample, dealStats, hasActiveDeals,
-                    formatNumber, formatCurrency, formatPct, dealName, stepQty, showNeed, needQty, needUnit, toggleNeed, activeTypes, activeTypeLabels, canInstall, triggerInstall, applyBogo, clearBogo
+                    formatNumber, formatCurrency, formatPct, dealName, stepQty, showNeed, needQty, needUnit, toggleNeed, activeTypes, activeTypeLabels, canInstall, triggerInstall, applyBogo, bogoWarning
                 };
             }
         }).mount('#app');
