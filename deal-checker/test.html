@@ -103,7 +103,7 @@
 
         <!-- Deal Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 pb-2 mt-1">
-            <div v-for="(deal, dIndex) in deals" :key="deal.id" :id="'deal-' + deal.id" class="scroll-mt-32 rounded-xl shadow-lg border flex flex-col relative transition-all duration-500" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-white border-zinc-200'">
+            <div v-for="(deal, dIndex) in deals" :key="deal.id" :id="'deal-' + deal.id" class="rounded-xl shadow-lg border flex flex-col relative transition-all duration-500" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-white border-zinc-200'">
 
                 <div class="px-2 py-1 flex-grow flex flex-col gap-1">
                     <div class="flex justify-between items-center gap-1 border-b border-black/5 pb-1 mt-1">
@@ -387,8 +387,12 @@
 
                 const scrollToDeal = (id) => {
                     const el = document.getElementById('deal-' + id);
+                    const stickyHeader = document.querySelector('.sticky.top-0');
                     if (el) {
-                        el.scrollIntoView({ behavior: 'smooth' });
+                        const headerHeight = stickyHeader ? stickyHeader.offsetHeight : 0;
+                        const y = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+                        window.scrollTo({ top: y, behavior: 'smooth' });
+                        
                         el.classList.add('ring-4', 'ring-indigo-400');
                         setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-400'), 800);
                     }
