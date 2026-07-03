@@ -1,5 +1,5 @@
 /* Deal Comparator service worker — offline support */
-const CACHE = 'deal-comparator-v6';
+const CACHE = 'deal-comparator-v7';
 
 // Added explicit '/' to the shell to prevent cache miss errors on domain root
 const SHELL = [
