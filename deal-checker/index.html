@@ -69,10 +69,10 @@
             <span class="text-zinc-400 text-xs truncate">{{ t('needHint') }}</span>
         </div>
 
-        <!-- Sticky Best Deal Summary (Now Clickable) -->
+        <!-- Sticky Best Deal Summary (Tighter Padding) -->
         <div v-if="hasActiveDeals" class="space-y-1 sticky top-0 z-40 bg-white/95 backdrop-blur-md pt-1 pb-1.5 px-1.5 md:px-4 -mx-1.5 md:-mx-4 border-b shadow-sm mb-1">
             <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5 max-w-7xl mx-auto">
-                <div v-for="(deal, dIndex) in deals" :key="'sum-' + deal.id" @click="scrollToDeal(deal.id)" class="cursor-pointer px-2 py-1.5 rounded-md flex flex-col shadow-sm overflow-hidden border transition-transform active:scale-95 hover:shadow-md" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-400 ring-1 ring-emerald-400' : 'bg-zinc-50 border-zinc-200 opacity-95'">
+                <div v-for="(deal, dIndex) in deals" :key="'sum-' + deal.id" class="px-2 py-1.5 rounded-md flex flex-col shadow-sm overflow-hidden border" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-400 ring-1 ring-emerald-400' : 'bg-zinc-50 border-zinc-200 opacity-95'">
                      <div class="flex justify-between items-center gap-1">
                         <span class="text-zinc-600 text-xs font-bold uppercase truncate" :class="{'text-emerald-800': dealStats[deal.id]?.isBest}">
                             {{ dealName(deal, dIndex) }}
@@ -103,7 +103,7 @@
 
         <!-- Deal Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 pb-2 mt-1">
-            <div v-for="(deal, dIndex) in deals" :key="deal.id" :id="'deal-' + deal.id" class="rounded-xl shadow-lg border flex flex-col relative transition-all duration-500" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-white border-zinc-200'">
+            <div v-for="(deal, dIndex) in deals" :key="deal.id" class="rounded-xl shadow-lg border flex flex-col relative transition-colors duration-300" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-100 border-emerald-500 ring-2 ring-emerald-400' : 'bg-white border-zinc-200'">
 
                 <div class="px-2 py-1 flex-grow flex flex-col gap-1">
                     <div class="flex justify-between items-center gap-1 border-b border-black/5 pb-1 mt-1">
@@ -164,7 +164,7 @@
                             <div class="col-span-4 text-[0.65rem] sm:text-xs font-bold uppercase pl-1" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">{{ t('unit') }}</div>
                         </div>
 
-                        <div class="space-y-2 pb-1">
+                        <div class="space-y-2">
                             <div v-for="(item, iIndex) in deal.items" :key="item.id" class="grid grid-cols-12 gap-1.5 items-center">
                                 <div class="col-span-5 flex items-stretch rounded border overflow-hidden bg-white shadow-sm" :class="dealStats[deal.id]?.isBest ? 'border-emerald-300' : 'border-zinc-300'">
                                     <button type="button" @click="stepQty(item, -1)" class="w-[36px] sm:w-[44px] flex items-center justify-center text-zinc-500 hover:bg-zinc-100 active:bg-zinc-200 font-black text-xl select-none transition-colors">−</button>
@@ -186,40 +186,31 @@
                                 <button v-if="deal.items.length > 1" @click="removeItem(deal.id, item.id)" class="absolute right-1 -mt-10 min-w-[32px] min-h-[32px] flex items-center justify-center text-zinc-300 hover:text-red-500 text-2xl font-bold transition-colors bg-white rounded-full shadow-sm border border-zinc-100">×</button>
                             </div>
                         </div>
+                        <button @click="addItem(deal.id)" class="text-xs font-bold mt-3 px-2 py-1.5 min-h-[32px] self-start transition-colors flex items-center bg-white border rounded shadow-sm" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700 border-emerald-200 hover:bg-emerald-50' : 'text-indigo-600 border-indigo-100 hover:bg-indigo-50'">
+                            + {{ t('addCombined') }}
+                        </button>
                     </div>
                 </div>
 
                 <div class="px-2 py-2 rounded-b-xl border-t mt-auto transition-colors" :class="dealStats[deal.id]?.isBest ? 'bg-emerald-200/60 border-emerald-300' : 'bg-zinc-100 border-zinc-200'">
-                    <div class="flex items-center justify-between gap-1 sm:gap-2">
-                        <!-- Left: Total Vol/Qty -->
-                        <div class="flex-1 flex justify-start">
-                            <div v-if="dealStats[deal.id]?.totalBaseUnits > 0 && dealStats[deal.id]?.finalPrice > 0" class="text-[0.65rem] sm:text-xs font-bold bg-white px-1.5 py-1 rounded border whitespace-nowrap shadow-sm inline-block" :class="dealStats[deal.id]?.isBest ? 'text-emerald-800 border-emerald-300' : 'text-zinc-600 border-zinc-300'">
+                    <div v-if="dealStats[deal.id]?.totalBaseUnits > 0 && dealStats[deal.id]?.finalPrice > 0">
+                        <div class="flex justify-between items-center gap-2">
+                            <div class="text-xs font-bold bg-white px-1.5 py-1 rounded border whitespace-nowrap shadow-sm" :class="dealStats[deal.id]?.isBest ? 'text-emerald-800 border-emerald-300' : 'text-zinc-600 border-zinc-300'">
                                 {{ formatNumber(dealStats[deal.id]?.totalBaseUnits) }}{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}
                             </div>
-                        </div>
-
-                        <!-- Middle: Add Item Button -->
-                        <button @click="addItem(deal.id)" class="flex-shrink-0 text-[0.65rem] sm:text-xs font-bold px-2 sm:px-3 py-1 sm:py-1.5 min-h-[32px] transition-colors flex items-center justify-center bg-white border rounded shadow-sm whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700 border-emerald-300 hover:bg-emerald-50' : 'text-indigo-600 border-indigo-200 hover:bg-indigo-50'">
-                            + {{ t('addCombined') }}
-                        </button>
-
-                        <!-- Right: Final Price / Pending -->
-                        <div class="flex-1 flex justify-end">
-                            <div v-if="dealStats[deal.id]?.totalBaseUnits > 0 && dealStats[deal.id]?.finalPrice > 0" class="flex items-baseline justify-end gap-1 sm:gap-1.5">
-                                <span v-if="dealStats[deal.id]?.comparable && !dealStats[deal.id]?.isBest" class="text-[0.65rem] sm:text-xs font-bold text-rose-500 whitespace-nowrap">+{{ formatPct(dealStats[deal.id]?.pctVsBest) }}</span>
-                                <div class="text-lg sm:text-xl font-black leading-none truncate whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-900' : 'text-indigo-700'">
-                                    ${{ formatCurrency(dealStats[deal.id]?.unitPrice) }}<span class="text-[0.5rem] sm:text-[0.625rem] font-bold ml-0.5" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-500'">/{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}</span>
+                            <div class="flex items-baseline gap-1.5">
+                                <span v-if="dealStats[deal.id]?.comparable && !dealStats[deal.id]?.isBest" class="text-xs font-bold text-rose-500 whitespace-nowrap">+{{ formatPct(dealStats[deal.id]?.pctVsBest) }}</span>
+                                <div class="text-xl font-black leading-none truncate whitespace-nowrap" :class="dealStats[deal.id]?.isBest ? 'text-emerald-900' : 'text-indigo-700'">
+                                    ${{ formatCurrency(dealStats[deal.id]?.unitPrice) }}<span class="text-[0.625rem] font-bold ml-0.5" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-500'">/{{ t('unit_' + dealStats[deal.id]?.baseDisplay) }}</span>
                                 </div>
                             </div>
-                            <div v-else class="text-xs italic font-medium py-1" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">
-                                {{ t('pending') }}
-                            </div>
+                        </div>
+                        <div v-if="dealStats[deal.id]?.typeMismatch" class="flex items-center justify-end gap-1 text-xs font-bold text-amber-600 pt-1.5">
+                            <span aria-hidden="true">⚠</span><span class="whitespace-nowrap">{{ t('warnMismatchOption') }}</span>
                         </div>
                     </div>
-                    
-                    <!-- Warning row for mismatches -->
-                    <div v-if="dealStats[deal.id]?.typeMismatch" class="flex items-center justify-end gap-1 text-xs font-bold text-amber-600 pt-1.5">
-                        <span aria-hidden="true">⚠</span><span class="whitespace-nowrap">{{ t('warnMismatchOption') }}</span>
+                    <div v-else class="text-xs italic font-medium text-center py-2" :class="dealStats[deal.id]?.isBest ? 'text-emerald-700' : 'text-zinc-400'">
+                        {{ t('pending') }}
                     </div>
                 </div>
             </div>
@@ -357,13 +348,29 @@
                 };
 
                 const syncUnits = (deal) => {
-                    if (deal.items.length <= 1) return;
-                    const baseType = getUnitType(deal.items[0].unit);
+                    if (!deal || deal.items.length === 0) return;
+                    const baseUnit = deal.items[0].unit;
+                    const baseType = getUnitType(baseUnit);
+
+                    // 1. Only sync other items in this deal if they completely mismatched categories
+                    // (e.g., you swapped from Volume to Weight, forcing math to break otherwise)
                     deal.items.forEach((item, idx) => {
                         if (idx > 0 && getUnitType(item.unit) !== baseType) {
-                            item.unit = Object.keys(unitsInfo).find(k => unitsInfo[k].type === baseType);
+                            item.unit = Object.keys(unitsInfo).find(k => unitsInfo[k].type === baseType) || baseUnit;
                         }
                     });
+
+                    // 2. Global default for empty deals when you modify Option 1
+                    if (deals.value.length > 0 && deals.value[0].id === deal.id) {
+                        deals.value.forEach((d, index) => {
+                            if (index > 0 && d.items.length > 0) {
+                                // Only update deals that haven't been started yet
+                                if (!d.price && !d.items[0].size) {
+                                    d.items[0].unit = baseUnit;
+                                }
+                            }
+                        });
+                    }
                 };
 
                 const applyBogo = (deal) => {
@@ -377,6 +384,8 @@
                     }
                 };
 
+                const clearBogo = (deal) => { deal.bogoBuy = null; deal.bogoFree = null; };
+
                 const bogoWarning = (deal) => {
                     const buy = parseFloat(deal.bogoBuy) || 0;
                     const free = parseFloat(deal.bogoFree) || 0;
@@ -385,21 +394,19 @@
                     return lang.value === 'zh' ? `最少需買 ${buy} 件` : `Min. ${buy} paid sets required`;
                 };
 
-                const scrollToDeal = (id) => {
-                    const el = document.getElementById('deal-' + id);
-                    const stickyHeader = document.querySelector('.sticky.top-0');
-                    if (el) {
-                        const headerHeight = stickyHeader ? stickyHeader.offsetHeight : 0;
-                        const y = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
-                        window.scrollTo({ top: y, behavior: 'smooth' });
-                        
-                        el.classList.add('ring-4', 'ring-indigo-400');
-                        setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-400'), 800);
-                    }
-                };
-
                 const addDeal = (scrollToBottom = true) => {
-                    deals.value.push({ id: generateId(), name: '', price: null, showDiscount: false, discountPercent: null, discountFlat: null, bogoBuy: null, bogoFree: null, items: [{ id: generateId(), qty: 1, size: null, unit: 'pcs' }] });
+                    let defaultUnit = 'pcs';
+                    
+                    // Look at the very first deal to find the baseline unit for any new deals
+                    if (deals.value.length > 0) {
+                        const firstDeal = deals.value[0];
+                        if (firstDeal && firstDeal.items.length > 0) {
+                            defaultUnit = firstDeal.items[0].unit;
+                        }
+                    }
+
+                    deals.value.push({ id: generateId(), name: '', price: null, showDiscount: false, discountPercent: null, discountFlat: null, bogoBuy: null, bogoFree: null, items: [{ id: generateId(), qty: 1, size: null, unit: defaultUnit }] });
+                    
                     if (scrollToBottom !== false) {
                         setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 50);
                     }
@@ -437,7 +444,11 @@
                 const removeDeal = (id) => { deals.value = deals.value.filter(d => d.id !== id); };
                 const addItem = (dealId) => {
                     const deal = deals.value.find(d => d.id === dealId);
-                    if (deal) deal.items.push({ id: generateId(), qty: 1, size: null, unit: deal.items.length > 0 ? deal.items[0].unit : 'pcs' });
+                    if (deal) {
+                        // Inherit the unit from the very first item in this deal
+                        let defaultUnit = deal.items.length > 0 ? deal.items[0].unit : 'pcs';
+                        deal.items.push({ id: generateId(), qty: 1, size: null, unit: defaultUnit });
+                    }
                 };
                 const removeItem = (dealId, itemId) => {
                     const deal = deals.value.find(d => d.id === dealId);
@@ -505,7 +516,7 @@
                 return {
                     deals, lang, t, toggleLang, adjustZoom, syncUnits, getOrderedGroups, getAllGroups, unitColorClass,
                     addDeal, removeDeal, duplicateDeal, addItem, removeItem, clearAll, loadSodaExample, loadDetergentExample, dealStats, hasActiveDeals,
-                    formatNumber, formatCurrency, formatPct, dealName, stepQty, showNeed, needQty, needUnit, toggleNeed, activeTypes, activeTypeLabels, canInstall, triggerInstall, applyBogo, bogoWarning, scrollToDeal
+                    formatNumber, formatCurrency, formatPct, dealName, stepQty, showNeed, needQty, needUnit, toggleNeed, activeTypes, activeTypeLabels, canInstall, triggerInstall, applyBogo, clearBogo, bogoWarning
                 };
             }
         }).mount('#app');
