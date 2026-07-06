@@ -817,6 +817,7 @@ const PAUSE = 500;
 const PALETTE = ['#3ecf9e','#5b9cff','#e0a948','#e06b9a','#9b8cff'];
 const AREA_KEYS = ['neighbourhood','suburb','quarter','city_district','town','village','city','municipality','county','state'];
 const OROPT_MAX_POINTS = 150; // skip the real-distance refinement above this many points (keeps the table request small & fast)
+const DETOUR_RATIO_THRESHOLD = 1.6; // roundtrip-via-point vs. direct-skip-it ratio that counts as a genuine dead-end
 
 async function osrmLeg(a,b){
   const coord = `${a[1].toFixed(6)},${a[0].toFixed(6)};${b[1].toFixed(6)},${b[0].toFixed(6)}`;
@@ -899,13 +900,14 @@ async function buildWalkPart(){
   // Refine the order using real walking distances where practical, so a point that
   // would force a detour gets relocated to a slot it can be visited in passing instead.
   let deadEnds = 0;
+  let distD = null; // real walking-distance lookup; reused below to confirm genuine dead-ends
   if(rawCoords.length>=4 && rawCoords.length<=OROPT_MAX_POINTS){
     setStatus('Checking real walking distances…');
     try{
       const matrix = await osrmTable(rawCoords);
       if(matrix){
-        const D = (i,j) => { const v = matrix[i] && matrix[i][j]; return (v==null || !isFinite(v)) ? metersLL(rawCoords[i],rawCoords[j])*3 : v; };
-        idx = orOptRefine(idx, D, loop);
+        distD = (i,j) => { const v = matrix[i] && matrix[i][j]; return (v==null || !isFinite(v)) ? metersLL(rawCoords[i],rawCoords[j])*3 : v; };
+        idx = orOptRefine(idx, distD, loop);
       }
     }catch(e){ /* keep the original order if the table lookup fails */ }
   }
@@ -939,28 +941,38 @@ async function buildWalkPart(){
   // out and the walk back overlap for more than a few metres, that's the "no other
   // option" case — collapse the retraced portion into a single straight jump back
   // to the fork instead of recording it twice, and count it as a dead-end.
+  // Pass 2: a point only counts as a genuine dead-end if visiting it costs much more
+  // real walking distance than skipping it would (checked against the same distance
+  // matrix used for ordering) -- not just because the path geometry happens to pass
+  // near some earlier point. That distance-based gate is what stops a normal leg from
+  // being misread as a dead-end just because it re-passes near an old junction.
   let jumps = 0;
   for(let i=0;i<legs.length;i++) if(legs[i].wasJump) jumps++;
-  for(let i=1;i<legs.length;i++){
-    const legIn = legs[i-1].seg, legOut = legs[i].seg;
-    if(legs[i-1].wasJump || legs[i].wasJump) continue;
-    if(legIn.length<2 || legOut.length<2) continue;
-    const bIn = bearingDeg(legIn[legIn.length-2], legIn[legIn.length-1]);
-    const bOut = bearingDeg(legOut[0], legOut[1]);
-    if(angleDiff(bIn,bOut) <= 150) continue; // not a U-turn, nothing to fix
+  if(distD){
+    const N = idx.length;
+    const rawIdxAt = p => idx[((p % N) + N) % N];
+    for(let i=1;i<legs.length;i++){
+      if(legs[i-1].wasJump || legs[i].wasJump) continue;
+      const rawPrev = rawIdxAt(i-1), rawNext = rawIdxAt(i+1);
+      const directDist = Math.max(distD(rawPrev, rawNext), 5);
+      const roundTrip = legs[i-1].routed + legs[i].routed;
+      if(roundTrip / directDist <= DETOUR_RATIO_THRESHOLD) continue; // not a real detour
 
-    const legInRev = legIn.slice().reverse(); // from the shared point back toward the previous stop
-    const k = findOverlapEnd(legOut, legInRev, 12);
-    if(k < 1) continue; // no meaningful overlap found
-    const overlapLen = pathLength(legOut.slice(0, k+1));
-    if(overlapLen < 15) continue; // too small to bother with
+      const legIn = legs[i-1].seg, legOut = legs[i].seg;
+      if(legIn.length<2 || legOut.length<2) continue;
+      const legInRev = legIn.slice().reverse();
+      const k = findOverlapEnd(legOut, legInRev, 12);
+      if(k < 1) continue; // confirmed detour, but no clean fork point -- leave it routed as-is
+      const overlapLen = pathLength(legOut.slice(0, k+1));
+      if(overlapLen < 15) continue;
 
-    const forkPoint = legOut[k];
-    const jumpDist = metersLL(legOut[0], forkPoint);
-    const restPts = legOut.slice(k);
-    legs[i].seg = [legOut[0], forkPoint].concat(restPts.slice(1));
-    legs[i].routed = jumpDist + pathLength(restPts);
-    jumps++; deadEnds++;
+      const forkPoint = legOut[k];
+      const jumpDist = metersLL(legOut[0], forkPoint);
+      const restPts = legOut.slice(k);
+      legs[i].seg = [legOut[0], forkPoint].concat(restPts.slice(1));
+      legs[i].routed = jumpDist + pathLength(restPts);
+      jumps++; deadEnds++;
+    }
   }
 
   // Pass 3: simplify each (possibly fixed) leg and concatenate into the full path.
