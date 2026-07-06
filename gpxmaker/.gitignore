@@ -1,0 +1,6 @@
+# Local secrets — never commit
+geoapify_key.txt
+*.key
+.dev.vars
+.wrangler/
+node_modules/
