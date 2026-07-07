@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPX Maker — Points to Paths</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#141822; --panel2:#0d1017; --field:#0c0f16;
+    --border:#232838; --border2:#2c3346;
+    --ink:#e7ebf3; --muted:#8b95a8; --muted2:#5f6b82;
+    --system:#7c86ff; --system-ink:#0d0f1c;
+    --jump:#e2a640; --jump-ink:#241a06;
+    --walk:#3ecf9e; --walk-ink:#052018;
+    --danger:#f4636f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  h1,h2,h3{font-family:'Manrope',sans-serif;font-weight:800;margin:0}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+  a{color:var(--system)}
+  button{font-family:inherit}
+
+  /* ---------- Header ---------- */
+  header{border-bottom:1px solid var(--border);padding:18px 20px;display:flex;align-items:center;gap:12px;
+         position:sticky;top:0;background:rgba(11,14,20,.92);backdrop-filter:blur(6px);z-index:20}
+  .logo{width:34px;height:34px;flex:none;border-radius:10px;background:linear-gradient(155deg,var(--system),#4d55c4);
+        display:flex;align-items:center;justify-content:center}
+  .logo svg{width:18px;height:18px}
+  header h1{font-size:18px;letter-spacing:.01em}
+  header p{margin:2px 0 0;color:var(--muted);font-size:12.5px}
+
+  /* ---------- Layout / step spine ---------- */
+  main{max-width:820px;margin:0 auto;padding:32px 18px 80px}
+  .steps{position:relative;padding-left:44px}
+  .spine{position:absolute;left:17px;top:20px;bottom:56px;width:2px;
+         background-image:repeating-linear-gradient(to bottom,var(--border2) 0 6px,transparent 6px 13px)}
+  .step{position:relative;margin-bottom:36px}
+  .step-marker{position:absolute;left:-44px;top:0;width:34px;height:34px;border-radius:50%;
+               border:2px solid var(--border2);background:var(--panel2);color:var(--muted);
+               display:flex;align-items:center;justify-content:center;font-family:'Manrope';font-weight:800;font-size:14px;
+               transition:.2s;z-index:2}
+  .step-marker.filled{border-color:var(--system);background:var(--system);color:var(--system-ink)}
+  .step h2{font-size:17px;margin-bottom:4px}
+  .step-intro{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px}
+
+  @media (max-width:600px){
+    main{padding:22px 12px 60px}
+    .steps{padding-left:32px}
+    .spine{left:13px}
+    .step-marker{left:-32px;width:26px;height:26px;font-size:12px}
+    .card{padding:13px}
+  }
+
+  /* ---------- Tabs ---------- */
+  .tabs{display:flex;gap:6px;margin-bottom:14px;background:var(--panel2);padding:4px;border-radius:9px;width:fit-content}
+  .tab{padding:8px 16px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-weight:600;font-size:13px;cursor:pointer}
+  .tab.active{background:var(--system);color:var(--system-ink)}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+
+  textarea,input[type=text],input[type=number],select{
+    width:100%;background:var(--field);border:1px solid var(--border);color:var(--ink);
+    border-radius:8px;padding:9px 10px;font-family:inherit;font-size:13.5px;outline:none;resize:vertical}
+  textarea:focus,input:focus,select:focus{border-color:var(--system)}
+  textarea{min-height:120px}
+  textarea::placeholder{color:var(--muted2)}
+  label.check{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px;cursor:pointer;margin-top:10px;flex-wrap:wrap}
+  label.check input[type=checkbox]{accent-color:var(--system);width:15px;height:15px;flex:none}
+  .hint{color:var(--muted);font-size:11.5px;margin:3px 0 0}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field label{font-size:12.5px;color:var(--muted);font-weight:600}
+
+  #dropzone{border:1.5px dashed var(--border2);border-radius:10px;padding:26px 16px;text-align:center;
+        color:var(--muted);cursor:pointer;transition:.15s;background:var(--panel2)}
+  #dropzone.hover{border-color:var(--system);color:var(--ink);background:#141a2c}
+  #dropzone b{color:var(--ink)}
+  #dropzone .sub{font-size:12px;margin-top:4px}
+
+  .btn{padding:10px 16px;border:0;border-radius:8px;font-weight:700;font-size:13.5px;cursor:pointer;transition:.15s}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-primary{background:var(--system);color:var(--system-ink)}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.08)}
+  .btn-ghost{background:var(--panel2);border:1px solid var(--border2);color:var(--ink)}
+  .btn-ghost:hover:not(:disabled){border-color:var(--system)}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btn-sm{padding:7px 12px;font-size:12.5px;border-radius:7px}
+
+  /* ---------- Map + table (step 2) ---------- */
+  #map{width:100%;height:320px;border-radius:10px;border:1px solid var(--border);margin-bottom:12px}
+  .stats-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;
+             font-size:12.5px;color:var(--muted);padding:2px 2px 12px}
+  .stats-bar b{color:var(--ink)}
+  details.table-details{margin:0;border-top:1px solid var(--border);padding-top:12px}
+  details.table-details summary{font-size:13px;font-weight:700;color:var(--ink)}
+  .table-scroll{border:1px solid var(--border);background:var(--panel2);border-radius:9px;
+                 max-height:260px;overflow-y:auto;margin-top:12px}
+  table{width:100%;border-collapse:collapse}
+  thead th{position:sticky;top:0;background:#0f1219;text-align:left;font-size:10.5px;text-transform:uppercase;
+           letter-spacing:.05em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border)}
+  tbody td{padding:6px 10px;border-bottom:1px solid #1a1f2c;font-size:12.5px}
+  tbody tr:hover{background:#161b28}
+  tbody input{background:transparent;border:1px solid transparent;border-radius:5px;padding:3px 5px;width:100%;
+              font-size:12.5px;color:var(--ink)}
+  tbody input:focus{border-color:var(--system);background:var(--field)}
+  .del-btn{background:none;border:0;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:2px 6px;border-radius:5px}
+  .del-btn:hover{color:var(--danger);background:#2a141a}
+  .empty-row td{text-align:center;color:var(--muted);font-style:italic;padding:26px 10px}
+  .discover-item{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-bottom:1px solid #1a1f2c;font-size:12.5px;cursor:pointer}
+  .discover-item:last-child{border-bottom:0}
+  .discover-item:hover{background:#161b28}
+  .discover-item input{margin-top:2px;accent-color:var(--system);width:15px;height:15px;flex:none}
+  .discover-item .di-name{font-weight:600;color:var(--ink)}
+  .discover-item .di-meta{color:var(--muted);font-size:11.5px;margin-top:1px;display:inline-block}
+  .place-match{display:block;padding:9px 10px;border-bottom:1px solid #1a1f2c;font-size:12.5px;cursor:pointer;color:var(--ink)}
+  .place-match:last-child{border-bottom:0}
+  .place-match:hover{background:#161b28}
+  .place-match .pm-name{font-weight:600}
+  .place-match .pm-meta{color:var(--muted);font-size:11.5px;display:block;margin-top:1px}
+  .table-footer{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+  /* ---------- Build cards ---------- */
+  .build-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px}
+  @media (max-width:700px){ .build-grid{grid-template-columns:1fr} }
+  .out-card{border-radius:12px;padding:16px;border:1px solid var(--border)}
+  .out-card.jump{background:linear-gradient(180deg,#1b160a 0%,var(--panel) 90px)}
+  .out-card.walk{background:linear-gradient(180deg,#081a15 0%,var(--panel) 90px)}
+  .out-check{display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:2px}
+  .out-check input[type=checkbox]{width:17px;height:17px;flex:none}
+  .out-check.jump input{accent-color:var(--jump)}
+  .out-check.walk input{accent-color:var(--walk)}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .dot.jump{background:var(--jump)} .dot.walk{background:var(--walk)}
+  .out-check h3{font-size:15px}
+  .out-sub{color:var(--muted);font-size:12px;margin:2px 0 14px}
+  .out-settings{transition:opacity .15s}
+  .out-settings.off{opacity:.4;pointer-events:none}
+
+  .pill-group{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .pill{border:1px solid var(--border2);background:var(--panel2);padding:7px 12px;border-radius:20px;
+        font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none}
+  .pill input{display:none}
+  .pill.sel-jump{border-color:var(--jump);color:var(--jump);background:#241c0d}
+  .pill.sel-walk{border-color:var(--walk);color:var(--walk);background:#0c211a}
+
+  details{margin-top:8px;border-top:1px solid var(--border);padding-top:10px}
+  summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--muted);list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:'▸ ';display:inline-block;transition:.15s}
+  details[open] summary::before{content:'▾ '}
+  .sec-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2);margin:14px 0 2px}
+  .sec-label:first-child{margin-top:10px}
+  .adv-grid{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+  .num-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink);margin-top:10px}
+  .num-row input[type=number]{width:76px}
+
+  #buildStatus{font-size:12px;color:var(--muted);min-height:16px;margin-top:8px}
+  #buildStatus.warn{color:var(--jump)}
+
+  .result{display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px}
+  .result.show{display:block}
+  .stat-group{margin-bottom:12px}
+  .stat-group-title{display:flex;align-items:center;gap:6px;font-weight:700;font-size:12.5px;margin-bottom:6px}
+  .result .stat{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);padding:2px 0}
+  .result .stat b{color:var(--ink)}
+  .json-links{margin-top:10px;font-size:12.5px;color:var(--muted2)}
+  .text-link{color:var(--muted);text-decoration:underline;cursor:pointer}
+  .text-link:hover{color:var(--ink)}
+
+  /* ---------- Toasts ---------- */
+  #toasts{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px;max-width:320px}
+  .toast{background:#141822;border:1px solid var(--border2);border-radius:9px;padding:11px 14px;font-size:12.5px;
+         box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;transform:translateY(-6px);transition:.25s}
+  .toast.in{opacity:1;transform:translateY(0)}
+  .toast.success{border-color:var(--walk)} .toast.error{border-color:var(--danger)}
+
+  footer{text-align:center;color:var(--muted2);font-size:12px;padding:20px;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="18" r="2.3"/><circle cx="18" cy="6" r="2.3"/><path d="M8 17 15 8" stroke-dasharray="2.5 3"/></svg></div>
+  <div>
+    <h1>GPX Maker</h1>
+    <p>Turn coordinates into a jump route or a smoothed walking path.</p>
+  </div>
+</header>
+
+<div id="toasts"></div>
+
+<main>
+  <div class="steps">
+    <div class="spine"></div>
+
+    <!-- STEP 1 -->
+    <section class="step" data-step="1">
+      <div class="step-marker" id="marker1">1</div>
+      <h2>Get your points</h2>
+      <p class="step-intro">Paste raw coordinates, or upload a GPX file of waypoints — either replaces the point list below.</p>
+      <div class="card">
+        <div class="tabs">
+          <button class="tab active" id="tabPaste">Paste coordinates</button>
+          <button class="tab" id="tabUpload">Upload GPX</button>
+          <button class="tab" id="tabDiscover">Find by place</button>
+        </div>
+
+        <div class="tab-panel active" id="panelPaste">
+          <textarea id="coordInput" placeholder="Paste coordinates here, one per line…&#10;&#10;1️⃣ 64.147609, -21.922327&#10;2. 📍 64.152840, -21.932219&#10;23.627875.86.180014  (typo'd dots auto-fixed)"></textarea>
+          <label class="check"><input type="checkbox" id="swapLatLon"> Swap lat / lon order</label>
+          <div class="btn-row" style="justify-content:flex-end"><button class="btn btn-primary" id="loadPasteBtn">Load points</button></div>
+        </div>
+
+        <div class="tab-panel" id="panelUpload">
+          <div id="dropzone">
+            <b>Tap to choose a .gpx file</b><br>or drop one here
+            <div class="sub">Reads &lt;wpt&gt;, &lt;rtept&gt;, or &lt;trkpt&gt; points</div>
+            <input id="fileInput" type="file" accept=".gpx,application/gpx+xml,text/xml" hidden>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="panelDiscover">
+          <div class="field">
+            <label>Place name</label>
+            <input type="text" id="placeInput" placeholder="e.g. Izumo Japan, Washington USA, New York">
+          </div>
+          <div id="placeMatches" class="table-scroll" style="display:none;max-height:180px;margin-bottom:12px"></div>
+          <p class="hint" id="placeResolved" style="display:none"></p>
+
+          <div class="field"><label>Show me</label></div>
+          <div class="pill-group" id="tierGroup">
+            <label class="pill sel-jump"><input type="radio" name="tier" value="famous" checked>Famous landmarks</label>
+            <label class="pill"><input type="radio" name="tier" value="gems">Local gems</label>
+          </div>
+
+          <div class="num-row" style="margin-top:0">How many <input type="number" id="poiCountInput" value="15" min="5" max="40"></div>
+
+          <div class="field" style="margin-top:10px"><label>Include</label></div>
+          <div class="pill-group" id="catGroup">
+            <label class="pill sel-jump"><input type="checkbox" value="sights" checked>Sights</label>
+            <label class="pill sel-jump"><input type="checkbox" value="museums" checked>Museums</label>
+            <label class="pill sel-jump"><input type="checkbox" value="restaurants" checked>Restaurants</label>
+            <label class="pill sel-jump"><input type="checkbox" value="cafes" checked>Cafés</label>
+            <label class="pill sel-jump"><input type="checkbox" value="libraries">Libraries</label>
+            <label class="pill sel-jump"><input type="checkbox" value="parks" checked>Parks &amp; nature</label>
+            <label class="pill sel-jump"><input type="checkbox" value="shops" checked>Shops</label>
+          </div>
+          <div class="field" style="margin-top:2px">
+            <label>Also include (comma-separated)</label>
+            <input type="text" id="customCats" placeholder="e.g. shrine, viewpoint, bookstore">
+          </div>
+
+          <div class="btn-row" style="justify-content:flex-end">
+            <button class="btn btn-primary" id="discoverBtn">Find POIs</button>
+          </div>
+          <div id="discoverStatus" class="hint" style="min-height:16px"></div>
+          <p class="hint" id="gemsHint" style="display:none">Local gems are lesser-known but well-mapped spots, ranked by how thoroughly they're documented in OpenStreetMap (website, hours, description) — not by review counts, which no free source provides.</p>
+
+          <div id="discoverResults" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+            <div class="table-scroll" style="max-height:280px" id="discoverList"></div>
+            <div class="btn-row">
+              <button class="btn btn-primary btn-sm" id="addDiscoveredBtn">Add selected to point list</button>
+              <button class="btn btn-ghost btn-sm" id="selectAllBtn">Select all</button>
+              <button class="btn btn-ghost btn-sm" id="selectNoneBtn">Select none</button>
+            </div>
+            <p class="hint" id="discoverAttribution" style="display:none"></p>
+          </div>
+
+          <details id="geoSettings">
+            <summary>Local gems source</summary>
+            <div class="field" style="margin-top:10px">
+              <label>Geoapify proxy URL (optional)</label>
+              <input type="text" id="geoapifyProxy" placeholder="https://your-worker.workers.dev">
+            </div>
+            <label class="check"><input type="checkbox" id="preferGeoapify" checked> Use Geoapify for local gems (richer results)</label>
+            <p class="hint">With a proxy URL set, "Local gems" come from Geoapify through your own proxy, so the API key stays on the server and never touches this page. Leave blank to use OpenStreetMap only. "Famous landmarks" always use free Wikidata.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="step" data-step="2">
+      <div class="step-marker" id="marker2">2</div>
+      <h2>Review &amp; edit</h2>
+      <p class="step-intro">Click the map to add a point. The table below is optional — only open it if something looks off.</p>
+      <div class="card">
+        <div id="map"></div>
+        <div class="stats-bar" id="statsBar"><span><b>0</b> points · <b>0.00 km</b> total</span></div>
+        <details class="table-details" id="tableDetails">
+          <summary>Edit points table</summary>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th style="width:38px">#</th><th>Latitude</th><th>Longitude</th><th style="width:100px">Distance</th><th style="width:40px"></th></tr></thead>
+              <tbody id="tableBody">
+                <tr class="empty-row"><td colspan="5">No points yet — load some above or click the map.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <button class="btn btn-ghost btn-sm" id="reverseBtn">Reverse order</button>
+            <button class="btn btn-ghost btn-sm" id="shiftBtn">Shift by one</button>
+            <button class="btn btn-ghost btn-sm" id="sortProximityBtn">Sort by proximity</button>
+            <button class="btn btn-ghost btn-sm" id="clearBtn">Clear all</button>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="step" data-step="3">
+      <div class="step-marker" id="marker3">3</div>
+      <h2>Build your files</h2>
+      <p class="step-intro">Name this set, pick one or both outputs, and build a single file to copy or download.</p>
+      <div class="card">
+        <div class="field">
+          <label>Route set name</label>
+          <input type="text" id="setName" placeholder="e.g. Flowers, Morning Hike, Raja Ampat Day 1">
+          <p class="hint">Used as <span class="mono">jump-&lt;name&gt;</span> / <span class="mono">walk-&lt;name&gt;</span> inside the file. If you build both, they're combined into one <span class="mono">&lt;name&gt;.gpx</span>.</p>
+        </div>
+
+        <div class="build-grid">
+          <!-- JUMP CARD -->
+          <div class="out-card jump" id="jumpCard">
+            <label class="out-check jump"><input type="checkbox" id="includeJump" checked><span class="dot jump"></span><h3>Jump route</h3></label>
+            <p class="out-sub">Your points as-is, connected directly. Instant, no internet needed.</p>
+
+            <div class="out-settings" id="jumpSettings">
+              <div class="field"><label>Point order</label></div>
+              <div class="pill-group" id="jumpOrderGroup">
+                <label class="pill"><input type="radio" name="jumpOrder" value="original">Keep original order</label>
+                <label class="pill sel-jump"><input type="radio" name="jumpOrder" value="proximity" checked>Optimize proximity</label>
+              </div>
+
+              <div class="field"><label>GPX structure</label></div>
+              <div class="pill-group" id="jumpTypeGroup">
+                <label class="pill sel-jump"><input type="radio" name="jumpType" value="route" checked>Route</label>
+                <label class="pill"><input type="radio" name="jumpType" value="track">Track</label>
+                <label class="pill"><input type="radio" name="jumpType" value="poi">Waypoints</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- WALK CARD -->
+          <div class="out-card walk" id="walkCard">
+            <label class="out-check walk"><input type="checkbox" id="includeWalk"><span class="dot walk"></span><h3>Walking path</h3></label>
+            <p class="out-sub">Routed along real footpaths and simplified. Saved as both a route and a track (some apps only read one). Needs internet — one request per leg.</p>
+
+            <div class="out-settings off" id="walkSettings">
+              <div class="field"><label>Route style</label></div>
+              <div class="pill-group" id="walkOrderGroup">
+                <label class="pill sel-walk"><input type="radio" name="walkOrder" value="direct" checked>Direct route</label>
+                <label class="pill"><input type="radio" name="walkOrder" value="serpentine">Meandering / serpentine</label>
+              </div>
+
+              <label class="check"><input type="checkbox" id="loopCheck"> Return to start (loop)</label>
+              <label class="check"><input type="checkbox" id="keepPoiCheck" checked> Keep original points as waypoints</label>
+
+              <details>
+                <summary>Advanced settings</summary>
+                <div class="adv-grid">
+                  <div class="sec-label">Waypoint detail</div>
+                  <div class="num-row">Keep points where the line bends &gt; <input type="number" id="simplifyInput" value="12" min="0"> m</div>
+                  <p class="hint">lower = more points on curves · higher = fewer · 0 = keep all</p>
+                  <div class="num-row">Bridge unwalkable gaps up to <input type="number" id="maxjumpInput" value="1" min="0" step="0.1"> km</div>
+                  <p class="hint">e.g. hop to an island/pier with no footbridge; longer gaps are flagged</p>
+
+                  <div class="sec-label">Splitting</div>
+                  <label class="check" style="margin-top:2px"><input type="checkbox" id="splitPtsCheck" checked> Split every <input type="number" id="maxptsInput" value="2000" min="10" style="width:70px;margin:0 4px;display:inline-block"> points</label>
+                  <label class="check"><input type="checkbox" id="geoCheck" checked> Name split routes by area</label>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="buildBtn" style="width:100%;margin-top:16px">Build path file</button>
+        <div id="buildStatus"></div>
+
+        <div class="result" id="combinedResult">
+          <div class="stat-group" id="jumpStatsBlock" style="display:none">
+            <div class="stat-group-title"><span class="dot jump"></span>Jump route</div>
+            <div class="stat"><span>Points</span><b id="jumpStatPts">0</b></div>
+            <div class="stat"><span>Distance</span><b id="jumpStatDist">0 km</b></div>
+          </div>
+          <div class="stat-group" id="walkStatsBlock" style="display:none">
+            <div class="stat-group-title"><span class="dot walk"></span>Walking path</div>
+            <div class="stat"><span>Points</span><b id="walkStatPois">0</b></div>
+            <div class="stat"><span>Walking distance</span><b id="walkStatDist">0 km</b></div>
+            <div class="stat"><span>Routes</span><b id="walkStatRoutes">1</b></div>
+            <div class="stat"><span>Short jumps</span><b id="walkStatJumps">0</b></div>
+            <div class="stat"><span>Dead-ends jumped</span><b id="walkStatDeadEnds">0</b></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-ghost" id="copyGpxBtn">Copy GPX</button>
+            <button class="btn btn-ghost" id="downloadGpxBtn">Download GPX</button>
+          </div>
+          <div class="json-links" id="jsonBtnRow" style="display:none">
+            <span class="text-link" id="copyJsonBtn">Copy JSON</span> · <span class="text-link" id="downloadJsonBtn">Download JSON</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>Runs entirely in your browser. Walking-path routing uses OpenStreetMap (OSRM + Nominatim) and needs internet.</footer>
+
+<script>
+// ============================== Shared state ==============================
+let points = [];               // {lat, lon, name?}
+let map, baseLayer, jumpLayer, walkLayer, baseLine;
+let combinedResult = null;     // {gpx, json, filenameBase}
+const $ = id => document.getElementById(id);
+
+// ============================== Toasts ==============================
+function toast(msg, type){
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' ' + type : '');
+  el.textContent = msg;
+  $('toasts').appendChild(el);
+  requestAnimationFrame(()=> el.classList.add('in'));
+  setTimeout(()=>{ el.classList.remove('in'); setTimeout(()=>el.remove(), 250); }, 3400);
+}
+
+// ============================== Tabs ==============================
+$('tabPaste').onclick = () => setTab('paste');
+$('tabUpload').onclick = () => setTab('upload');
+$('tabDiscover').onclick = () => setTab('discover');
+function setTab(which){
+  $('tabPaste').classList.toggle('active', which==='paste');
+  $('tabUpload').classList.toggle('active', which==='upload');
+  $('tabDiscover').classList.toggle('active', which==='discover');
+  $('panelPaste').classList.toggle('active', which==='paste');
+  $('panelUpload').classList.toggle('active', which==='upload');
+  $('panelDiscover').classList.toggle('active', which==='discover');
+}
+
+// ============================== Map ==============================
+function initMap(){
+  map = L.map('map', { zoomControl:true }).setView([20, 0], 2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom:19, attribution:'&copy; OpenStreetMap contributors &copy; CARTO'
+  }).addTo(map);
+  baseLayer = L.layerGroup().addTo(map);
+  jumpLayer = L.layerGroup().addTo(map);
+  walkLayer = L.layerGroup().addTo(map);
+  baseLine = L.polyline([], { color:'#7c86ff', weight:3, opacity:.8 }).addTo(baseLayer);
+
+  map.on('click', e => {
+    points.push({ lat:e.latlng.lat, lon:e.latlng.lng });
+    renderAll();
+    toast(`Point added: ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`, 'success');
+  });
+}
+window.addEventListener('resize', ()=> map && map.invalidateSize());
+
+// ============================== Geometry helpers ==============================
+const EARTH_R = 6371000;
+function haversine(a, b){
+  const p1=a.lat*Math.PI/180, p2=b.lat*Math.PI/180;
+  const dPhi=(b.lat-a.lat)*Math.PI/180, dLambda=(b.lon-a.lon)*Math.PI/180;
+  const x = Math.sin(dPhi/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dLambda/2)**2;
+  return EARTH_R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+function metersLL(a,b){ return haversine({lat:a[0],lon:a[1]},{lat:b[0],lon:b[1]}); }
+function perpDist(p,a,b){
+  const lat0=a[0]*Math.PI/180;
+  const xy=q=>[(q[1]-a[1])*Math.PI/180*Math.cos(lat0)*EARTH_R,(q[0]-a[0])*Math.PI/180*EARTH_R];
+  const [ax,ay]=xy(a),[bx,by]=xy(b),[px,py]=xy(p); const dx=bx-ax,dy=by-ay;
+  if(dx===0&&dy===0) return Math.hypot(px-ax,py-ay);
+  return Math.abs(dy*px-dx*py+bx*ay-by*ax)/Math.hypot(dx,dy);
+}
+function rdp(pts,eps){
+  if(eps<=0||pts.length<3) return pts.slice();
+  const keep=new Array(pts.length).fill(false); keep[0]=keep[pts.length-1]=true;
+  const stack=[[0,pts.length-1]];
+  while(stack.length){
+    const [s,e]=stack.pop(); let dmax=0,idx=-1;
+    for(let i=s+1;i<e;i++){ const d=perpDist(pts[i],pts[s],pts[e]); if(d>dmax){dmax=d;idx=i;} }
+    if(idx!==-1&&dmax>eps){ keep[idx]=true; stack.push([s,idx]); stack.push([idx,e]); }
+  }
+  return pts.filter((_,i)=>keep[i]);
+}
+
+// ============================== Ordering strategies ==============================
+// Nearest-neighbor, chooses a "perimeter-ish" start point (used by Jump: proximity)
+function orderProximity(list){
+  if(list.length<=2) return list.slice();
+  let startIdx=0, minVal=Infinity;
+  list.forEach((p,i)=>{ const v=p.lat+p.lon; if(v<minVal){minVal=v; startIdx=i;} });
+  const unvisited=list.slice();
+  const sorted=[unvisited.splice(startIdx,1)[0]];
+  while(unvisited.length){
+    let bestI=0, bestD=Infinity;
+    unvisited.forEach((p,i)=>{ const d=haversine(sorted[sorted.length-1],p); if(d<bestD){bestD=d;bestI=i;} });
+    sorted.push(unvisited.splice(bestI,1)[0]);
+  }
+  return sorted;
+}
+// Greedy nearest-neighbor + 2-opt (used by Walk: direct)
+function orderDirect(coords, loop){
+  const n=coords.length; if(n<=3) return coords.map((_,i)=>i);
+  const D=(i,j)=>metersLL(coords[i],coords[j]);
+  const seen=new Set([0]); let order=[0];
+  while(order.length<n){
+    const last=order[order.length-1]; let best=-1,bd=Infinity;
+    for(let j=0;j<n;j++){ if(seen.has(j))continue; const d=D(last,j); if(d<bd){bd=d;best=j;} }
+    order.push(best); seen.add(best);
+  }
+  const tlen=o=>{ let s=0; for(let i=1;i<o.length;i++) s+=D(o[i-1],o[i]); if(loop) s+=D(o[o.length-1],o[0]); return s; };
+  let improved=true;
+  while(improved){
+    improved=false;
+    for(let i=1;i<n-1;i++) for(let k=i+1;k<n;k++){
+      const no=order.slice(0,i).concat(order.slice(i,k+1).reverse(),order.slice(k+1));
+      if(tlen(no)+1e-6<tlen(order)){ order=no; improved=true; }
+    }
+  }
+  return order;
+}
+// Lawnmower serpentine sweep (used by Walk: meandering)
+function orderSerpentine(coords){
+  const n=coords.length; if(n<=2) return coords.map((_,i)=>i);
+  let minLat=90,maxLat=-90,minLon=180,maxLon=-180;
+  coords.forEach(([lat,lon])=>{ if(lat<minLat)minLat=lat; if(lat>maxLat)maxLat=lat; if(lon<minLon)minLon=lon; if(lon>maxLon)maxLon=lon; });
+  const height=metersLL([minLat,minLon],[maxLat,minLon]);
+  const width=metersLL([minLat,minLon],[minLat,maxLon]);
+  let indexed=coords.map((c,i)=>({lat:c[0],lon:c[1],i}));
+  const rows=Math.ceil(Math.sqrt(n)), rowSize=Math.ceil(n/rows);
+  let order=[];
+  if(height>width){
+    indexed.sort((a,b)=>b.lat-a.lat);
+    for(let r=0;r<rows;r++){ let row=indexed.slice(r*rowSize,(r+1)*rowSize); row.sort((a,b)=>a.lon-b.lon); if(r%2===1) row.reverse(); order.push(...row.map(p=>p.i)); }
+  } else {
+    indexed.sort((a,b)=>a.lon-b.lon);
+    for(let r=0;r<rows;r++){ let row=indexed.slice(r*rowSize,(r+1)*rowSize); row.sort((a,b)=>b.lat-a.lat); if(r%2===1) row.reverse(); order.push(...row.map(p=>p.i)); }
+  }
+  return order;
+}
+// Bearing (degrees, 0=north) from point a to point b, both [lat,lon]
+function bearingDeg(a,b){
+  const p1=a[0]*Math.PI/180, p2=b[0]*Math.PI/180, dl=(b[1]-a[1])*Math.PI/180;
+  const y=Math.sin(dl)*Math.cos(p2);
+  const x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function angleDiff(b1,b2){ const d=Math.abs(b1-b2)%360; return d>180?360-d:d; }
+// Or-opt local search: relocate single points to a cheaper slot using a real distance
+// matrix D(i,j). Reduces avoidable backtracking that Euclidean-only ordering can't see
+// (e.g. a point that requires detouring off the walkable route when a nearby slot in
+// the sequence would let it be visited in passing instead).
+function orOptRefine(orderIdx, D, loop, maxIter){
+  let order = orderIdx.slice();
+  const n = order.length;
+  if(n<4) return order;
+  maxIter = maxIter || 6;
+  let improvedAny = true, iter = 0;
+  while(improvedAny && iter<maxIter){
+    improvedAny = false; iter++;
+    for(let a=0; a<order.length; a++){
+      if(!loop && (a===0 || a===order.length-1)) continue; // keep start/end fixed for an open path
+      const p = order[a];
+      const rest = order.slice(0,a).concat(order.slice(a+1));
+      const prev = a>0 ? order[a-1] : (loop ? order[order.length-1] : null);
+      const next = a<order.length-1 ? order[a+1] : (loop ? order[0] : null);
+      let removeGain;
+      if(prev!=null && next!=null) removeGain = D(prev,p)+D(p,next)-D(prev,next);
+      else removeGain = prev!=null ? D(prev,p) : D(p,next);
+      let bestDelta=1e-6, bestIdx=-1;
+      for(let b=0;b<=rest.length;b++){
+        const left = b>0 ? rest[b-1] : (loop ? rest[rest.length-1] : null);
+        const right = b<rest.length ? rest[b] : (loop ? rest[0] : null);
+        if(left==null && right==null) continue;
+        const insertCost = (left!=null && right!=null) ? D(left,p)+D(p,right)-D(left,right)
+                          : (left!=null ? D(left,p) : D(p,right));
+        const delta = removeGain - insertCost;
+        if(delta > bestDelta){ bestDelta = delta; bestIdx = b; }
+      }
+      if(bestIdx>=0){ rest.splice(bestIdx,0,p); order = rest; improvedAny = true; break; }
+    }
+  }
+  return order;
+}
+
+// ============================== Parsing: paste text ==============================
+$('loadPasteBtn').onclick = () => {
+  const text = $('coordInput').value;
+  const swap = $('swapLatLon').checked;
+  const lines = text.split(/[\r\n]+/);
+  const found = [];
+  lines.forEach(line=>{
+    let s = line.trim(); if(!s) return;
+    s = s.replace(/\d\ufe0f?\u20e3|\uD83D\uDD1F/g,'');
+    s = s.replace(/([-+]?\d+\.\d+)\s*\.\s*([-+]?\d+\.\d+)/g,'$1,$2');
+    s = s.replace(/[^0-9\-+.,\s\[\]\(\)\{\}]/g,'');
+    s = s.trim();
+    s = s.replace(/^\s*\d+(?:(?:\.(?!\d)|[\)\-:])+\s*|\s+)/,'');
+    s = s.trim();
+    const m = s.match(/[-+]?[0-9]*\.?[0-9]+/g);
+    if(m && m.length>=2){
+      let lat=parseFloat(m[0]), lon=parseFloat(m[1]);
+      if(swap){ const t=lat; lat=lon; lon=t; }
+      if(Math.abs(lat)<=90 && Math.abs(lon)<=180) found.push({lat,lon});
+    }
+  });
+  if(!found.length){ toast('No valid coordinates found in that text.', 'error'); return; }
+  points = found;
+  renderAll();
+  toast(`Loaded ${points.length} points.`, 'success');
+};
+
+// ============================== Parsing: GPX upload ==============================
+const dropzone = $('dropzone'), fileInput = $('fileInput');
+dropzone.onclick = () => fileInput.click();
+['dragover','dragenter'].forEach(ev => dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add('hover'); }));
+['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove('hover'); }));
+dropzone.addEventListener('drop', e => { if(e.dataTransfer.files[0]) loadGpxFile(e.dataTransfer.files[0]); });
+fileInput.onchange = () => { if(fileInput.files[0]) loadGpxFile(fileInput.files[0]); };
+
+function loadGpxFile(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const xml = new DOMParser().parseFromString(reader.result, 'application/xml');
+      if(xml.querySelector('parsererror')) throw new Error('invalid XML');
+      let nodes = [...xml.getElementsByTagName('wpt')];
+      if(!nodes.length) nodes = [...xml.getElementsByTagName('rtept')];
+      if(!nodes.length) nodes = [...xml.getElementsByTagName('trkpt')];
+      const found = [];
+      for(const n of nodes){
+        const lat=parseFloat(n.getAttribute('lat')), lon=parseFloat(n.getAttribute('lon'));
+        if(isNaN(lat)||isNaN(lon)) continue;
+        const nameEl = n.getElementsByTagName('name')[0];
+        const last = found[found.length-1];
+        if(last && Math.abs(last.lat-lat)<1e-9 && Math.abs(last.lon-lon)<1e-9) continue;
+        found.push({ lat, lon, name: nameEl ? nameEl.textContent.trim() : undefined });
+      }
+      if(found.length<2){ toast(`Need at least 2 points; found ${found.length}.`, 'error'); return; }
+      points = found;
+      const baseName = file.name.replace(/\.gpx$/i,'');
+      if(!$('setName').value.trim()) $('setName').value = baseName;
+      renderAll();
+      toast(`Loaded ${points.length} points from ${file.name}.`, 'success');
+    }catch(err){ toast('Could not read that GPX file: ' + err.message, 'error'); }
+  };
+  reader.readAsText(file);
+}
+
+// ============================== Render: table + map + stats ==============================
+function renderAll(){
+  renderTable();
+  renderMap();
+  const marker1 = $('marker1'), marker2 = $('marker2');
+  marker1.classList.toggle('filled', points.length>0);
+  marker2.classList.toggle('filled', points.length>0);
+}
+
+function renderTable(){
+  const body = $('tableBody');
+  body.innerHTML = '';
+  if(!points.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="5">No points yet — load some above or click the map.</td></tr>';
+    $('statsBar').innerHTML = '<span><b>0</b> points · <b>0.00 km</b> total</span>';
+    return;
+  }
+  let totalM = 0;
+  points.forEach((p,i)=>{
+    let distStr = '–';
+    if(i>0){ const d = haversine(points[i-1], p); totalM += d; distStr = d>=1000 ? (d/1000).toFixed(2)+' km' : Math.round(d)+' m'; }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono" style="color:var(--muted)">${i+1}</td>
+      <td><input type="number" step="any" value="${p.lat}" onchange="updateLat(${i},this.value)"></td>
+      <td><input type="number" step="any" value="${p.lon}" onchange="updateLon(${i},this.value)"></td>
+      <td class="mono" style="color:var(--muted)">${distStr}</td>
+      <td><button class="del-btn" onclick="removePoint(${i})" title="Remove point">×</button></td>`;
+    body.appendChild(tr);
+  });
+  const km = totalM/1000;
+  $('statsBar').innerHTML = `<span><b>${points.length}</b> point${points.length===1?'':'s'} · <b>${km.toFixed(2)} km</b> total</span>`;
+}
+
+window.updateLat = (i,v) => {
+  const val = parseFloat(v);
+  if(!isNaN(val) && Math.abs(val)<=90){ points[i].lat = val; renderAll(); }
+  else { toast('Latitude must be between -90 and 90.', 'error'); renderTable(); }
+};
+window.updateLon = (i,v) => {
+  const val = parseFloat(v);
+  if(!isNaN(val) && Math.abs(val)<=180){ points[i].lon = val; renderAll(); }
+  else { toast('Longitude must be between -180 and 180.', 'error'); renderTable(); }
+};
+window.removePoint = (i) => { points.splice(i,1); renderAll(); };
+
+$('reverseBtn').onclick = () => { if(points.length>1){ points.reverse(); renderAll(); toast('Order reversed.'); } };
+$('shiftBtn').onclick = () => { if(points.length>1){ points.push(points.shift()); renderAll(); toast('Shifted by one.'); } };
+$('sortProximityBtn').onclick = () => {
+  if(points.length>2){ points = orderProximity(points); renderAll(); toast('Sorted by proximity.'); }
+};
+$('clearBtn').onclick = () => {
+  points = []; combinedResult = null;
+  $('combinedResult').classList.remove('show');
+  renderAll(); toast('Cleared.');
+};
+
+function renderMap(){
+  if(!map) return;
+  baseLayer.clearLayers();
+  baseLine = L.polyline(points.map(p=>[p.lat,p.lon]), { color:'#7c86ff', weight:3, opacity:.8 }).addTo(baseLayer);
+  points.forEach((p,i)=>{
+    let color = '#7c86ff', r = 5;
+    if(i===0){ color='#3ecf9e'; r=7; } else if(i===points.length-1){ color='#f4636f'; r=7; }
+    L.circleMarker([p.lat,p.lon], { radius:r, color:'#fff', weight:1.5, fillColor:color, fillOpacity:.9 })
+      .bindPopup(`Point #${i+1}<br>${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}`)
+      .addTo(baseLayer);
+  });
+  if(points.length){ try{ map.fitBounds(L.latLngBounds(points.map(p=>[p.lat,p.lon])), { padding:[30,30], maxZoom:15 }); }catch(e){} }
+}
+
+// ============================== Pill selection visuals ==============================
+function wirePills(groupId, selClass){
+  const group = $(groupId);
+  const pills = [...group.querySelectorAll('.pill')];
+  pills.forEach(pill=>{
+    pill.querySelector('input').addEventListener('change', ()=>{
+      pills.forEach(p=>p.classList.remove(selClass));
+      pill.classList.add(selClass);
+    });
+  });
+}
+wirePills('jumpOrderGroup','sel-jump');
+wirePills('jumpTypeGroup','sel-jump');
+wirePills('walkOrderGroup','sel-walk');
+wirePills('tierGroup','sel-jump');
+document.querySelectorAll('#catGroup .pill').forEach(pill=>{
+  const input = pill.querySelector('input');
+  input.addEventListener('change', ()=> pill.classList.toggle('sel-jump', input.checked));
+});
+document.querySelector('input[name=tier][value=gems]').addEventListener('change', ()=> $('gemsHint').style.display='block');
+document.querySelector('input[name=tier][value=famous]').addEventListener('change', ()=> $('gemsHint').style.display='none');
+
+// ============================== Include-checkbox state ==============================
+function syncCardState(){
+  $('jumpSettings').classList.toggle('off', !$('includeJump').checked);
+  $('walkSettings').classList.toggle('off', !$('includeWalk').checked);
+}
+$('includeJump').addEventListener('change', syncCardState);
+$('includeWalk').addEventListener('change', syncCardState);
+syncCardState();
+
+// ============================== Copy / download ==============================
+function copyText(text, label){
+  const done = () => toast(`${label} copied to clipboard.`, 'success');
+  const fail = () => toast(`Could not copy ${label}.`, 'error');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(fail);
+  } else {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand('copy') ? done() : fail(); }catch(e){ fail(); }
+    document.body.removeChild(ta);
+  }
+}
+function downloadText(text, filename, mime){
+  try{
+    const blob = new Blob([text], { type: mime });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast(`Downloaded ${filename}.`, 'success');
+  }catch(e){ toast('Download failed.', 'error'); }
+}
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function safeName(){ return $('setName').value.trim() || 'route'; }
+function setStatus(text, warn){ const el = $('buildStatus'); el.textContent = text; el.classList.toggle('warn', !!warn); }
+function generateId(){
+  return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() :
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{ const r=Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); });
+}
+
+// ============================== JUMP ROUTE (sync) ==============================
+function buildJumpPart(){
+  const order = document.querySelector('input[name=jumpOrder]:checked').value;
+  const type = document.querySelector('input[name=jumpType]:checked').value;
+  const ordered = order === 'proximity' ? orderProximity(points) : points.slice();
+  const base = safeName();
+  const prefixed = `jump-${base}`;
+  let body = '';
+  if(type === 'route'){
+    body += `  <rte>\n    <name>${esc(prefixed)} Route</name>\n`;
+    ordered.forEach((p,i)=>{ body += `    <rtept lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><name>${esc(base)} POI - ${i+1}</name></rtept>\n`; });
+    body += `  </rte>\n`;
+  } else if(type === 'track'){
+    body += `  <trk>\n    <name>${esc(prefixed)} Track</name>\n    <trkseg>\n`;
+    ordered.forEach(p=>{ body += `      <trkpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}" />\n`; });
+    body += `    </trkseg>\n  </trk>\n`;
+  } else {
+    ordered.forEach((p,i)=>{ body += `  <wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><name>${esc(base)} POI - ${i+1}</name></wpt>\n`; });
+  }
+  const json = JSON.stringify([{
+    id: generateId(), name: base, isFlower: base.toLowerCase()==='flowers', isPinned: false,
+    points: ordered.map(p=>({ lat:p.lat, lng:p.lon }))
+  }], null, 4);
+  let distM = 0; for(let i=1;i<ordered.length;i++) distM += haversine(ordered[i-1], ordered[i]);
+  return { body, json, prefixed, ordered, count: ordered.length, distKm: distM/1000 };
+}
+
+// ============================== WALKING PATH (async) ==============================
+const OSRM_BASE = 'https://routing.openstreetmap.de/routed-foot/';
+const NOMINATIM = 'https://nominatim.openstreetmap.org/reverse';
+const PAUSE = 500;
+const PALETTE = ['#3ecf9e','#5b9cff','#e0a948','#e06b9a','#9b8cff'];
+const AREA_KEYS = ['neighbourhood','suburb','quarter','city_district','town','village','city','municipality','county','state'];
+const OROPT_MAX_POINTS = 150; // skip the real-distance refinement above this many points (keeps the table request small & fast)
+const DETOUR_RATIO_THRESHOLD = 1.6; // roundtrip-via-point vs. direct-skip-it ratio that counts as a genuine dead-end
+
+async function osrmLeg(a,b){
+  const coord = `${a[1].toFixed(6)},${a[0].toFixed(6)};${b[1].toFixed(6)},${b[0].toFixed(6)}`;
+  const r = await fetch(OSRM_BASE + 'route/v1/foot/' + coord + '?overview=full&geometries=geojson');
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const d = await r.json();
+  if(d.code !== 'Ok' || !d.routes || !d.routes.length) return { geom:null, dist:null };
+  return { geom: d.routes[0].geometry.coordinates.map(([lo,la])=>[la,lo]), dist: d.routes[0].distance };
+}
+// Fetches an NxN real walking-distance matrix in one request, used to refine the
+// visiting order (orOptRefine) before we route each leg in detail.
+async function osrmTable(coords){
+  if(coords.length<2) return null;
+  const coordStr = coords.map(([la,lo])=>`${lo.toFixed(6)},${la.toFixed(6)}`).join(';');
+  const r = await fetch(OSRM_BASE + 'table/v1/foot/' + coordStr + '?annotations=distance');
+  if(!r.ok) return null;
+  const d = await r.json();
+  if(d.code !== 'Ok' || !d.distances) return null;
+  return d.distances;
+}
+// Finds where an outgoing leg (legOut, starting at the shared point) stops overlapping
+// with the incoming leg that just arrived at that same point (legIn, also compared from
+// the shared point outward). Used to detect an out-and-back dead-end spur.
+function findOverlapEnd(legOutFromPoint, legInFromPoint, tolM){
+  let k = -1;
+  for(let i=0;i<legOutFromPoint.length;i++){
+    let minD = Infinity;
+    for(let j=0;j<legInFromPoint.length;j++){
+      const d = metersLL(legOutFromPoint[i], legInFromPoint[j]);
+      if(d<minD){ minD=d; if(minD<=tolM) break; }
+    }
+    if(minD<=tolM) k=i; else break;
+  }
+  return k; // last index of legOutFromPoint that still lies on legIn (-1 = no overlap)
+}
+function pathLength(pts){ let s=0; for(let i=1;i<pts.length;i++) s+=metersLL(pts[i-1],pts[i]); return s; }
+function splitGroups(nPts, legD, legP, maxPts){
+  const g=[]; let s=0, accP=1;
+  for(let i=0;i<legD.length;i++){
+    const lp=legP[i];
+    const over = maxPts && accP+lp>maxPts;
+    if(over && i>s){ g.push([s,i]); s=i; accP=1+lp; }
+    else { accP+=lp; }
+  }
+  g.push([s, nPts-1]); return g;
+}
+function chopPoints(pts, maxPts){
+  if(!maxPts || pts.length<=maxPts) return [pts];
+  const out=[]; let i=0;
+  while(i<pts.length-1){ out.push(pts.slice(i, i+maxPts)); i += maxPts-1; }
+  return out;
+}
+async function areaName(lat,lon){
+  try{
+    const r = await fetch(`${NOMINATIM}?format=jsonv2&zoom=14&addressdetails=1&lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}`);
+    if(!r.ok) return null;
+    const d = await r.json(); const a = d.address || {};
+    for(const k of AREA_KEYS) if(a[k]) return a[k];
+    return d.name || null;
+  }catch(e){ return null; }
+}
+function dedupe(names){
+  const c={}; names.forEach(n=>c[n]=(c[n]||0)+1); const seen={};
+  return names.map(n=>{ if(c[n]>1){ seen[n]=(seen[n]||0)+1; return n+' - Part '+seen[n]; } return n; });
+}
+
+async function buildWalkPart(){
+  const loop = $('loopCheck').checked;
+  const keepPoi = $('keepPoiCheck').checked;
+  const simplifyM = Math.max(0, parseFloat($('simplifyInput').value) || 0);
+  const maxJumpM = Math.max(0, parseFloat($('maxjumpInput').value) || 0) * 1000;
+  const maxPts = $('splitPtsCheck').checked ? Math.max(10, parseInt($('maxptsInput').value) || 500) : 0;
+  const strategy = document.querySelector('input[name=walkOrder]:checked').value;
+
+  const base = safeName();
+  const prefix = `walk-${base}`;
+  const rawCoords = points.map(p=>[p.lat,p.lon]);
+  let idx = strategy === 'serpentine' ? orderSerpentine(rawCoords) : orderDirect(rawCoords, loop);
+
+  // Refine the order using real walking distances where practical, so a point that
+  // would force a detour gets relocated to a slot it can be visited in passing instead.
+  let deadEnds = 0;
+  let distD = null; // real walking-distance lookup; reused below to confirm genuine dead-ends
+  if(rawCoords.length>=4 && rawCoords.length<=OROPT_MAX_POINTS){
+    setStatus('Checking real walking distances…');
+    try{
+      const matrix = await osrmTable(rawCoords);
+      if(matrix){
+        distD = (i,j) => { const v = matrix[i] && matrix[i][j]; return (v==null || !isFinite(v)) ? metersLL(rawCoords[i],rawCoords[j])*3 : v; };
+        idx = orOptRefine(idx, distD, loop);
+      }
+    }catch(e){ /* keep the original order if the table lookup fails */ }
+  }
+
+  const ordered = idx.map(i=>points[i]);
+  let coords = ordered.map(p=>[p.lat,p.lon]);
+  if(loop) coords.push(coords[0]);
+
+  // Pass 1: route every leg, same fallback-to-jump behaviour as before.
+  const legs = [];
+  for(let i=1;i<coords.length;i++){
+    const a=coords[i-1], b=coords[i], straight=metersLL(a,b);
+    setStatus(`Routing leg ${i} of ${coords.length-1} …`);
+    let seg=null, routed=null;
+    try{ const res = await osrmLeg(a,b); if(res.geom){ seg=res.geom; routed=res.dist; } }
+    catch(e){ /* falls back to a straight jump */ }
+    await new Promise(r=>setTimeout(r, PAUSE));
+
+    let wasJump = false;
+    if(seg!==null && straight<=maxJumpM && routed>Math.max(straight*10, 3000)){ seg=null; }
+    if(seg===null){ seg=[a,b]; routed=straight; wasJump=true; }
+    else {
+      if(metersLL(a, seg[0])>0.5) seg.unshift(a);
+      if(metersLL(b, seg[seg.length-1])>0.5) seg.push(b);
+    }
+    legs.push({ seg, routed, wasJump });
+  }
+
+  // Pass 2: at each interior point, check whether the path leaving it immediately
+  // doubles back over the path that just arrived (a dead-end/spur). If the walk
+  // out and the walk back overlap for more than a few metres, that's the "no other
+  // option" case — collapse the retraced portion into a single straight jump back
+  // to the fork instead of recording it twice, and count it as a dead-end.
+  // Pass 2: a point only counts as a genuine dead-end if visiting it costs much more
+  // real walking distance than skipping it would (checked against the same distance
+  // matrix used for ordering) -- not just because the path geometry happens to pass
+  // near some earlier point. That distance-based gate is what stops a normal leg from
+  // being misread as a dead-end just because it re-passes near an old junction.
+  let jumps = 0;
+  for(let i=0;i<legs.length;i++) if(legs[i].wasJump) jumps++;
+  if(distD){
+    const N = idx.length;
+    const rawIdxAt = p => idx[((p % N) + N) % N];
+    for(let i=1;i<legs.length;i++){
+      if(legs[i-1].wasJump || legs[i].wasJump) continue;
+      const rawPrev = rawIdxAt(i-1), rawNext = rawIdxAt(i+1);
+      const directDist = Math.max(distD(rawPrev, rawNext), 5);
+      const roundTrip = legs[i-1].routed + legs[i].routed;
+      if(roundTrip / directDist <= DETOUR_RATIO_THRESHOLD) continue; // not a real detour
+
+      const legIn = legs[i-1].seg, legOut = legs[i].seg;
+      if(legIn.length<2 || legOut.length<2) continue;
+      const legInRev = legIn.slice().reverse();
+      const k = findOverlapEnd(legOut, legInRev, 12);
+      if(k < 1) continue; // confirmed detour, but no clean fork point -- leave it routed as-is
+      const overlapLen = pathLength(legOut.slice(0, k+1));
+      if(overlapLen < 15) continue;
+
+      const forkPoint = legOut[k];
+      const jumpDist = metersLL(legOut[0], forkPoint);
+      const restPts = legOut.slice(k);
+      legs[i].seg = [legOut[0], forkPoint].concat(restPts.slice(1));
+      legs[i].routed = jumpDist + pathLength(restPts);
+      jumps++; deadEnds++;
+    }
+  }
+
+  // Pass 3: simplify each (possibly fixed) leg and concatenate into the full path.
+  let full=[coords[0]], poiIdx=[0], legD=[], legP=[];
+  for(let i=0;i<legs.length;i++){
+    let seg = rdp(legs[i].seg, simplifyM);
+    full = full.concat(seg.slice(1)); poiIdx.push(full.length-1);
+    legD.push(legs[i].routed!==null ? legs[i].routed : pathLength(legs[i].seg)); legP.push(seg.length-1);
+  }
+  const totalKm = legD.reduce((x,y)=>x+y,0)/1000;
+
+  const groups = maxPts ? splitGroups(coords.length, legD, legP, maxPts) : [[0, coords.length-1]];
+  const built = groups.map(([s,e])=> ({ s, e, chunks: chopPoints(full.slice(poiIdx[s], poiIdx[e]+1), maxPts) }));
+  const totalRoutes = built.reduce((a,b)=>a+b.chunks.length, 0);
+
+  let routes=[];
+  if(totalRoutes===1){ routes=[{ name: prefix, pts: built[0].chunks[0] }]; }
+  else{
+    const bases=[];
+    for(let gi=0; gi<built.length; gi++){
+      const { s, e } = built[gi]; let area=null;
+      if($('geoCheck').checked){
+        setStatus(`Naming route ${gi+1} of ${built.length} …`);
+        let clat=0, clon=0; for(let i=s;i<=e;i++){ clat+=coords[i][0]; clon+=coords[i][1]; }
+        clat/=(e-s+1); clon/=(e-s+1); area = await areaName(clat, clon);
+        await new Promise(r=>setTimeout(r, 1000));
+      }
+      bases.push(built.length===1 ? (area?`${prefix} - ${area}`:prefix) : (area?`${prefix} - ${area}`:`${prefix} - Part ${gi+1}`));
+    }
+    const named = dedupe(bases);
+    built.forEach((b,gi)=>{
+      const base2 = named[gi], k = b.chunks.length;
+      if(k===1) routes.push({ name: base2, pts: b.chunks[0] });
+      else b.chunks.forEach((c,ci)=>routes.push({ name: `${base2} (${ci+1}/${k})`, pts:c }));
+    });
+  }
+
+  let body = '';
+  if(keepPoi) ordered.forEach((p,i)=>{
+    const n = p.name ? esc(p.name) : `POI ${i+1}`;
+    body += `  <wpt lat="${p.lat.toFixed(6)}" lon="${p.lon.toFixed(6)}"><name>${n}</name></wpt>\n`;
+  });
+  routes.forEach(r=>{
+    body += `  <rte>\n    <name>${esc(r.name)}</name>\n`;
+    r.pts.forEach(([la,lo])=>{ body += `    <rtept lat="${la.toFixed(6)}" lon="${lo.toFixed(6)}" />\n`; });
+    body += `  </rte>\n`;
+    body += `  <trk>\n    <name>${esc(r.name)}</name>\n    <trkseg>\n`;
+    r.pts.forEach(([la,lo])=>{ body += `      <trkpt lat="${la.toFixed(6)}" lon="${lo.toFixed(6)}"/>\n`; });
+    body += `    </trkseg>\n  </trk>\n`;
+  });
+
+  return { body, prefixed: prefix, routes, stats: { pois: ordered.length, loop, distKm: totalKm, routesCount: routes.length, jumps, deadEnds } };
+}
+
+// ============================== Combined build ==============================
+$('buildBtn').onclick = async () => {
+  const includeJump = $('includeJump').checked;
+  const includeWalk = $('includeWalk').checked;
+  if(!includeJump && !includeWalk){ toast('Select at least one output.', 'error'); return; }
+  if(includeJump && points.length < 1){ toast('Add at least one point for the jump route.', 'error'); return; }
+  if(includeWalk && points.length < 2){ toast('Add at least 2 points for the walking path.', 'error'); return; }
+
+  $('buildBtn').disabled = true;
+  $('combinedResult').classList.remove('show');
+  setStatus('');
+  jumpLayer.clearLayers();
+  walkLayer.clearLayers();
+
+  let jumpPart = null, walkPart = null;
+  try{
+    if(includeJump) jumpPart = buildJumpPart();
+    if(includeWalk) walkPart = await buildWalkPart();
+  }catch(err){
+    toast('Something went wrong while building: ' + err.message, 'error');
+    $('buildBtn').disabled = false;
+    return;
+  }
+
+  const base = safeName();
+  let metaName, filenameBase;
+  if(includeJump && includeWalk){ metaName = base; filenameBase = base; }
+  else if(includeJump){ metaName = jumpPart.prefixed; filenameBase = jumpPart.prefixed; }
+  else { metaName = walkPart.prefixed; filenameBase = walkPart.prefixed; }
+
+  const timestamp = new Date().toISOString();
+  let body = '';
+  if(jumpPart) body += jumpPart.body;
+  if(walkPart) body += walkPart.body;
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="fishese" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n  <metadata>\n    <name>${esc(metaName)}</name>\n    <desc>Generated by fishese on ${timestamp}</desc>\n    <time>${timestamp}</time>\n  </metadata>\n${body}</gpx>`;
+
+  combinedResult = { gpx, json: jumpPart ? jumpPart.json : null, filenameBase };
+
+  $('jumpStatsBlock').style.display = jumpPart ? 'block' : 'none';
+  if(jumpPart){
+    $('jumpStatPts').textContent = jumpPart.count;
+    $('jumpStatDist').textContent = jumpPart.distKm.toFixed(2) + ' km';
+    jumpLayer.clearLayers();
+    L.polyline(jumpPart.ordered.map(p=>[p.lat,p.lon]), { color:'#e2a640', weight:4, opacity:.85, dashArray:'2 8' }).addTo(jumpLayer);
+  }
+  $('walkStatsBlock').style.display = walkPart ? 'block' : 'none';
+  if(walkPart){
+    $('walkStatPois').textContent = walkPart.stats.pois + (walkPart.stats.loop ? ' (loop)' : '');
+    $('walkStatDist').textContent = walkPart.stats.distKm.toFixed(2) + ' km';
+    $('walkStatRoutes').textContent = walkPart.stats.routesCount;
+    $('walkStatJumps').textContent = walkPart.stats.jumps;
+    $('walkStatDeadEnds').textContent = walkPart.stats.deadEnds;
+    walkLayer.clearLayers();
+    walkPart.routes.forEach((r,i)=> L.polyline(r.pts, { color: PALETTE[i%PALETTE.length], weight:4, opacity:.9 }).addTo(walkLayer));
+  }
+  $('jsonBtnRow').style.display = jumpPart ? 'block' : 'none';
+  $('combinedResult').classList.add('show');
+  $('marker3').classList.add('filled');
+
+  let doneMsg = 'Built ' + (includeJump && includeWalk ? 'jump route + walking path' : includeJump ? 'jump route' : 'walking path') + '.';
+  if(walkPart && walkPart.stats.jumps){
+    doneMsg += ` ${walkPart.stats.jumps} short jump${walkPart.stats.jumps>1?'s':''} in the walk`;
+    doneMsg += walkPart.stats.deadEnds ? ` (${walkPart.stats.deadEnds} were unavoidable dead-ends).` : '.';
+  }
+  setStatus(doneMsg, walkPart && walkPart.stats.jumps>0);
+  $('buildBtn').disabled = false;
+  toast('Build complete.', 'success');
+};
+
+$('copyGpxBtn').onclick = () => combinedResult && copyText(combinedResult.gpx, 'GPX');
+$('downloadGpxBtn').onclick = () => combinedResult && downloadText(combinedResult.gpx, combinedResult.filenameBase + '.gpx', 'application/gpx+xml');
+$('copyJsonBtn').onclick = () => combinedResult && combinedResult.json && copyText(combinedResult.json, 'JSON');
+$('downloadJsonBtn').onclick = () => combinedResult && combinedResult.json && downloadText(combinedResult.json, combinedResult.filenameBase + '.json', 'application/json');
+
+// ============================== DISCOVER: POIs from a place name ==============================
+// Default path uses only free, keyless, public APIs (Nominatim + Overpass + Wikidata) so it stays
+// safe to share. Geoapify is optional: the key lives in the visitor's own browser (localStorage),
+// never in this file, and is only used when the visitor pastes one and opts in.
+const NOMINATIM_EMAIL = 'gpxmaker@users.noreply.github.com'; // per Nominatim policy (fetch can't set User-Agent)
+const OVERPASS_MIRRORS = ['https://overpass-api.de/api/interpreter'];
+const WIKIDATA_SPARQL = 'https://query.wikidata.org/sparql';
+// Owner: set this to your deployed Worker URL to enable Geoapify for everyone,
+// e.g. 'https://gpx-poi-proxy.yourname.workers.dev'. Visitors can also paste a
+// proxy URL in settings. Leave blank to use OpenStreetMap only for local gems.
+const GEOAPIFY_PROXY = 'https://gpx-poi-proxy.fishese.workers.dev';
+
+// Overpass tag filters per category (used for the Local gems / OSM path). nwr = node+way+relation.
+const CATEGORY_DEFS = {
+  sights:      ['nwr["tourism"~"attraction|artwork|viewpoint|gallery|zoo|theme_park|aquarium"]','nwr["historic"]'],
+  museums:     ['nwr["tourism"="museum"]'],
+  restaurants: ['nwr["amenity"~"restaurant|fast_food|food_court|bar|pub|biergarten"]'],
+  cafes:       ['nwr["amenity"~"cafe|ice_cream"]','nwr["shop"="coffee"]'],
+  libraries:   ['nwr["amenity"="library"]'],
+  parks:       ['nwr["leisure"~"park|garden|nature_reserve"]','nwr["natural"~"beach|peak|wood"]'],
+  shops:       ['nwr["shop"~"bakery|deli|gift|art|craft|books|chocolate|department_store|mall|florist|confectionery"]']
+};
+const GEMS_MAX_RADIUS_KM = 5; // bounded search keeps Overpass fast; whole-city-area queries time out on large places
+// Keys scanned when the user adds custom comma-separated terms.
+const CUSTOM_KEYS = ['"amenity"','"shop"','"tourism"','"leisure"','"historic"','"cuisine"','"name"'];
+// Wikidata instance-of (P31) QID -> our category, for the Famous landmarks path. Anything else -> sights.
+const WD_TYPE_TO_CAT = {
+  Q33506:'museums', Q207694:'museums', Q1970365:'museums',
+  Q7075:'libraries', Q22806:'libraries', Q856234:'libraries',
+  Q11707:'restaurants', Q40080:'parks',
+  Q30022:'cafes', Q329683:'cafes',
+  Q22698:'parks', Q22746:'parks', Q1107656:'parks', Q473972:'parks', Q4421:'parks',
+  Q213441:'shops', Q11315:'shops'
+};
+// Preset category -> Geoapify Places category string(s).
+const GEOAPIFY_CATS = {
+  sights:'tourism.sights', museums:'entertainment.museum', restaurants:'catering.restaurant',
+  cafes:'catering.cafe', libraries:'education.library', parks:'leisure.park,natural', shops:'commercial'
+};
+let discoverResults = [];
+
+// ---- small helpers ----
+const setDiscStatus = m => { $('discoverStatus').textContent = m; };
+const setDiscBusy = b => { $('discoverBtn').disabled = b; };
+function selectedCats(){ return [...document.querySelectorAll('#catGroup input:checked')].map(i=>i.value); }
+function parseCustomTerms(){ return ($('customCats').value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean); }
+function matchesCustom(name, terms){ if(!terms.length) return false; const n=(name||'').toLowerCase(); return terms.some(t=>n.includes(t)); }
+function geoapifyProxy(){ let v=''; try{ v=(localStorage.getItem('gpx_geoapify_proxy')||'').trim(); }catch(e){} return (v || GEOAPIFY_PROXY).replace(/\/+$/,''); }
+function radiusKmFromBbox(bbox){
+  if(!bbox) return 10;
+  const midLat = (bbox.south+bbox.north)/2;
+  const dLatKm = (bbox.north-bbox.south)*111.32;
+  const dLonKm = (bbox.east-bbox.west)*111.32*Math.cos(midLat*Math.PI/180);
+  const half = Math.sqrt(dLatKm*dLatKm + dLonKm*dLonKm)/2;
+  return Math.max(1, Math.min(25, Math.ceil(half)));
+}
+function poiDistM(la1,lo1,la2,lo2){
+  const R=6371000, toR=Math.PI/180;
+  const dLa=(la2-la1)*toR, dLo=(lo2-lo1)*toR;
+  const a=Math.sin(dLa/2)**2 + Math.cos(la1*toR)*Math.cos(la2*toR)*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+function shortPlaceName(x){
+  const parts = (x.display_name||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(parts.length<=3) return parts.join(', ');
+  return [parts[0], parts[parts.length-2], parts[parts.length-1]].join(', ');
+}
+
+// ---- geocoding (Nominatim, up to 5 matches for disambiguation) ----
+async function searchPlaces(q){
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=1&extratags=1&q=${encodeURIComponent(q)}&email=${encodeURIComponent(NOMINATIM_EMAIL)}`;
+  const r = await fetch(url, { headers:{ 'Accept':'application/json' } });
+  if(!r.ok) throw new Error('Nominatim HTTP ' + r.status);
+  const d = await r.json();
+  return d.map(x=>{
+    const bb = x.boundingbox ? { south:+x.boundingbox[0], north:+x.boundingbox[1], west:+x.boundingbox[2], east:+x.boundingbox[3] } : null;
+    return {
+      lat:+x.lat, lon:+x.lon, displayName:x.display_name, short:shortPlaceName(x),
+      osmType:x.osm_type, osmId:x.osm_id, bbox:bb, cls:x.class, type:x.type,
+      wikidata: x.extratags ? (x.extratags.wikidata || null) : null
+    };
+  });
+}
+
+// ---- Overpass (bounded around-center query; whole-city-area queries are too slow to be reliable) ----
+function buildOverpassQuery(place, cats, customTerms){
+  const radM = Math.max(1, Math.min(GEMS_MAX_RADIUS_KM, radiusKmFromBbox(place.bbox))) * 1000;
+  const c = `${place.lat},${place.lon}`;
+  const filters = [];
+  cats.forEach(cat => (CATEGORY_DEFS[cat]||[]).forEach(f=>filters.push(f)));
+  customTerms.forEach(t=>{
+    const term = t.replace(/[\\"]/g,'');
+    if(term) CUSTOM_KEYS.forEach(k=> filters.push(`nwr[${k}~"${term}",i]`));
+  });
+  if(!filters.length) return null;
+  const body = filters.map(f=>`${f}(around:${radM},${c});`).join('');
+  return `[out:json][timeout:25];(${body});out center 300;`;
+}
+async function overpassRun(query){
+  let lastErr;
+  for(const url of OVERPASS_MIRRORS){
+    const ctl = new AbortController();
+    const timer = setTimeout(()=>ctl.abort(), 30000); // don't let a slow mirror hang the UI
+    try{
+      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'data='+encodeURIComponent(query), signal: ctl.signal });
+      if(!r.ok){ lastErr = new Error('Overpass HTTP ' + r.status); continue; }
+      const d = await r.json();
+      return d.elements || [];
+    }catch(e){ lastErr = e; }
+    finally{ clearTimeout(timer); }
+  }
+  throw lastErr || new Error('All Overpass mirrors failed');
+}
+async function gemsViaOverpass(place, cats, customTerms){
+  const q = buildOverpassQuery(place, cats, customTerms);
+  if(!q) return [];
+  const els = await overpassRun(q);
+  return parseOverpassElements(els);
+}
+function classifyOsmTags(tags){
+  if(tags.tourism==='museum') return 'museums';
+  if(tags.amenity==='library') return 'libraries';
+  if(tags.amenity==='cafe' || tags.amenity==='ice_cream' || tags.shop==='coffee') return 'cafes';
+  if(/^(restaurant|fast_food|food_court|bar|pub|biergarten)$/.test(tags.amenity||'')) return 'restaurants';
+  if(tags.tourism || tags.historic) return 'sights';
+  if(tags.leisure || tags.natural) return 'parks';
+  if(tags.shop) return 'shops';
+  return 'sights';
+}
+function parseOverpassElements(elements){
+  const out = [];
+  elements.forEach(el=>{
+    const tags = el.tags || {};
+    if(!tags.name) return;
+    const lat = el.lat!=null ? el.lat : (el.center ? el.center.lat : null);
+    const lon = el.lon!=null ? el.lon : (el.center ? el.center.lon : null);
+    if(lat==null || lon==null) return;
+    out.push({
+      name: tags.name, lat, lon, category: classifyOsmTags(tags), source:'osm',
+      wikipedia: tags.wikipedia || null, wikidata: tags.wikidata || null,
+      website: tags.website || tags['contact:website'] || null,
+      hours: tags.opening_hours || null, description: tags.description || null,
+      tagCount: Object.keys(tags).length
+    });
+  });
+  const seen = new Set(), deduped = [];
+  out.forEach(p=>{
+    const key = p.name.toLowerCase() + '|' + p.lat.toFixed(4) + '|' + p.lon.toFixed(4);
+    if(seen.has(key)) return; seen.add(key); deduped.push(p);
+  });
+  return deduped;
+}
+function rankGems(list){
+  return list.map(p=>({ ...p, score: p.tagCount + (p.website?5:0) + (p.hours?3:0) + (p.description?2:0) }))
+    .sort((a,b)=>{
+      const aw = (a.wikipedia||a.wikidata)?1:0, bw = (b.wikipedia||b.wikidata)?1:0;
+      if(aw!==bw) return aw-bw;            // truly local (non-wiki) spots first
+      return b.score-a.score;              // then best-documented
+    });
+}
+
+// ---- Famous landmarks via Wikidata (ranked by sitelink count) ----
+async function sparqlQuery(q){
+  const r = await fetch(WIKIDATA_SPARQL, {
+    method:'POST',
+    headers:{ 'Accept':'application/sparql-results+json', 'Content-Type':'application/x-www-form-urlencoded' },
+    body: 'query=' + encodeURIComponent(q)
+  });
+  if(!r.ok) throw new Error('Wikidata HTTP ' + r.status);
+  const d = await r.json();
+  return (d.results && d.results.bindings) || [];
+}
+async function famousViaWikidata(place, cats, customTerms){
+  const rad = radiusKmFromBbox(place.bbox);
+  const q = `SELECT ?item ?itemLabel ?loc ?sitelinks ?type WHERE {
+  SERVICE wikibase:around {
+    ?item wdt:P625 ?loc .
+    bd:serviceParam wikibase:center "Point(${place.lon} ${place.lat})"^^geo:wktLiteral .
+    bd:serviceParam wikibase:radius "${rad}" .
+  }
+  ?item wikibase:sitelinks ?sitelinks .
+  FILTER(?sitelinks >= 4)
+  FILTER NOT EXISTS { ?item wdt:P1082 ?pop . }
+  OPTIONAL { ?item wdt:P31 ?type . }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE]" . }
+}
+ORDER BY DESC(?sitelinks)
+LIMIT 300`;
+  const rows = await sparqlQuery(q);
+  const map = new Map();
+  rows.forEach(b=>{
+    const qid = b.item.value.split('/').pop();
+    const name = b.itemLabel ? b.itemLabel.value : '';
+    if(!name || name === qid) return;                 // skip unlabelled items
+    const m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(b.loc.value);
+    if(!m) return;
+    const lon = parseFloat(m[1]), lat = parseFloat(m[2]);
+    const sitelinks = b.sitelinks ? parseInt(b.sitelinks.value,10) : 0;
+    const typeQid = b.type ? b.type.value.split('/').pop() : null;
+    const cat = WD_TYPE_TO_CAT[typeQid] || 'sights';
+    const ex = map.get(qid);
+    if(!ex){ map.set(qid, { name, lat, lon, sitelinks, category:cat, source:'wikidata' }); }
+    else { if(ex.category==='sights' && cat!=='sights') ex.category=cat; if(sitelinks>ex.sitelinks) ex.sitelinks=sitelinks; }
+  });
+  const catSet = new Set(cats);
+  return [...map.values()]
+    .filter(p => catSet.has(p.category) || matchesCustom(p.name, customTerms))
+    .sort((a,b)=>b.sitelinks-a.sitelinks);
+}
+
+// ---- Optional Geoapify Places (only when a key is set and opted in) ----
+function classifyGeoapify(list){
+  const s = (list||[]).join(' ');
+  if(s.includes('catering.cafe')) return 'cafes';
+  if(s.includes('entertainment.museum')) return 'museums';
+  if(s.includes('education.library')) return 'libraries';
+  if(s.includes('catering')) return 'restaurants';
+  if(s.includes('leisure') || s.includes('natural')) return 'parks';
+  if(s.includes('commercial')) return 'shops';
+  return 'sights';
+}
+async function geoapifyPlaces(place, cats, limit){
+  const proxy = geoapifyProxy();
+  if(!proxy) return null;
+  const radM = Math.max(1, Math.min(10, radiusKmFromBbox(place.bbox))) * 1000;
+  const gcats = [...new Set(cats.flatMap(c => (GEOAPIFY_CATS[c]||'').split(',')).filter(Boolean))];
+  if(!gcats.length) gcats.push('tourism.sights');
+  const filter = `circle:${place.lon},${place.lat},${radM}`;
+  const bias = `proximity:${place.lon},${place.lat}`;
+  const url = `${proxy}/places?categories=${encodeURIComponent(gcats.join(','))}&filter=${encodeURIComponent(filter)}&bias=${encodeURIComponent(bias)}&limit=${Math.min(100,limit)}`;
+  let r;
+  try{ r = await fetch(url); }
+  catch(e){ toast('Geoapify proxy unreachable — showing OpenStreetMap results only.', 'error'); return null; }
+  if(r.status===403){ toast('Geoapify proxy refused this site (origin not allowed).', 'error'); return null; }
+  if(r.status===429){ toast('Geoapify daily limit reached — showing OpenStreetMap results only.', 'error'); return null; }
+  if(!r.ok){ toast('Geoapify error ' + r.status + ' — using OpenStreetMap results only.', 'error'); return null; }
+  const d = await r.json();
+  const out = [];
+  (d.features||[]).forEach(f=>{
+    const pr = f.properties || {};
+    if(!pr.name) return;
+    const lat = pr.lat!=null ? pr.lat : (f.geometry ? f.geometry.coordinates[1] : null);
+    const lon = pr.lon!=null ? pr.lon : (f.geometry ? f.geometry.coordinates[0] : null);
+    if(lat==null || lon==null) return;
+    out.push({
+      name: pr.name, lat, lon, category: classifyGeoapify(pr.categories), source:'geoapify',
+      wikipedia:null, wikidata:null, website: pr.website||null, hours: pr.opening_hours||null,
+      description:null, tagCount: (pr.categories||[]).length
+    });
+  });
+  return out;
+}
+function dedupePois(list){
+  const out = [];
+  list.forEach(p=>{
+    const dup = out.find(q => q.name.toLowerCase()===p.name.toLowerCase() && poiDistM(q.lat,q.lon,p.lat,p.lon) < 60);
+    if(dup){ if(!dup.website && p.website) dup.website=p.website; if(!dup.hours && p.hours) dup.hours=p.hours; return; }
+    out.push(p);
+  });
+  return out;
+}
+
+function clearPlaceMatches(){ $('placeMatches').style.display='none'; $('placeMatches').innerHTML=''; }
+function renderPlaceMatches(matches){
+  const el = $('placeMatches');
+  el.innerHTML = '';
+  matches.forEach(m=>{
+    const row = document.createElement('div');
+    row.className = 'place-match';
+    const typ = [m.cls, m.type].filter(Boolean).join(' / ');
+    row.innerHTML = `<span class="pm-name">${esc(m.short)}</span><span class="pm-meta">${esc(m.displayName)}${typ?` · ${esc(typ)}`:''}</span>`;
+    row.onclick = ()=>{ clearPlaceMatches(); runPoiSearch(m); };
+    el.appendChild(row);
+  });
+  el.style.display = 'block';
+}
+
+$('discoverBtn').onclick = async () => {
+  const place = $('placeInput').value.trim();
+  if(!place){ toast('Enter a place name first.', 'error'); return; }
+  if(!selectedCats().length && !parseCustomTerms().length){ toast('Pick at least one category (or add a custom one).', 'error'); return; }
+
+  clearPlaceMatches();
+  $('placeResolved').style.display = 'none';
+  $('discoverResults').style.display = 'none';
+  setDiscBusy(true);
+  try{
+    setDiscStatus(`Looking up "${place}"…`);
+    const matches = await searchPlaces(place);
+    if(!matches.length){ toast(`Could not find "${place}".`, 'error'); setDiscStatus(''); setDiscBusy(false); return; }
+    if(matches.length === 1){ await runPoiSearch(matches[0]); }
+    else { renderPlaceMatches(matches); setDiscStatus('Multiple matches — pick the right place below.'); setDiscBusy(false); }
+  }catch(err){
+    toast('Search failed: ' + err.message, 'error');
+    setDiscStatus(''); setDiscBusy(false);
+  }
+};
+
+async function runPoiSearch(place){
+  const tier = document.querySelector('input[name=tier]:checked').value;
+  const count = Math.max(5, Math.min(40, parseInt($('poiCountInput').value) || 15));
+  const cats = selectedCats();
+  const customTerms = parseCustomTerms();
+
+  if(!$('setName').value.trim()){
+    const firstPart = (place.displayName || place.short || '').split(',')[0].trim();
+    if(firstPart) $('setName').value = firstPart;
+  }
+
+  setDiscBusy(true);
+  $('discoverResults').style.display = 'none';
+  $('discoverAttribution').style.display = 'none';
+  $('placeResolved').textContent = `Searching within ${place.short}`;
+  $('placeResolved').style.display = 'block';
+
+  try{
+    let ranked = [], usedGeoapify = false;
+    if(tier === 'famous'){
+      setDiscStatus('Finding famous landmarks via Wikidata…');
+      ranked = await famousViaWikidata(place, cats, customTerms);
+    } else {
+      const useGeo = !!geoapifyProxy() && $('preferGeoapify').checked;
+      let pois = [];
+      if(useGeo){
+        setDiscStatus('Searching Geoapify…');
+        const gp = await geoapifyPlaces(place, cats, count*4);
+        if(gp){ pois = gp; usedGeoapify = true; }   // primary source when opted in
+      }
+      // OSM is the fallback, and also supplements when custom terms are given (Geoapify has no free-text match)
+      if(!usedGeoapify || customTerms.length){
+        setDiscStatus(usedGeoapify ? 'Adding OpenStreetMap detail…' : 'Searching OpenStreetMap…');
+        try{
+          const osm = await gemsViaOverpass(place, cats, customTerms);
+          pois = usedGeoapify ? dedupePois(pois.concat(osm)) : osm;
+        }catch(e){ if(!usedGeoapify) throw e; }
+      }
+      ranked = rankGems(pois);
+    }
+
+    if(!ranked.length){
+      toast(tier==='famous' ? 'No famous landmarks found here — try Local gems or a broader place.' : 'No local spots found — try more categories or a broader place.', 'error');
+      setDiscStatus(''); setDiscBusy(false); return;
+    }
+
+    discoverResults = ranked.slice(0, count);
+    renderDiscoverList();
+    $('discoverResults').style.display = 'block';
+    if(usedGeoapify){
+      $('discoverAttribution').innerHTML = 'Data © OpenStreetMap contributors · Powered by <a href="https://www.geoapify.com/" target="_blank" rel="noopener">Geoapify</a>';
+      $('discoverAttribution').style.display = 'block';
+    }
+    setDiscStatus(`Showing ${discoverResults.length} of ${ranked.length} found in ${place.short}.`);
+  }catch(err){
+    toast('Search failed: ' + err.message, 'error');
+    setDiscStatus('');
+  }
+  setDiscBusy(false);
+}
+
+function renderDiscoverList(){
+  const el = $('discoverList');
+  el.innerHTML = '';
+  const catEmoji = { sights:'🏛️', museums:'🖼️', restaurants:'🍽️', cafes:'☕', libraries:'📚', parks:'🌳', shops:'🛍️' };
+  discoverResults.forEach((p,i)=>{
+    const bits = [catEmoji[p.category] || '📍'];
+    if(p.source==='wikidata') bits.push(`${(p.sitelinks||0).toLocaleString()} wiki links`);
+    else if(p.source==='geoapify') bits.push('Geoapify');
+    else if(p.score!=null) bits.push(`score ${p.score}`);
+    const row = document.createElement('label');
+    row.className = 'discover-item';
+    row.innerHTML = `<input type="checkbox" checked data-i="${i}">
+      <span><span class="di-name">${esc(p.name)}</span><br><span class="di-meta">${bits.join(' · ')}</span></span>`;
+    el.appendChild(row);
+  });
+}
+$('selectAllBtn').onclick = () => $('discoverList').querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=true);
+$('selectNoneBtn').onclick = () => $('discoverList').querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false);
+$('addDiscoveredBtn').onclick = () => {
+  const checked = [...$('discoverList').querySelectorAll('input[type=checkbox]:checked')].map(c=>parseInt(c.dataset.i));
+  if(!checked.length){ toast('Select at least one to add.', 'error'); return; }
+  checked.forEach(i=>{ const p = discoverResults[i]; points.push({ lat:p.lat, lon:p.lon, name:p.name }); });
+  renderAll();
+  toast(`Added ${checked.length} point${checked.length>1?'s':''} to the list.`, 'success');
+};
+
+// ---- Geoapify settings persistence (browser-local only) ----
+function loadGeoSettings(){
+  try{
+    $('geoapifyProxy').value = localStorage.getItem('gpx_geoapify_proxy') || '';
+    const pref = localStorage.getItem('gpx_prefer_geoapify');
+    $('preferGeoapify').checked = pref===null ? true : pref==='1';
+  }catch(e){}
+}
+$('geoapifyProxy').addEventListener('change', ()=>{ try{ localStorage.setItem('gpx_geoapify_proxy', $('geoapifyProxy').value.trim()); }catch(e){} });
+$('preferGeoapify').addEventListener('change', ()=>{ try{ localStorage.setItem('gpx_prefer_geoapify', $('preferGeoapify').checked?'1':'0'); }catch(e){} });
+loadGeoSettings();
+
+// ============================== Init ==============================
+initMap();
+renderAll();
+</script>
+</body>
+</html>
