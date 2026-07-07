@@ -29,7 +29,7 @@
 
   /* ---------- Header ---------- */
   header{border-bottom:1px solid var(--border);padding:18px 20px;display:flex;align-items:center;gap:12px;
-         position:sticky;top:0;background:rgba(11,14,20,.92);backdrop-filter:blur(6px);z-index:20}
+         background:#0b0e14}
   .logo{width:34px;height:34px;flex:none;border-radius:10px;background:linear-gradient(155deg,var(--system),#4d55c4);
         display:flex;align-items:center;justify-content:center}
   .logo svg{width:18px;height:18px}
@@ -392,7 +392,8 @@
           </div>
           <div class="stat-group" id="walkStatsBlock" style="display:none">
             <div class="stat-group-title"><span class="dot walk"></span>Walking path</div>
-            <div class="stat"><span>Points</span><b id="walkStatPois">0</b></div>
+            <div class="stat"><span>POIs visited</span><b id="walkStatPois">0</b></div>
+            <div class="stat"><span>Path points</span><b id="walkStatPathPts">0</b></div>
             <div class="stat"><span>Walking distance</span><b id="walkStatDist">0 km</b></div>
             <div class="stat"><span>Routes</span><b id="walkStatRoutes">1</b></div>
             <div class="stat"><span>Short jumps</span><b id="walkStatJumps">0</b></div>
@@ -1028,7 +1029,7 @@ async function buildWalkPart(){
     body += `    </trkseg>\n  </trk>\n`;
   });
 
-  return { body, prefixed: prefix, routes, stats: { pois: ordered.length, loop, distKm: totalKm, routesCount: routes.length, jumps, deadEnds } };
+  return { body, prefixed: prefix, routes, stats: { pois: ordered.length, pathPoints: full.length, loop, distKm: totalKm, routesCount: routes.length, jumps, deadEnds } };
 }
 
 // ============================== Combined build ==============================
@@ -1079,6 +1080,7 @@ $('buildBtn').onclick = async () => {
   $('walkStatsBlock').style.display = walkPart ? 'block' : 'none';
   if(walkPart){
     $('walkStatPois').textContent = walkPart.stats.pois + (walkPart.stats.loop ? ' (loop)' : '');
+    $('walkStatPathPts').textContent = walkPart.stats.pathPoints;
     $('walkStatDist').textContent = walkPart.stats.distKm.toFixed(2) + ' km';
     $('walkStatRoutes').textContent = walkPart.stats.routesCount;
     $('walkStatJumps').textContent = walkPart.stats.jumps;
