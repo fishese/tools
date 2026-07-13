@@ -70,6 +70,20 @@
   .ctrl-field{flex:0 0 auto; min-width:0; display:flex; align-items:center; gap:6px; white-space:nowrap}
   .ctrl-field label{margin:0; font-size:.68rem; white-space:nowrap}
   .ctrl-field input[type=number]{width:64px; flex:0 0 64px; padding:4px 5px; font-size:16px; text-align:center}
+  .ctrl-field select{width:auto; min-width:72px; flex:0 0 auto; padding:4px 6px; font-size:.82rem}
+  .setqty{width:52px; flex:0 0 52px; background:var(--inset); color:var(--text); border:1px solid var(--line);
+    border-radius:8px; padding:4px 6px; font-size:.95rem; text-align:center}
+  .setqty-wrap{display:flex; align-items:center; gap:4px; flex:0 0 auto}
+  .setqty-wrap label{margin:0; font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; white-space:nowrap}
+  .bxgy{margin-top:8px; border:1px solid var(--line); border-radius:10px; background:var(--inset); overflow:hidden}
+  .bxgy > summary{cursor:pointer; padding:6px 10px; font-size:.82rem; font-weight:700; color:var(--muted); list-style:none;
+    display:flex; align-items:center; gap:6px; user-select:none}
+  .bxgy > summary::-webkit-details-marker{display:none}
+  .bxgy > summary::before{content:'▸'; font-size:.7rem; color:var(--accent)}
+  .bxgy[open] > summary::before{content:'▾'}
+  .bxgy-body{padding:0 10px 10px; display:flex; flex-direction:column; gap:6px}
+  .bxgy-warn{color:var(--warn); font-size:.78rem; margin:0}
+  .bxgy-proj{color:var(--muted); font-size:.78rem; margin:0}
 
   /* language segmented control */
   .langseg{display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; flex:0 0 auto}
@@ -183,8 +197,14 @@
       <div class="stat"><div class="k" id="kPay"></div><div class="v" id="gFinal">$0.00</div></div>
     </div>
     <div class="grand ctrl">
-      <div class="stat ctrl-field"><label id="extraLbl" for="extraPct"></label>
-        <input type="number" id="extraPct" min="0" max="100" step="any" inputmode="decimal"></div>
+      <div class="stat ctrl-field">
+        <label id="extraLbl" for="extraVal"></label>
+        <select id="extraType" aria-label="Extra discount type">
+          <option value="percent">% off</option>
+          <option value="zhe">% pay</option>
+        </select>
+        <input type="number" id="extraVal" min="0" step="any" inputmode="decimal">
+      </div>
     </div>
   </div>
 
@@ -202,13 +222,16 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="calc.js"></script>
 <script>
 (function(){
   "use strict";
+  var Calc = window.CartulatorCalc;
   var groupsEl = document.getElementById('groups');
-  var state = []; // {id, name, items, threshold, type, value, recurring}
+  var state = []; // category objects (see Calc.migrateGroup)
   var seq = 0;
-  var extraPct = ''; // extra % off the whole order
+  var extraType = 'percent';
+  var extraValue = '';
   var DATA_KEY = 'sdc_data';
 
   // ---------- i18n ----------
@@ -221,7 +244,8 @@
       title:'Cartulator',
       sub:'Type prices in the box, one per line. Each category has its own deal and a running tally.',
       kBefore:'Total spend (before)', kSaved:'Total saved', kPay:'Total to pay',
-      extraLbl:'Extra % off everything', langLbl:'Language',
+      extraLbl:'Extra off everything', langLbl:'Language',
+      extraPctOff:'% off', extraZhe:'% pay',
       addGroup:'+ Add another deal / category', exportBtn:'⬇ Export (CSV)', copyBtn:'📋 Copy summary',
       clearBtn:'🗑 Clear all',
       installBtn:'⬇ Install app', installIOS:'To install: tap the Share button, then "Add to Home Screen".', installedMsg:'App installed',
@@ -230,15 +254,20 @@
       catName:'Category name', remove:'✕ Remove', itemsLabel:'Items — one price per line',
       itemsRead:function(n){return n+(n===1?' item read':' items read');},
       more:function(n){return '+ '+n+' more';},
+      setsLbl:'Sets',
+      bxgyTitle:'Buy X get Y free', bxgyEnable:'Enable buy X get Y free',
+      bxgyBuy:'Buy', bxgyGet:'Get free',
+      bxgyWarn:function(x){return 'Set count is not a multiple of '+x;},
+      bxgyProj:function(pay, sets, each){return 'Pay '+pay+' for '+sets+' sets → '+each+' each';},
       dealStart:'Deal starts at ($)', spendPer:'Spend per discount ($)', discType:'Discount type',
-      pctOff:'% off', dollarOff:'$ off', amount:'Amount', recurring:'Recurring (applies for every X spent)',
+      pctOff:'% off', dollarOff:'$ off', zheOff:'% pay', amount:'Amount', recurring:'Recurring (applies for every X spent)',
       eg:function(n){return 'eg. '+n;},
       origTotal:'Original total',
       discStart:function(m){return 'Discount start ('+m+')';},
       spendPerM:function(m){return 'Spend per discount ('+m+')';},
       reached:'reached', toGo:function(m){return m+' to go';}, over:function(m){return '+'+m+' over';},
       overLast:function(m){return '+'+m+' over last milestone';},
-      discApplied:'Discount applied', afterDisc:'Total after discount', totalPay:'Total to pay',
+      discApplied:'Discount applied', bxgySavedLbl:'Buy X get Y saved', afterDisc:'Total after discount', totalPay:'Total to pay',
       towardNext:function(m){return 'Toward next '+m+' milestone';}, leftToGo:function(m){return m+' left';},
       milestonesSoFar:function(n){return n+(n===1?' milestone reached so far':' milestones reached so far');},
       exported:'Exported to CSV', copied:'Summary copied', copyFail:'Copy failed',
@@ -248,9 +277,12 @@
       sumExtra:function(m){return 'Extra '+m+' off whole order';},
       sBefore:'Total spend (before):', sSaved:'Total saved:', sPay:'Total to pay:',
       dealNone:'No deal set', dealPct:function(v){return v+'% off';}, dealDollar:function(m){return m+' off';},
+      dealZhe:function(v){return v+'% pay';},
+      dealBxgy:function(x,y){return 'buy '+x+' get '+y+' free';},
       dealEvery:function(d,m){return d+' every '+m;}, dealOver:function(d,m){return d+' when over '+m;},
       hCategory:'Category', hItemsRead:'Items read', hOrig:'Original total', hDeal:'Deal',
       hRecurring:'Recurring', hSaved:'Discount saved', hPay:'Total to pay', hItems:'Items entered',
+      hSets:'Sets', hBxgy:'Buy X get Y',
       yes:'Yes', no:'No', grandTotal:'GRAND TOTAL', extraRow:'Extra order discount'
     },
     'zh-HK': {
@@ -258,7 +290,8 @@
       title:'篤數機',
       sub:'在方格內輸入價錢，每行一項。每個分類有自己的優惠及即時合計。',
       kBefore:'折扣前總額', kSaved:'共節省', kPay:'應付總額',
-      extraLbl:'全單額外折扣 (%)', langLbl:'語言',
+      extraLbl:'全單額外折扣', langLbl:'語言',
+      extraPctOff:'百分比折扣 (%)', extraZhe:'折',
       addGroup:'＋ 新增優惠／分類', exportBtn:'⬇ 匯出 CSV', copyBtn:'📋 複製摘要',
       clearBtn:'🗑 全部清除',
       installBtn:'⬇ 安裝應用程式', installIOS:'安裝方法：按「分享」按鈕，然後選擇「加至主畫面」。', installedMsg:'已安裝應用程式',
@@ -267,15 +300,20 @@
       catName:'分類名稱', remove:'✕ 移除', itemsLabel:'貨品 — 每行一個價錢',
       itemsRead:function(n){return '已讀取 '+n+' 項';},
       more:function(n){return '＋ 其餘 '+n+' 項';},
+      setsLbl:'套',
+      bxgyTitle:'買X送Y', bxgyEnable:'啟用買X送Y',
+      bxgyBuy:'買', bxgyGet:'送',
+      bxgyWarn:function(x){return '套數不是 '+x+' 的倍數';},
+      bxgyProj:function(pay, sets, each){return '付 '+pay+' 得 '+sets+' 套 → 每套 '+each;},
       dealStart:'優惠起始金額 ($)', spendPer:'每消費滿 ($)', discType:'折扣類型',
-      pctOff:'百分比折扣 (%)', dollarOff:'減金額 ($)', amount:'數值', recurring:'可重複（每消費滿指定金額即享）',
+      pctOff:'百分比折扣 (%)', dollarOff:'減金額 ($)', zheOff:'折', amount:'數值', recurring:'可重複（每消費滿指定金額即享）',
       eg:function(n){return '例: '+n;},
       origTotal:'原價總額',
       discStart:function(m){return '優惠起始 ('+m+')';},
       spendPerM:function(m){return '每消費滿 ('+m+')';},
       reached:'已達到', toGo:function(m){return '尚差 '+m;}, over:function(m){return '超出 '+m;},
       overLast:function(m){return '超出上一個目標 '+m;},
-      discApplied:'已套用折扣', afterDisc:'折扣後總額', totalPay:'應付總額',
+      discApplied:'已套用折扣', bxgySavedLbl:'買X送Y節省', afterDisc:'折扣後總額', totalPay:'應付總額',
       towardNext:function(m){return '距離下一個 '+m+' 目標';}, leftToGo:function(m){return '尚差 '+m;},
       milestonesSoFar:function(n){return '已達到 '+n+' 次折扣';},
       exported:'已匯出 CSV', copied:'已複製摘要', copyFail:'複製失敗',
@@ -285,9 +323,12 @@
       sumExtra:function(m){return '全單額外折扣 '+m;},
       sBefore:'折扣前總額：', sSaved:'共節省：', sPay:'應付總額：',
       dealNone:'未設定優惠', dealPct:function(v){return v+'% 折扣';}, dealDollar:function(m){return '減 '+m;},
+      dealZhe:function(v){return v+'折';},
+      dealBxgy:function(x,y){return '買'+x+'送'+y;},
       dealEvery:function(d,m){return '每 '+m+' '+d;}, dealOver:function(d,m){return '滿 '+m+' '+d;},
       hCategory:'分類', hItemsRead:'項目數', hOrig:'原價總額', hDeal:'優惠',
       hRecurring:'可重複', hSaved:'已節省', hPay:'應付總額', hItems:'已輸入貨品',
+      hSets:'套數', hBxgy:'買X送Y',
       yes:'是', no:'否', grandTotal:'總計', extraRow:'全單額外折扣'
     },
     'ja': {
@@ -295,7 +336,8 @@
       title:'カゴ計',
       sub:'ボックスに価格を1行ずつ入力してください。カテゴリーごとに割引と合計が表示されます。',
       kBefore:'割引前の合計', kSaved:'節約額の合計', kPay:'支払合計',
-      extraLbl:'注文全体の追加割引 (%)', langLbl:'言語',
+      extraLbl:'注文全体の追加割引', langLbl:'言語',
+      extraPctOff:'％割引', extraZhe:'割引率（割）',
       addGroup:'＋ 割引／カテゴリーを追加', exportBtn:'⬇ CSV に書き出し', copyBtn:'📋 概要をコピー',
       clearBtn:'🗑 すべてクリア',
       installBtn:'⬇ アプリをインストール', installIOS:'インストール方法：共有ボタンから「ホーム画面に追加」を選択します。', installedMsg:'アプリをインストールしました',
@@ -304,15 +346,20 @@
       catName:'カテゴリー名', remove:'✕ 削除', itemsLabel:'商品 — 1行に1つの価格',
       itemsRead:function(n){return n+' 件を読み取り';},
       more:function(n){return '他 '+n+' 件';},
+      setsLbl:'セット',
+      bxgyTitle:'X個買ったらY個無料', bxgyEnable:'X個買ったらY個無料を使う',
+      bxgyBuy:'買う数', bxgyGet:'無料',
+      bxgyWarn:function(x){return 'セット数が '+x+' の倍数ではありません';},
+      bxgyProj:function(pay, sets, each){return pay+' で '+sets+' セット → 1セットあたり '+each;},
       dealStart:'割引開始額 ($)', spendPer:'割引対象の購入額 ($)', discType:'割引タイプ',
-      pctOff:'％割引', dollarOff:'金額割引 ($)', amount:'数値', recurring:'繰り返し（一定額ごとに適用）',
+      pctOff:'％割引', dollarOff:'金額割引 ($)', zheOff:'割引率（割）', amount:'数値', recurring:'繰り返し（一定額ごとに適用）',
       eg:function(n){return '例：'+n;},
       origTotal:'元の合計',
       discStart:function(m){return '割引開始 ('+m+')';},
       spendPerM:function(m){return '割引対象額 ('+m+')';},
       reached:'達成', toGo:function(m){return 'あと '+m;}, over:function(m){return m+' 超過';},
       overLast:function(m){return '前のマイルストーンから '+m+' 超過';},
-      discApplied:'適用された割引', afterDisc:'割引後の合計', totalPay:'支払合計',
+      discApplied:'適用された割引', bxgySavedLbl:'おまけ割引', afterDisc:'割引後の合計', totalPay:'支払合計',
       towardNext:function(m){return '次の '+m+' マイルストーンまで';}, leftToGo:function(m){return 'あと '+m;},
       milestonesSoFar:function(n){return 'これまでに '+n+' 回達成';},
       exported:'CSV に書き出しました', copied:'概要をコピーしました', copyFail:'コピーに失敗しました',
@@ -322,9 +369,12 @@
       sumExtra:function(m){return '注文全体の追加割引 '+m;},
       sBefore:'割引前の合計：', sSaved:'節約額の合計：', sPay:'支払合計：',
       dealNone:'割引未設定', dealPct:function(v){return v+'％割引';}, dealDollar:function(m){return m+' 割引';},
+      dealZhe:function(v){return v+'割';},
+      dealBxgy:function(x,y){return x+'個買ったら'+y+'個無料';},
       dealEvery:function(d,m){return m+' ごとに'+d;}, dealOver:function(d,m){return m+' 以上で'+d;},
       hCategory:'カテゴリー', hItemsRead:'件数', hOrig:'元の合計', hDeal:'割引',
       hRecurring:'繰り返し', hSaved:'割引額', hPay:'支払合計', hItems:'入力した商品',
+      hSets:'セット数', hBxgy:'おまけ',
       yes:'はい', no:'いいえ', grandTotal:'総合計', extraRow:'注文全体の追加割引'
     }
   };
@@ -345,7 +395,14 @@
     setText('clearBtn', t('clearBtn'));
     setText('installBtn', t('installBtn'));
     var n=document.getElementById('note'); if(n) n.innerHTML = t('note');
-    var ep=document.getElementById('extraPct'); if(ep) ep.placeholder = t('eg','5');
+    var et=document.getElementById('extraType');
+    if(et){
+      et.options[0].textContent = t('extraPctOff');
+      et.options[1].textContent = t('extraZhe');
+      et.value = extraType === 'zhe' ? 'zhe' : 'percent';
+    }
+    var ep=document.getElementById('extraVal');
+    if(ep) ep.placeholder = extraType === 'zhe' ? t('eg','7') : t('eg','5');
     var seg=document.getElementById('langSeg'); if(seg) seg.setAttribute('aria-label', t('langLbl'));
     updateLangSeg();
   }
@@ -360,25 +417,22 @@
 
   // ---------- persistence ----------
   function save(){
-    try{ localStorage.setItem(DATA_KEY, JSON.stringify({state:state, seq:seq, extraPct:extraPct})); }catch(e){}
+    try{
+      localStorage.setItem(DATA_KEY, JSON.stringify({
+        state:state, seq:seq, extraType:extraType, extraValue:extraValue, extraPct:extraValue
+      }));
+    }catch(e){}
   }
   function load(){
     try{
       var raw = localStorage.getItem(DATA_KEY);
       if(!raw) return false;
-      var d = JSON.parse(raw);
-      if(d && Array.isArray(d.state) && d.state.length){
-        state = d.state.map(function(g){
-          return {
-            id: g.id, name: g.name||'', items: g.items||'',
-            threshold: g.threshold==null?'':g.threshold,
-            type: (g.type==='fixed')?'fixed':'percent',
-            value: g.value==null?'':g.value,
-            recurring: !!g.recurring
-          };
-        });
+      var d = Calc.migrateData(JSON.parse(raw));
+      if(d.state && d.state.length){
+        state = d.state;
         seq = d.seq || state.reduce(function(m,g){return Math.max(m, g.id||0);}, 0);
-        extraPct = (d.extraPct!=null) ? d.extraPct : '';
+        extraType = d.extraType === 'zhe' ? 'zhe' : 'percent';
+        extraValue = d.extraValue != null ? d.extraValue : '';
         return true;
       }
     }catch(e){}
@@ -407,42 +461,24 @@
     return {total:total, count:count};
   }
 
-  // ---------- discount math ----------
-  function round2(n){ return Math.round((n+Number.EPSILON)*100)/100; }
-  // Returns {saved, final, qualified, milestones, towardNext, leftNext, threshold}
-  function computeDeal(total, g){
-    var th = parseFloat(g.threshold);
-    var val = parseFloat(g.value);
-    var res = {saved:0, final:total, qualified:false, milestones:0, towardNext:0, leftNext:0, threshold:th};
-    if(isNaN(th) || th <= 0 || isNaN(val) || val <= 0 || total <= 0) return res;
-
-    if(g.recurring){
-      var milestones = Math.floor(total / th);
-      res.milestones = milestones;
-      res.qualified = milestones >= 1;
-      if(g.type === 'percent'){
-        res.saved = milestones * th * (val/100);
-      } else {
-        res.saved = milestones * val;
-      }
-      res.towardNext = total - milestones * th;       // accumulated in current incomplete bracket
-      res.leftNext = th - res.towardNext;             // remaining to hit next milestone
-    } else {
-      res.qualified = total >= th;
-      if(res.qualified){
-        res.saved = (g.type === 'percent') ? total * (val/100) : val;
-      }
-    }
-    if(res.saved > total) res.saved = total;
-    res.final = total - res.saved;
-    return res;
-  }
-
+  // ---------- discount math (delegates to CartulatorCalc) ----------
+  function round2(n){ return Calc.round2(n); }
   function money(n){ return '$' + round2(n).toFixed(2); }
+  function catResult(g){
+    var parsed = sumItems(g.items);
+    var deal = Calc.computeCategory(parsed.total, g);
+    return { parsed: parsed, deal: deal };
+  }
   function dealText(g){
-    if(!g.threshold || !g.value) return t('dealNone');
-    var d = g.type==='percent' ? t('dealPct', g.value) : t('dealDollar', money(g.value));
-    return g.recurring ? t('dealEvery', d, money(g.threshold)) : t('dealOver', d, money(g.threshold));
+    var parts = [];
+    if(g.bxgyOn && g.bxgyBuy && g.bxgyGet) parts.push(t('dealBxgy', g.bxgyBuy, g.bxgyGet));
+    if(g.threshold && g.value){
+      var d = g.type==='zhe' ? t('dealZhe', g.value)
+        : (g.type==='percent' ? t('dealPct', g.value) : t('dealDollar', money(g.value)));
+      parts.push(g.recurring ? t('dealEvery', d, money(g.threshold)) : t('dealOver', d, money(g.threshold)));
+    }
+    if(!parts.length) return t('dealNone');
+    return parts.join(' · ');
   }
 
   // ---------- rendering ----------
@@ -475,32 +511,50 @@
   }
 
   function buildGroup(g){
-    var parsed = sumItems(g.items);
-    var deal = computeDeal(parsed.total, g);
+    var cr = catResult(g);
+    var parsed = cr.parsed;
+    var deal = cr.deal;
 
     var wrap = document.createElement('div');
     wrap.className = 'group';
 
-    // header
+    // header: name | set qty | remove
     var head = document.createElement('div');
     head.className = 'ghead';
     var name = document.createElement('input');
     name.className = 'gname'; name.value = g.name; name.placeholder = t('catName');
     name.setAttribute('aria-label', t('catName'));
     name.addEventListener('input', function(){ g.name = name.value; save(); });
+
+    var sqWrap = document.createElement('div');
+    sqWrap.className = 'setqty-wrap';
+    var sqLab = document.createElement('label');
+    sqLab.textContent = t('setsLbl');
+    sqLab.htmlFor = 'sq-'+g.id;
+    var sq = document.createElement('input');
+    sq.type = 'number'; sq.min = '1'; sq.step = 'any'; sq.inputMode = 'decimal';
+    sq.className = 'setqty'; sq.id = 'sq-'+g.id;
+    sq.value = g.setQty == null ? 1 : g.setQty;
+    sq.setAttribute('aria-label', t('setsLbl'));
+    sq.addEventListener('input', function(){
+      g.setQty = sq.value === '' ? 1 : sq.value;
+      refreshGroup(wrap, g); updateGrand();
+    });
+    sqWrap.appendChild(sqLab); sqWrap.appendChild(sq);
+
     var del = document.createElement('button');
     del.className = 'danger'; del.textContent = t('remove');
     del.addEventListener('click', function(){
       if((g.items||'').trim() !== '' && !window.confirm(t('confirmRemove', g.name || ''))) return;
       state = state.filter(function(x){ return x.id !== g.id; }); render(); save();
     });
-    head.appendChild(name); head.appendChild(del);
+    head.appendChild(name); head.appendChild(sqWrap); head.appendChild(del);
 
     // body
     var body = document.createElement('div');
     body.className = 'gbody';
 
-    // left: items textarea
+    // left: items textarea + BXGY
     var left = document.createElement('div');
     var llab = document.createElement('label'); llab.textContent = t('itemsLabel');
     llab.htmlFor = 'ta-'+g.id;
@@ -513,7 +567,7 @@
     fade.appendChild(document.createElement('div')).className='more';
     ta.addEventListener('input', function(){
       g.items = ta.value;
-      autoGrow(ta); // always full size while typing
+      autoGrow(ta);
       refreshGroup(wrap, g);
       updateGrand();
     });
@@ -521,8 +575,8 @@
     var lc = document.createElement('div'); lc.className='hint'; lc.id='cnt-'+g.id;
     lc.textContent = t('itemsRead', parsed.count);
     left.appendChild(llab); left.appendChild(taWrap); left.appendChild(lc);
+    left.appendChild(makeBxgyControls(g, wrap));
 
-    // collapse when focus leaves this category; expand when it returns
     wrap.addEventListener('focusin', function(){ expandItems(ta, fade); });
     wrap.addEventListener('focusout', function(e){
       if(!wrap.contains(e.relatedTarget)) collapseItems(ta, fade);
@@ -543,6 +597,99 @@
     return wrap;
   }
 
+  function makeBxgyControls(g, wrap){
+    var det = document.createElement('details');
+    det.className = 'bxgy';
+    if(g.bxgyOn) det.open = true;
+    var sum = document.createElement('summary');
+    sum.textContent = t('bxgyTitle');
+    det.appendChild(sum);
+
+    var body = document.createElement('div');
+    body.className = 'bxgy-body';
+
+    var en = document.createElement('label');
+    en.className = 'check';
+    var cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = !!g.bxgyOn;
+    cb.addEventListener('change', function(){
+      g.bxgyOn = cb.checked;
+      if(g.bxgyOn){
+        var buy = parseFloat(g.bxgyBuy);
+        if(!isNaN(buy) && buy > 0) g.setQty = buy;
+      }
+      render(); save();
+    });
+    var enTxt = document.createElement('span');
+    enTxt.textContent = t('bxgyEnable');
+    en.appendChild(cb); en.appendChild(enTxt);
+    body.appendChild(en);
+
+    var row = document.createElement('div');
+    row.className = 'row';
+    var fBuy = document.createElement('div'); fBuy.className = 'field';
+    var lBuy = document.createElement('label'); lBuy.textContent = t('bxgyBuy'); lBuy.htmlFor = 'bx-'+g.id;
+    var iBuy = document.createElement('input');
+    iBuy.type = 'number'; iBuy.min = '1'; iBuy.step = '1'; iBuy.inputMode = 'numeric';
+    iBuy.id = 'bx-'+g.id; iBuy.value = g.bxgyBuy; iBuy.placeholder = t('eg','2');
+    iBuy.addEventListener('input', function(){
+      g.bxgyBuy = iBuy.value;
+      refreshGroup(wrap, g); updateGrand();
+    });
+    fBuy.appendChild(lBuy); fBuy.appendChild(iBuy);
+
+    var fGet = document.createElement('div'); fGet.className = 'field';
+    var lGet = document.createElement('label'); lGet.textContent = t('bxgyGet'); lGet.htmlFor = 'by-'+g.id;
+    var iGet = document.createElement('input');
+    iGet.type = 'number'; iGet.min = '1'; iGet.step = '1'; iGet.inputMode = 'numeric';
+    iGet.id = 'by-'+g.id; iGet.value = g.bxgyGet; iGet.placeholder = t('eg','1');
+    iGet.addEventListener('input', function(){
+      g.bxgyGet = iGet.value;
+      refreshGroup(wrap, g); updateGrand();
+    });
+    fGet.appendChild(lGet); fGet.appendChild(iGet);
+    row.appendChild(fBuy); row.appendChild(fGet);
+    body.appendChild(row);
+
+    var warn = document.createElement('p');
+    warn.className = 'bxgy-warn'; warn.id = 'bxwarn-'+g.id;
+    var proj = document.createElement('p');
+    proj.className = 'bxgy-proj'; proj.id = 'bxproj-'+g.id;
+    body.appendChild(warn); body.appendChild(proj);
+
+    det.appendChild(body);
+    updateBxgyHints(g, warn, proj);
+    return det;
+  }
+
+  function updateBxgyHints(g, warnEl, projEl){
+    if(!warnEl) warnEl = document.getElementById('bxwarn-'+g.id);
+    if(!projEl) projEl = document.getElementById('bxproj-'+g.id);
+    if(!warnEl || !projEl) return;
+    var parsed = sumItems(g.items);
+    var pr = Calc.computePricing({
+      itemsTotal: parsed.total, setQty: g.setQty,
+      bxgyOn: g.bxgyOn, bxgyBuy: g.bxgyBuy, bxgyGet: g.bxgyGet
+    });
+    var buy = parseFloat(g.bxgyBuy);
+    if(g.bxgyOn && pr.bxgyWarn && !isNaN(buy) && buy > 0){
+      warnEl.textContent = t('bxgyWarn', buy);
+      warnEl.style.display = '';
+    } else {
+      warnEl.textContent = '';
+      warnEl.style.display = 'none';
+    }
+    if(g.bxgyOn && parsed.total > 0 && pr.freeSets >= 0 && !isNaN(buy) && buy > 0 && parseFloat(g.bxgyGet) > 0){
+      var sets = pr.setQty + pr.freeSets;
+      var each = sets > 0 ? money(pr.payBeforePromo / sets) : money(0);
+      projEl.textContent = t('bxgyProj', money(pr.payBeforePromo), sets, each);
+      projEl.style.display = '';
+    } else {
+      projEl.textContent = '';
+      projEl.style.display = 'none';
+    }
+  }
+
   function makeDealControls(g, wrap){
     var box = document.createElement('div');
 
@@ -560,13 +707,13 @@
     var f2 = document.createElement('div'); f2.className='field';
     var l2 = document.createElement('label'); l2.textContent=t('discType'); l2.htmlFor='type-'+g.id;
     var type = document.createElement('select'); type.id='type-'+g.id;
-    [['percent',t('pctOff')],['fixed',t('dollarOff')]].forEach(function(o){
+    [['percent',t('pctOff')],['fixed',t('dollarOff')],['zhe',t('zheOff')]].forEach(function(o){
       var opt=document.createElement('option'); opt.value=o[0]; opt.textContent=o[1];
       if(g.type===o[0]) opt.selected=true; type.appendChild(opt);
     });
     type.addEventListener('change', function(){
       g.type=type.value;
-      if(g.type==='percent') g.recurring=false; // percentage deals are not recurring
+      if(g.type!=='fixed') g.recurring=false;
       render(); save();
     });
     f2.appendChild(l2); f2.appendChild(type);
@@ -575,7 +722,9 @@
     var l3 = document.createElement('label'); l3.textContent=t('amount'); l3.htmlFor='val-'+g.id;
     var val = document.createElement('input'); val.type='number'; val.min='0'; val.step='any';
     val.id='val-'+g.id; val.inputMode='decimal';
-    val.value=g.value; val.placeholder= g.type==='percent'?t('eg','10'):t('eg','25');
+    val.value=g.value;
+    val.placeholder = g.type==='zhe' ? t('eg','7') : (g.type==='percent' ? t('eg','10') : t('eg','25'));
+    if(g.type==='zhe'){ val.max = '10'; } else { val.removeAttribute('max'); }
     val.addEventListener('input', function(){ g.value=val.value; refreshGroup(wrap, g); updateGrand(); });
     f3.appendChild(l3); f3.appendChild(val);
 
@@ -587,8 +736,7 @@
     cb.addEventListener('change', function(){ g.recurring=cb.checked; render(); save(); });
     var rtext=document.createElement('span'); rtext.textContent=t('recurring');
     rec.appendChild(cb); rec.appendChild(rtext);
-    // percentage deals are not recurring — hide the toggle
-    if(g.type==='percent') rec.style.display='none';
+    if(g.type!=='fixed') rec.style.display='none';
     box.appendChild(rec);
 
     return box;
@@ -596,56 +744,60 @@
 
   function buildTally(parsed, deal, g){
     var frag = document.createElement('div');
+    var promo = deal.promo;
+    var pricing = deal.pricing;
     function line(lbl, val, cls){
       var d=document.createElement('div'); d.className='line';
       var a=document.createElement('span'); a.className='lbl'; a.innerHTML=lbl;
       var b=document.createElement('span'); b.className='val '+(cls||''); b.innerHTML=val;
       d.appendChild(a); d.appendChild(b); return d;
     }
-    // original total
-    frag.appendChild(line(t('origTotal'), '<span class="big">'+money(parsed.total)+'</span>'));
+    frag.appendChild(line(t('origTotal'), '<span class="big">'+money(deal.original)+'</span>'));
 
-    // distance to threshold
     var th = parseFloat(g.threshold);
+    var payBase = pricing.payBeforePromo;
     if(!isNaN(th) && th>0){
-      if(parsed.total >= th){
-        if(g.recurring){
+      if(payBase >= th){
+        if(g.recurring && g.type==='fixed'){
           var v = '<span class="pill met">'+t('reached')+'</span>';
-          if(deal.towardNext > 0) v += ' '+t('overLast', money(deal.towardNext));
+          if(promo.towardNext > 0) v += ' '+t('overLast', money(promo.towardNext));
           frag.appendChild(line(t('spendPerM', money(th)), v, 'good'));
         } else if(g.type === 'fixed'){
           var v2 = '<span class="pill met">'+t('reached')+'</span>';
-          if(parsed.total - th > 0) v2 += ' '+t('over', money(parsed.total - th));
+          if(payBase - th > 0) v2 += ' '+t('over', money(payBase - th));
           frag.appendChild(line(t('discStart', money(th)), v2, 'good'));
         } else {
           frag.appendChild(line(t('discStart', money(th)),
             '<span class="pill met">'+t('reached')+'</span>', 'good'));
         }
       } else {
-        var short = th - parsed.total;
+        var short = th - payBase;
         frag.appendChild(line(g.recurring ? t('spendPerM', money(th)) : t('discStart', money(th)),
           '<span class="pill short">'+t('toGo', money(short))+'</span>', 'warn'));
       }
     }
 
-    // discount + final (once reached)
-    if(deal.qualified){
-      frag.appendChild(line(t('discApplied'), '− '+money(deal.saved), 'good'));
+    if(deal.bxgySaved > 0){
+      frag.appendChild(line(t('bxgySavedLbl'), '− '+money(deal.bxgySaved), 'good'));
+    }
+    if(promo.qualified && promo.saved > 0){
+      frag.appendChild(line(t('discApplied'), '− '+money(promo.saved), 'good'));
+    }
+    if(deal.bxgySaved > 0 || (promo.qualified && promo.saved > 0)){
       frag.appendChild(line(t('afterDisc'), '<span class="big">'+money(deal.final)+'</span>', 'good'));
     } else {
-      frag.appendChild(line(t('totalPay'), '<span class="big">'+money(parsed.total)+'</span>'));
+      frag.appendChild(line(t('totalPay'), '<span class="big">'+money(deal.final)+'</span>'));
     }
 
-    // recurring next milestone
-    if(g.recurring && !isNaN(th) && th>0 && parsed.total>0){
-      var pct = Math.max(0, Math.min(100, (deal.towardNext/th)*100));
-      frag.appendChild(line(t('towardNext', money(th)), t('leftToGo', money(deal.leftNext))));
+    if(g.recurring && g.type==='fixed' && !isNaN(th) && th>0 && payBase>0){
+      var pct = Math.max(0, Math.min(100, (promo.towardNext/th)*100));
+      frag.appendChild(line(t('towardNext', money(th)), t('leftToGo', money(promo.leftNext))));
       var prog=document.createElement('div'); prog.className='progress';
       var bar=document.createElement('div'); bar.style.width=pct.toFixed(1)+'%';
       prog.appendChild(bar); frag.appendChild(prog);
-      if(deal.milestones>0){
+      if(promo.milestones>0){
         var h=document.createElement('div'); h.className='hint';
-        h.textContent = t('milestonesSoFar', deal.milestones);
+        h.textContent = t('milestonesSoFar', promo.milestones);
         frag.appendChild(h);
       }
     }
@@ -654,27 +806,36 @@
 
   // light refresh of one group's count + tally (keeps textarea focus/cursor)
   function refreshGroup(wrap, g){
-    var parsed = sumItems(g.items);
-    var deal = computeDeal(parsed.total, g);
+    var cr = catResult(g);
     var cnt = wrap.querySelector('#cnt-'+g.id);
-    if(cnt) cnt.textContent = t('itemsRead', parsed.count);
+    if(cnt) cnt.textContent = t('itemsRead', cr.parsed.count);
     var tally = wrap.querySelector('#tally-'+g.id);
-    if(tally){ tally.innerHTML=''; tally.appendChild(buildTally(parsed, deal, g)); }
+    if(tally){ tally.innerHTML=''; tally.appendChild(buildTally(cr.parsed, cr.deal, g)); }
+    updateBxgyHints(g);
+    var sq = wrap.querySelector('#sq-'+g.id);
+    if(sq && String(sq.value) !== String(g.setQty) && document.activeElement !== sq){
+      sq.value = g.setQty == null ? 1 : g.setQty;
+    }
   }
 
   function totals(){
-    var tot=0, catSaved=0;
+    var goods=0, catSaved=0, afterCat=0;
     state.forEach(function(g){
-      var p=sumItems(g.items); var d=computeDeal(p.total,g);
-      tot += round2(p.total); catSaved += round2(d.saved);
+      var cr = catResult(g);
+      goods += round2(cr.deal.original);
+      catSaved += round2(cr.deal.saved);
+      afterCat += round2(cr.deal.final);
     });
-    var afterCat = round2(tot - catSaved);
-    var ep = parseFloat(extraPct);
-    if(isNaN(ep)) ep = 0;
-    ep = Math.max(0, Math.min(100, ep)); // clamp 0-100
-    var extraSaved = (ep>0 && afterCat>0) ? round2(afterCat * (ep/100)) : 0;
-    return {total:round2(tot), catSaved:round2(catSaved), extraSaved:extraSaved, extraPctUsed:ep,
-            saved:round2(catSaved+extraSaved), final:round2(afterCat-extraSaved)};
+    afterCat = round2(afterCat);
+    var ex = Calc.computeExtra(afterCat, { extraType: extraType, extraValue: extraValue });
+    return {
+      total: round2(goods),
+      catSaved: round2(catSaved),
+      extraSaved: ex.extraSaved,
+      extraValueUsed: ex.extraValueUsed,
+      saved: round2(catSaved + ex.extraSaved),
+      final: ex.final
+    };
   }
   function updateGrand(){
     var x=totals();
@@ -687,9 +848,10 @@
   // ---------- actions ----------
   function addGroup(prefill){
     seq++;
-    state.push(Object.assign({
-      id:seq, name:t('defaultCat', seq), items:'', threshold:'', type:'percent', value:'', recurring:false
-    }, prefill||{}));
+    state.push(Calc.migrateGroup(Object.assign({
+      id:seq, name:t('defaultCat', seq), items:'', threshold:'', type:'percent', value:'', recurring:false,
+      setQty:1, bxgyOn:false, bxgyBuy:'', bxgyGet:''
+    }, prefill||{})));
     render(); save();
   }
 
@@ -698,20 +860,29 @@
     setTimeout(function(){ el.classList.remove('show'); }, 1600);
   }
 
+  function extraLabel(x){
+    if(extraType === 'zhe') return t('dealZhe', x.extraValueUsed);
+    return x.extraValueUsed + '%';
+  }
+
   function exportExcel(){
-    var rows = [[t('hCategory'),t('hItemsRead'),t('hOrig'),t('hDeal'),t('hRecurring'),t('hSaved'),t('hPay'),t('hItems')]];
+    var rows = [[t('hCategory'),t('hItemsRead'),t('hSets'),t('hBxgy'),t('hOrig'),t('hDeal'),t('hRecurring'),t('hSaved'),t('hPay'),t('hItems')]];
     state.forEach(function(g){
-      var p=sumItems(g.items); var d=computeDeal(p.total,g);
-      rows.push([g.name, p.count, p.total.toFixed(2), dealText(g), g.recurring?t('yes'):t('no'),
-                 d.saved.toFixed(2), d.final.toFixed(2), (g.items||'').trim()]);
+      var cr = catResult(g);
+      rows.push([
+        g.name, cr.parsed.count, Calc.normalizeSetQty(g.setQty),
+        g.bxgyOn ? t('dealBxgy', g.bxgyBuy, g.bxgyGet) : t('no'),
+        cr.deal.original.toFixed(2), dealText(g), g.recurring?t('yes'):t('no'),
+        cr.deal.saved.toFixed(2), cr.deal.final.toFixed(2), (g.items||'').trim()
+      ]);
     });
     var x=totals();
     rows.push([]);
-    rows.push([t('grandTotal'),'','', '', '', '', '','']);
-    rows.push([t('kBefore'),'','', '', '', '', x.total.toFixed(2),'']);
-    if(x.extraSaved>0) rows.push([t('extraRow')+' ('+x.extraPctUsed+'%)','','', '', '', x.extraSaved.toFixed(2), '','']);
-    rows.push([t('kSaved'),'','', '', '', x.saved.toFixed(2), '','']);
-    rows.push([t('kPay'),'','', '', '', '', x.final.toFixed(2),'']);
+    rows.push([t('grandTotal'),'','', '', '', '', '','','','']);
+    rows.push([t('kBefore'),'','', '', '', '', '', '', x.total.toFixed(2),'']);
+    if(x.extraSaved>0) rows.push([t('extraRow')+' ('+extraLabel(x)+')','','', '', '', '', '', x.extraSaved.toFixed(2), '','']);
+    rows.push([t('kSaved'),'','', '', '', '', '', x.saved.toFixed(2), '','']);
+    rows.push([t('kPay'),'','', '', '', '', '', '', x.final.toFixed(2),'']);
     var csv = rows.map(function(r){
       return r.map(function(c){
         c=String(c==null?'':c);
@@ -730,10 +901,10 @@
     var x=totals();
     var lines=[t('sumTitle')];
     state.forEach(function(g){
-      var p=sumItems(g.items); var d=computeDeal(p.total,g);
-      lines.push('• '+(g.name||'')+': '+money(p.total)+' → '+money(d.final)+'  '+t('sumSaved', money(d.saved)));
+      var cr = catResult(g);
+      lines.push('• '+(g.name||'')+': '+money(cr.deal.original)+' → '+money(cr.deal.final)+'  '+t('sumSaved', money(cr.deal.saved)));
     });
-    if(x.extraSaved>0) lines.push(t('sumExtra', money(x.extraSaved))+' ('+x.extraPctUsed+'%)');
+    if(x.extraSaved>0) lines.push(t('sumExtra', money(x.extraSaved))+' ('+extraLabel(x)+')');
     lines.push('');
     lines.push(t('sBefore')+' '+money(x.total));
     lines.push(t('sSaved')+' '+money(x.saved));
@@ -753,8 +924,9 @@
   function clearAll(){
     if(!window.confirm(t('confirmClear'))) return;
     try{ localStorage.removeItem(DATA_KEY); }catch(e){}
-    state=[]; seq=0; extraPct='';
-    var ep=document.getElementById('extraPct'); if(ep) ep.value='';
+    state=[]; seq=0; extraType='percent'; extraValue='';
+    var et=document.getElementById('extraType'); if(et) et.value='percent';
+    var ep=document.getElementById('extraVal'); if(ep) ep.value='';
     addGroup({name:t('firstCat')});
   }
 
@@ -777,9 +949,15 @@
   });
   if(!isStandalone() && isIOS()) showInstall(true); // iOS has no install event
 
-  // extra % off the whole order
-  var epInput = document.getElementById('extraPct');
-  epInput.addEventListener('input', function(){ extraPct = epInput.value; updateGrand(); });
+  // whole-order extra discount
+  var etSel = document.getElementById('extraType');
+  var epInput = document.getElementById('extraVal');
+  etSel.addEventListener('change', function(){
+    extraType = etSel.value === 'zhe' ? 'zhe' : 'percent';
+    applyStatic();
+    updateGrand();
+  });
+  epInput.addEventListener('input', function(){ extraValue = epInput.value; updateGrand(); });
 
   // language segmented control
   document.getElementById('langSeg').addEventListener('click', function(e){
@@ -830,7 +1008,8 @@
   // ---------- init ----------
   applyStatic();
   var restored = load();
-  epInput.value = extraPct;
+  etSel.value = extraType === 'zhe' ? 'zhe' : 'percent';
+  epInput.value = extraValue;
   if(restored){ render(); }
   else { addGroup({name: t('firstCat')}); }
 })();

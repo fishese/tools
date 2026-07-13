@@ -1,4 +1,5 @@
 const CACHE = 'sushi-split-v2';
+const CACHE_PREFIX = 'sushi-split-';
 const ASSETS = [
   './sushi-split.html',
   './manifest.json',
@@ -11,11 +12,15 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 
-// Remove old cache versions on activate
+// Remove only our own old cache versions — never wipe other apps (e.g. cartulator)
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter(k => k.startsWith(CACHE_PREFIX) && k !== CACHE)
+          .map(k => caches.delete(k))
+      )
     )
   );
   self.clients.claim();
