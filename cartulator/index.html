@@ -71,10 +71,19 @@
   .ctrl-field label{margin:0; font-size:.68rem; white-space:nowrap}
   .ctrl-field input[type=number]{width:64px; flex:0 0 64px; padding:4px 5px; font-size:16px; text-align:center}
   .ctrl-field select{width:auto; min-width:72px; flex:0 0 auto; padding:4px 6px; font-size:.82rem}
-  .setqty{width:52px; flex:0 0 52px; background:var(--inset); color:var(--text); border:1px solid var(--line);
-    border-radius:8px; padding:4px 6px; font-size:.95rem; text-align:center}
-  .setqty-wrap{display:flex; align-items:center; gap:4px; flex:0 0 auto}
-  .setqty-wrap label{margin:0; font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; white-space:nowrap}
+  .setqty-wrap{display:flex; align-items:center; gap:6px; flex:0 0 auto; margin-right:18px}
+  .setqty-spin{display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:8px;
+    background:var(--inset); overflow:hidden; flex:0 0 auto}
+  .setqty-spin button{width:34px; height:34px; min-width:34px; padding:0; border:none; border-radius:0;
+    background:transparent; color:var(--text); font-size:1.15rem; font-weight:700; line-height:1;
+    display:inline-flex; align-items:center; justify-content:center; -webkit-tap-highlight-color:transparent}
+  .setqty-spin button:hover{background:var(--panel2); filter:none}
+  .setqty-spin button:active{background:var(--line)}
+  .setqty{width:40px; flex:0 0 40px; background:transparent; color:var(--text); border:none;
+    border-left:1px solid var(--line); border-right:1px solid var(--line); border-radius:0;
+    padding:4px 2px; font-size:.95rem; text-align:center; -moz-appearance:textfield}
+  .setqty::-webkit-outer-spin-button, .setqty::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+  .setqty-wrap label{margin:0; font-size:.78rem; color:var(--muted); text-transform:none; letter-spacing:0; white-space:nowrap}
   .bxgy{margin-top:8px; border:1px solid var(--line); border-radius:10px; background:var(--inset); overflow:hidden}
   .bxgy > summary{cursor:pointer; padding:6px 10px; font-size:.82rem; font-weight:700; color:var(--muted); list-style:none;
     display:flex; align-items:center; gap:6px; user-select:none}
@@ -115,7 +124,7 @@
 
   /* visible keyboard focus */
   button:focus-visible, input:focus-visible, select:focus-visible,
-  textarea:focus-visible, .gname:focus-visible{
+  textarea:focus-visible, .gname:focus-visible, .setqty-spin button:focus-visible{
     outline:2px solid var(--accent); outline-offset:2px;
   }
 
@@ -528,19 +537,39 @@
 
     var sqWrap = document.createElement('div');
     sqWrap.className = 'setqty-wrap';
-    var sqLab = document.createElement('label');
-    sqLab.textContent = t('setsLbl');
-    sqLab.htmlFor = 'sq-'+g.id;
+    var spin = document.createElement('div');
+    spin.className = 'setqty-spin';
     var sq = document.createElement('input');
-    sq.type = 'number'; sq.min = '1'; sq.step = 'any'; sq.inputMode = 'decimal';
+    sq.type = 'number'; sq.min = '1'; sq.step = '1'; sq.inputMode = 'numeric';
     sq.className = 'setqty'; sq.id = 'sq-'+g.id;
     sq.value = g.setQty == null ? 1 : g.setQty;
     sq.setAttribute('aria-label', t('setsLbl'));
-    sq.addEventListener('input', function(){
-      g.setQty = sq.value === '' ? 1 : sq.value;
+    function applySetQty(n){
+      n = Math.max(1, Math.floor(n) || 1);
+      g.setQty = n;
+      sq.value = n;
       refreshGroup(wrap, g); updateGrand();
+    }
+    sq.addEventListener('input', function(){
+      applySetQty(sq.value === '' ? 1 : parseFloat(sq.value));
     });
-    sqWrap.appendChild(sqLab); sqWrap.appendChild(sq);
+    var minus = document.createElement('button');
+    minus.type = 'button'; minus.textContent = '−';
+    minus.setAttribute('aria-label', '−');
+    minus.addEventListener('click', function(){
+      applySetQty((parseFloat(g.setQty) || 1) - 1);
+    });
+    var plus = document.createElement('button');
+    plus.type = 'button'; plus.textContent = '+';
+    plus.setAttribute('aria-label', '+');
+    plus.addEventListener('click', function(){
+      applySetQty((parseFloat(g.setQty) || 1) + 1);
+    });
+    spin.appendChild(minus); spin.appendChild(sq); spin.appendChild(plus);
+    var sqLab = document.createElement('label');
+    sqLab.textContent = t('setsLbl');
+    sqLab.htmlFor = 'sq-'+g.id;
+    sqWrap.appendChild(spin); sqWrap.appendChild(sqLab);
 
     var del = document.createElement('button');
     del.className = 'danger'; del.textContent = t('remove');

@@ -1,6 +1,6 @@
 /* Service worker: cache the app shell so it runs fully offline once installed.
    Bump CACHE when you change any cached file to force an update. */
-const CACHE = 'sdc-v4';
+const CACHE = 'sdc-v5';
 const CACHE_PREFIX = 'sdc-';
 const ASSETS = [
   './index.html',
