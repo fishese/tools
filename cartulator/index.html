@@ -151,6 +151,16 @@
   .deal-card{background:var(--inset); border:1px solid var(--line); border-radius:10px; padding:8px}
   .row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px}
   .field{flex:1; min-width:110px}
+  .deal-card .row{flex-wrap:nowrap; gap:6px; align-items:flex-end}
+  .deal-card .field{min-width:0; flex:1 1 0}
+  .deal-card .field-type{flex:1.15 1 0}
+  .deal-card .field-amt{flex:0.85 1 0}
+  .deal-card .field-start{flex:0.9 1 0}
+  .deal-card label{font-size:.68rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .deal-card input[type=number], .deal-card select{
+    padding:5px 6px; font-size:16px; /* 16px avoids iOS zoom */
+  }
+  .deal-card select{padding-right:4px}
   label{margin:0 0 2px}
   input[type=number],select{
     width:100%; background:var(--panel); color:var(--text); border:1px solid var(--line);
@@ -208,11 +218,11 @@
     <div class="grand ctrl">
       <div class="stat ctrl-field">
         <label id="extraLbl" for="extraVal"></label>
+        <input type="number" id="extraVal" min="0" step="any" inputmode="decimal">
         <select id="extraType" aria-label="Extra discount type">
           <option value="percent">% off</option>
           <option value="zhe">% pay</option>
         </select>
-        <input type="number" id="extraVal" min="0" step="any" inputmode="decimal">
       </div>
     </div>
   </div>
@@ -268,8 +278,8 @@
       bxgyBuy:'Buy', bxgyGet:'Get free',
       bxgyWarn:function(x){return 'Set count is not a multiple of '+x;},
       bxgyProj:function(pay, sets, each){return 'Pay '+pay+' for '+sets+' sets → '+each+' each';},
-      dealStart:'Deal starts at ($)', spendPer:'Spend per discount ($)', discType:'Discount type',
-      pctOff:'% off', dollarOff:'$ off', zheOff:'% pay', amount:'Amount', recurring:'Recurring (applies for every X spent)',
+      dealStart:'Deal Start ($)', spendPer:'Spend / ($)', discType:'Type',
+      pctOff:'% off', dollarOff:'$ off', zheOff:'% pay', amount:'Discount Amount', recurring:'Recurring (applies for every X spent)',
       eg:function(n){return 'eg. '+n;},
       origTotal:'Original total',
       discStart:function(m){return 'Discount start ('+m+')';},
@@ -314,8 +324,8 @@
       bxgyBuy:'買', bxgyGet:'送',
       bxgyWarn:function(x){return '套數不是 '+x+' 的倍數';},
       bxgyProj:function(pay, sets, each){return '付 '+pay+' 得 '+sets+' 套 → 每套 '+each;},
-      dealStart:'優惠起始金額 ($)', spendPer:'每消費滿 ($)', discType:'折扣類型',
-      pctOff:'百分比折扣 (%)', dollarOff:'減金額 ($)', zheOff:'折', amount:'數值', recurring:'可重複（每消費滿指定金額即享）',
+      dealStart:'起始 ($)', spendPer:'每滿 ($)', discType:'類型',
+      pctOff:'% off', dollarOff:'$ off', zheOff:'折', amount:'折扣數值', recurring:'可重複（每消費滿指定金額即享）',
       eg:function(n){return '例: '+n;},
       origTotal:'原價總額',
       discStart:function(m){return '優惠起始 ('+m+')';},
@@ -360,8 +370,8 @@
       bxgyBuy:'買う数', bxgyGet:'無料',
       bxgyWarn:function(x){return 'セット数が '+x+' の倍数ではありません';},
       bxgyProj:function(pay, sets, each){return pay+' で '+sets+' セット → 1セットあたり '+each;},
-      dealStart:'割引開始額 ($)', spendPer:'割引対象の購入額 ($)', discType:'割引タイプ',
-      pctOff:'％割引', dollarOff:'金額割引 ($)', zheOff:'割引率（割）', amount:'数値', recurring:'繰り返し（一定額ごとに適用）',
+      dealStart:'開始 ($)', spendPer:'毎額 ($)', discType:'種類',
+      pctOff:'% off', dollarOff:'$ off', zheOff:'割', amount:'割引数値', recurring:'繰り返し（一定額ごとに適用）',
       eg:function(n){return '例：'+n;},
       origTotal:'元の合計',
       discStart:function(m){return '割引開始 ('+m+')';},
@@ -411,7 +421,11 @@
       et.value = extraType === 'zhe' ? 'zhe' : 'percent';
     }
     var ep=document.getElementById('extraVal');
-    if(ep) ep.placeholder = extraType === 'zhe' ? t('eg','7') : t('eg','5');
+    if(ep) ep.placeholder = extraType === 'zhe' ? t('eg','8.5') : t('eg','5');
+    if(ep){
+      if(extraType === 'zhe'){ ep.removeAttribute('max'); }
+      else { ep.setAttribute('max', '100'); }
+    }
     var seg=document.getElementById('langSeg'); if(seg) seg.setAttribute('aria-label', t('langLbl'));
     updateLangSeg();
   }
@@ -724,7 +738,7 @@
 
     var row1 = document.createElement('div'); row1.className='row';
 
-    var f1 = document.createElement('div'); f1.className='field';
+    var f1 = document.createElement('div'); f1.className='field field-start';
     var l1 = document.createElement('label'); l1.textContent = g.recurring ? t('spendPer') : t('dealStart');
     l1.id = 'thlab-'+g.id; l1.htmlFor = 'thr-'+g.id;
     var thr = document.createElement('input'); thr.type='number'; thr.min='0'; thr.step='any';
@@ -733,7 +747,17 @@
     thr.addEventListener('input', function(){ g.threshold = thr.value; refreshGroup(wrap, g); updateGrand(); });
     f1.appendChild(l1); f1.appendChild(thr);
 
-    var f2 = document.createElement('div'); f2.className='field';
+    var f3 = document.createElement('div'); f3.className='field field-amt';
+    var l3 = document.createElement('label'); l3.textContent=t('amount'); l3.htmlFor='val-'+g.id;
+    var val = document.createElement('input'); val.type='number'; val.min='0'; val.step='any';
+    val.id='val-'+g.id; val.inputMode='decimal';
+    val.value=g.value;
+    val.placeholder = g.type==='zhe' ? t('eg','8.5') : (g.type==='percent' ? t('eg','10') : t('eg','25'));
+    val.removeAttribute('max');
+    val.addEventListener('input', function(){ g.value=val.value; refreshGroup(wrap, g); updateGrand(); });
+    f3.appendChild(l3); f3.appendChild(val);
+
+    var f2 = document.createElement('div'); f2.className='field field-type';
     var l2 = document.createElement('label'); l2.textContent=t('discType'); l2.htmlFor='type-'+g.id;
     var type = document.createElement('select'); type.id='type-'+g.id;
     [['percent',t('pctOff')],['fixed',t('dollarOff')],['zhe',t('zheOff')]].forEach(function(o){
@@ -747,17 +771,7 @@
     });
     f2.appendChild(l2); f2.appendChild(type);
 
-    var f3 = document.createElement('div'); f3.className='field';
-    var l3 = document.createElement('label'); l3.textContent=t('amount'); l3.htmlFor='val-'+g.id;
-    var val = document.createElement('input'); val.type='number'; val.min='0'; val.step='any';
-    val.id='val-'+g.id; val.inputMode='decimal';
-    val.value=g.value;
-    val.placeholder = g.type==='zhe' ? t('eg','7') : (g.type==='percent' ? t('eg','10') : t('eg','25'));
-    if(g.type==='zhe'){ val.max = '10'; } else { val.removeAttribute('max'); }
-    val.addEventListener('input', function(){ g.value=val.value; refreshGroup(wrap, g); updateGrand(); });
-    f3.appendChild(l3); f3.appendChild(val);
-
-    row1.appendChild(f1); row1.appendChild(f2); row1.appendChild(f3);
+    row1.appendChild(f1); row1.appendChild(f3); row1.appendChild(f2);
     box.appendChild(row1);
 
     var rec = document.createElement('label'); rec.className='check';

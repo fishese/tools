@@ -50,6 +50,17 @@
   }
 
   /**
+   * Zhe / % pay → fraction paid.
+   * ≤10 = 成 (7 → 0.7, 8.5 → 0.85); >10 up to 100 = already percent (85 → 0.85).
+   */
+  function zhePayFraction(val) {
+    if (isNaN(val) || val <= 0) return null;
+    if (val <= 10) return val / 10;
+    if (val <= 100) return val / 100;
+    return null;
+  }
+
+  /**
    * Promo layer: threshold deal on pay-before-promo amount.
    * type: 'percent' | 'fixed' | 'zhe'
    */
@@ -69,8 +80,8 @@
 
     if (isNaN(th) || th <= 0 || isNaN(val) || val <= 0 || amount <= 0) return res;
 
-    // zhe: 成 scale only (0 < value ≤ 10)
-    if (type === 'zhe' && !(val > 0 && val <= 10)) return res;
+    var zheFrac = type === 'zhe' ? zhePayFraction(val) : null;
+    if (type === 'zhe' && zheFrac == null) return res;
 
     if (g.recurring && type === 'fixed') {
       var milestones = Math.floor(amount / th);
@@ -92,7 +103,7 @@
       if (res.qualified) {
         if (type === 'percent') res.saved = amount * (val / 100);
         else if (type === 'fixed') res.saved = val;
-        else if (type === 'zhe') res.saved = amount * (1 - val / 10);
+        else if (type === 'zhe') res.saved = amount * (1 - zheFrac);
       }
     }
 
@@ -135,10 +146,11 @@
       val = Math.max(0, Math.min(100, val));
       extraSaved = round2(afterCat * (val / 100));
     } else {
-      if (!(val > 0 && val <= 10)) {
+      var frac = zhePayFraction(val);
+      if (frac == null) {
         return { extraSaved: 0, extraValueUsed: val, final: round2(afterCat) };
       }
-      extraSaved = round2(afterCat * (1 - val / 10));
+      extraSaved = round2(afterCat * (1 - frac));
     }
     return {
       extraSaved: extraSaved,
@@ -182,6 +194,7 @@
   var api = {
     round2: round2,
     normalizeSetQty: normalizeSetQty,
+    zhePayFraction: zhePayFraction,
     computePricing: computePricing,
     computePromo: computePromo,
     computeCategory: computeCategory,

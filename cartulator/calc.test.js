@@ -21,6 +21,18 @@ function approx(a, b, msg) {
 
 (function () {
   var p = C.computePromo(100, { threshold: 1, type: 'zhe', value: 88, recurring: false });
+  assert.strictEqual(p.qualified, true);
+  approx(p.final, 88);
+})();
+
+(function () {
+  var p = C.computePromo(100, { threshold: 1, type: 'zhe', value: 85, recurring: false });
+  approx(p.saved, 15);
+  approx(p.final, 85);
+})();
+
+(function () {
+  var p = C.computePromo(100, { threshold: 1, type: 'zhe', value: 150, recurring: false });
   assert.strictEqual(p.qualified, false);
   approx(p.final, 100);
 })();
@@ -99,6 +111,12 @@ function approx(a, b, msg) {
   var x = C.computeExtra(100, { extraType: 'zhe', extraValue: 7 });
   approx(x.extraSaved, 30);
   approx(x.final, 70);
+})();
+
+(function () {
+  var x = C.computeExtra(100, { extraType: 'zhe', extraValue: 85 });
+  approx(x.extraSaved, 15);
+  approx(x.final, 85);
 })();
 
 (function () {
