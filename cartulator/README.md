@@ -34,6 +34,7 @@ Each line is read independently:
 
 - Uses the **first number** on the line. Item names and extra words are ignored.
 - If a multiplication **leads the line** (`a * b`, also accepts `a x b`), it multiplies the two numbers. It must be at the start, so pack sizes / dimensions that appear after the price (e.g. `20 2x500ml water`, `15 5x7 frame`) are *not* multiplied — those read as 20 and 15.
+- Addition and subtraction also work at the start of a line, and can be combined with multiplication: `20 + 5 snacks` = 25, `20 - 5 coupon` = 15, and `10 + 2 * 3` = 16.
 - Blank lines and lines with no number are skipped.
 
 Examples (each counts as 20):
@@ -43,6 +44,8 @@ Examples (each counts as 20):
 20 cookies
 10 * 2
 10 * 2 cola
+10 + 10
+30 - 10 coupon
 20 for two kiwi
 ```
 

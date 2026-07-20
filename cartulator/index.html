@@ -53,16 +53,28 @@
   *{box-sizing:border-box}
   body{
     margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    background:var(--bg); color:var(--text); padding:16px; line-height:1.45;
+    background:var(--bg); color:var(--text); padding:16px; line-height:1.45; max-width:1080px; margin-inline:auto;
   }
   .apphead{display:flex; justify-content:space-between; align-items:flex-start; gap:12px}
   h1{font-size:1.1rem; margin:0 0 2px}
   .sub{color:var(--muted); font-size:.78rem; margin:0 0 10px}
-  .topbar{display:flex; flex-wrap:wrap; gap:10px; align-items:stretch; margin-bottom:14px}
+  .topbar{display:flex; margin-bottom:14px}
   .grand{
     background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
     padding:8px 16px; display:flex; flex-wrap:wrap; gap:18px; align-items:center; flex:1; min-width:240px;
   }
+  .summary-card{gap:12px 22px; padding:14px 16px}
+  .primary-stat{min-width:146px}
+  .primary-stat .k{font-size:.72rem!important; font-weight:700; color:var(--accent)!important}
+  .primary-stat .v{font-size:1.65rem!important; letter-spacing:-.03em}
+  .summary-stats{display:flex; gap:18px; flex-wrap:wrap; flex:1}
+  .order-discount{margin-left:auto; min-width:0}
+  .order-discount>summary{cursor:pointer; list-style:none; color:var(--accent); font-size:.85rem; font-weight:700; white-space:nowrap}
+  .order-discount>summary::-webkit-details-marker{display:none}
+  .order-discount>summary::before{content:'+'; margin-right:5px}
+  .order-discount[open]>summary::before{content:'−'}
+  .order-discount[open]{width:100%; border-top:1px solid var(--line); padding-top:10px}
+  .order-discount[open]>summary{margin-bottom:8px}
   .grand .stat .k{font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:1px}
   .grand .stat .v{font-size:1.05rem; font-weight:700}
   .v.good{color:var(--good)}
@@ -84,7 +96,9 @@
     padding:4px 2px; font-size:.95rem; text-align:center; -moz-appearance:textfield}
   .setqty::-webkit-outer-spin-button, .setqty::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
   .setqty-wrap label{margin:0; font-size:.78rem; color:var(--muted); text-transform:none; letter-spacing:0; white-space:nowrap}
-  .bxgy{margin-top:8px; border:1px solid var(--line); border-radius:10px; background:var(--inset); overflow:hidden}
+  .quantity-row{display:flex; align-items:center; gap:8px; margin-top:10px}
+  .quantity-row .setqty-wrap{margin-right:0}
+  .bxgy{margin-top:10px; border:1px solid var(--line); border-radius:10px; background:var(--inset); overflow:hidden}
   .bxgy > summary{cursor:pointer; padding:6px 10px; font-size:.82rem; font-weight:700; color:var(--muted); list-style:none;
     display:flex; align-items:center; gap:6px; user-select:none}
   .bxgy > summary::-webkit-details-marker{display:none}
@@ -128,12 +142,15 @@
     outline:2px solid var(--accent); outline-offset:2px;
   }
 
-  .groups{display:flex; flex-direction:column; gap:10px}
+  .groups{display:flex; flex-direction:column; gap:12px}
   .group{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden}
-  .ghead{display:flex; align-items:center; gap:6px; padding:5px 8px; background:var(--panel2); border-bottom:1px solid var(--line)}
+  .ghead{display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--panel2); border-bottom:1px solid var(--line)}
   .gname{flex:1; background:transparent; border:none; color:var(--text); font-size:.95rem; font-weight:700; padding:4px}
   .gname:focus{outline:none; background:var(--inset); border-radius:8px}
-  .gbody{display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:10px}
+  .ghead-total{margin-left:auto; text-align:right; white-space:nowrap}
+  .ghead-total .k{display:block; font-size:.64rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em}
+  .ghead-total .v{display:block; font-weight:800; font-size:1.05rem}
+  .gbody{display:grid; grid-template-columns:minmax(0,1.08fr) minmax(280px,.92fr); gap:12px; padding:12px}
   @media(max-width:680px){.gbody{grid-template-columns:1fr}}
   label{display:block; font-size:.78rem; color:var(--muted); margin:0 0 4px; text-transform:uppercase; letter-spacing:.03em}
   textarea{
@@ -148,16 +165,27 @@
     background:linear-gradient(to bottom, rgba(var(--inset-rgb),0) 0%, rgba(var(--inset-rgb),.85) 60%, var(--inset) 100%);}
   .fade.show{display:flex; align-items:flex-end; justify-content:center}
   .fade .more{margin-bottom:8px; font-size:.8rem; font-weight:700; color:var(--accent)}
-  .deal-card{background:var(--inset); border:1px solid var(--line); border-radius:10px; padding:8px}
+  .result-card{background:var(--inset); border:1px solid var(--line); border-radius:10px; padding:10px}
+  .deal-builder{border:1px solid var(--line); border-radius:9px; background:var(--panel); overflow:hidden}
+  .deal-builder>summary{cursor:pointer; padding:8px 10px; list-style:none; color:var(--accent); font-size:.86rem; font-weight:700}
+  .deal-builder>summary::-webkit-details-marker{display:none}
+  .deal-builder>summary::before{content:'+'; margin-right:5px}
+  .deal-builder[open]>summary{border-bottom:1px solid var(--line); color:var(--text)}
+  .deal-builder[open]>summary::before{content:'–'}
+  .deal-builder-body{padding:10px}
+  .pay-hero{padding:14px 4px 10px; border-bottom:1px dashed var(--line); margin-bottom:8px}
+  .pay-hero .k{font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted)}
+  .pay-hero .v{font-size:1.55rem; font-weight:800; letter-spacing:-.025em}
+  .pay-hero .meta{font-size:.8rem; color:var(--muted); margin-top:1px}
   .row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px}
   .field{flex:1; min-width:110px}
-  .deal-card .row{flex-wrap:nowrap; gap:6px; align-items:flex-end}
-  .deal-card .field{min-width:0; flex:1 1 0}
-  .deal-card .field-type{flex:1.15 1 0}
-  .deal-card .field-amt{flex:0.85 1 0}
-  .deal-card .field-start{flex:0.9 1 0}
-  .deal-card label{font-size:.68rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .deal-card input[type=number], .deal-card select{
+  .result-card .row{flex-wrap:nowrap; gap:6px; align-items:flex-end}
+  .result-card .field{min-width:0; flex:1 1 0}
+  .result-card .field-type{flex:1.15 1 0}
+  .result-card .field-amt{flex:0.85 1 0}
+  .result-card .field-start{flex:0.9 1 0}
+  .result-card label{font-size:.68rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .result-card input[type=number], .result-card select{
     padding:5px 6px; font-size:16px; /* 16px avoids iOS zoom */
   }
   .deal-card select{padding-right:4px}
@@ -169,7 +197,7 @@
   input:focus,select:focus{outline:none; border-color:var(--accent)}
   .check{display:flex; align-items:center; gap:8px; font-size:.95rem; color:var(--text); cursor:pointer; margin-top:2px}
   .check input{width:18px; height:18px}
-  .tally{margin-top:8px; border-top:1px dashed var(--line); padding-top:8px; display:flex; flex-direction:column; gap:5px}
+  .tally{margin-top:8px; display:flex; flex-direction:column; gap:5px}
   .line{display:flex; justify-content:space-between; gap:12px; font-size:.95rem}
   .line .lbl{color:var(--muted)}
   .line .val{font-weight:700; text-align:right}
@@ -180,7 +208,14 @@
   .hint{color:var(--muted); font-size:.78rem; margin-top:4px}
   .progress{height:8px; background:var(--panel2); border-radius:999px; overflow:hidden; margin-top:4px}
   .progress>div{height:100%; background:var(--accent); width:0%}
-  .footer-actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+  .footer-actions{display:flex; gap:10px; align-items:center; margin-top:12px}
+  .more-actions{position:relative}
+  .more-actions>summary{cursor:pointer; list-style:none; border:1px solid var(--line); border-radius:10px; padding:9px 12px; color:var(--muted)}
+  .more-actions>summary::-webkit-details-marker{display:none}
+  .more-actions[open]>summary{color:var(--text); background:var(--panel2)}
+  .more-actions-menu{position:absolute; z-index:2; bottom:calc(100% + 6px); left:0; min-width:190px; padding:6px; border:1px solid var(--line); border-radius:10px; background:var(--panel); box-shadow:0 12px 24px rgba(0,0,0,.2); display:flex; flex-direction:column; gap:4px}
+  .more-actions-menu button{text-align:left; background:transparent; border-color:transparent; padding:8px 10px}
+  .more-actions-menu button:hover{background:var(--panel2); filter:none}
   .note{color:var(--muted); font-size:.78rem; margin-top:8px}
   .credit{margin-top:10px; font-size:.72rem; color:var(--muted); opacity:.65; text-align:center}
   .credit a{color:inherit; text-decoration:none; border-bottom:1px dotted var(--line)}
@@ -188,6 +223,17 @@
   .toast{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--good); color:#04291c;
     padding:10px 18px; border-radius:10px; font-weight:700; opacity:0; pointer-events:none; transition:opacity .2s}
   .toast.show{opacity:1}
+  @media(max-width:680px){
+    body{padding:12px}
+    .summary-card{align-items:flex-start}
+    .summary-stats{width:100%; order:3}
+    .order-discount{margin-left:0; order:2}
+    .gbody{grid-template-columns:1fr; padding:10px}
+    .result-card .row{flex-wrap:wrap}
+    .result-card .field{flex:1 1 100%; min-width:100%}
+    .ghead{align-items:flex-start}
+    .ghead-total{margin-left:0}
+  }
 </style>
 </head>
 <body>
@@ -210,20 +256,23 @@
   </div>
 
   <div class="topbar">
-    <div class="grand">
-      <div class="stat"><div class="k" id="kBefore"></div><div class="v" id="gTotal">$0.00</div></div>
-      <div class="stat"><div class="k" id="kSaved"></div><div class="v good" id="gSaved">$0.00</div></div>
-      <div class="stat"><div class="k" id="kPay"></div><div class="v" id="gFinal">$0.00</div></div>
-    </div>
-    <div class="grand ctrl">
-      <div class="stat ctrl-field">
-        <label id="extraLbl" for="extraVal"></label>
-        <input type="number" id="extraVal" min="0" step="any" inputmode="decimal">
-        <select id="extraType" aria-label="Extra discount type">
-          <option value="percent">% off</option>
-          <option value="zhe">% pay</option>
-        </select>
+    <div class="grand summary-card">
+      <div class="stat primary-stat"><div class="k" id="kPay"></div><div class="v" id="gFinal">$0.00</div></div>
+      <div class="summary-stats">
+        <div class="stat"><div class="k" id="kBefore"></div><div class="v" id="gTotal">$0.00</div></div>
+        <div class="stat"><div class="k" id="kSaved"></div><div class="v good" id="gSaved">$0.00</div></div>
       </div>
+      <details class="order-discount" id="orderDiscount">
+        <summary id="extraSummary"></summary>
+        <div class="stat ctrl-field">
+          <label id="extraLbl" for="extraVal"></label>
+          <input type="number" id="extraVal" min="0" step="any" inputmode="decimal">
+          <select id="extraType" aria-label="Extra discount type">
+            <option value="zhe">% pay</option>
+            <option value="percent">% off</option>
+          </select>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -231,10 +280,15 @@
 
   <div class="footer-actions">
     <button class="primary" id="addGroup"></button>
-    <button id="exportBtn"></button>
-    <button id="copyBtn"></button>
-    <button class="warnbtn" id="clearBtn"></button>
-    <button class="installbtn" id="installBtn" style="display:none"></button>
+    <details class="more-actions">
+      <summary id="moreActions" aria-label="More actions">•••</summary>
+      <div class="more-actions-menu">
+        <button id="exportBtn"></button>
+        <button id="copyBtn"></button>
+        <button class="warnbtn" id="clearBtn"></button>
+        <button class="installbtn" id="installBtn" style="display:none"></button>
+      </div>
+    </details>
   </div>
   <p class="note" id="note"></p>
   <p class="credit"><a href="../" rel="noopener">0oo.fish.oo0</a></p>
@@ -249,8 +303,9 @@
   var groupsEl = document.getElementById('groups');
   var state = []; // category objects (see Calc.migrateGroup)
   var seq = 0;
-  var extraType = 'percent';
+  var extraType = 'zhe';
   var extraValue = '';
+  var extraEnabled = false;
   var DATA_KEY = 'sdc_data';
 
   // ---------- i18n ----------
@@ -397,6 +452,16 @@
       yes:'はい', no:'いいえ', grandTotal:'総合計', extraRow:'注文全体の追加割引'
     }
   };
+  var UI_TEXT = {
+    addDeal:{en:'+ Add a deal', 'zh-HK':'＋ 加入優惠', ja:'＋ 割引を追加'},
+    dealLabel:{en:'Deal', 'zh-HK':'優惠', ja:'割引'},
+    removeCategory:{en:'Remove category', 'zh-HK':'移除分類', ja:'カテゴリーを削除'},
+    quickMath:{en:'Quick math at the start of a line works too: 20 + 5, 20 - 5, or 10 × 2.', 'zh-HK':'每行開首亦可快速計算：20 + 5、20 - 5 或 10 × 2。', ja:'行頭では 20 + 5、20 - 5、10 × 2 のような簡単な計算もできます。'}
+  };
+  function uiText(key){
+    var values = UI_TEXT[key] || {};
+    return values[lang] || values.en || key;
+  }
   function L(){ return I18N[lang] || I18N.en; }
   function t(key){
     var v = L()[key]; if(v === undefined) v = I18N.en[key];
@@ -410,14 +475,15 @@
     setText('appTitle', t('title')); setText('appSub', t('sub'));
     setText('kBefore', t('kBefore')); setText('kSaved', t('kSaved')); setText('kPay', t('kPay'));
     setText('extraLbl', t('extraLbl'));
+    setText('extraSummary', t('extraLbl'));
     setText('addGroup', t('addGroup')); setText('exportBtn', t('exportBtn')); setText('copyBtn', t('copyBtn'));
     setText('clearBtn', t('clearBtn'));
     setText('installBtn', t('installBtn'));
-    var n=document.getElementById('note'); if(n) n.innerHTML = t('note');
+    var n=document.getElementById('note'); if(n) n.innerHTML = t('note')+'<br>'+uiText('quickMath');
     var et=document.getElementById('extraType');
     if(et){
-      et.options[0].textContent = t('extraPctOff');
-      et.options[1].textContent = t('extraZhe');
+      et.options[0].textContent = t('extraZhe');
+      et.options[1].textContent = t('extraPctOff');
       et.value = extraType === 'zhe' ? 'zhe' : 'percent';
     }
     var ep=document.getElementById('extraVal');
@@ -442,7 +508,7 @@
   function save(){
     try{
       localStorage.setItem(DATA_KEY, JSON.stringify({
-        state:state, seq:seq, extraType:extraType, extraValue:extraValue, extraPct:extraValue
+        state:state, seq:seq, extraType:extraType, extraValue:extraValue, extraEnabled:extraEnabled, extraPct:extraValue
       }));
     }catch(e){}
   }
@@ -454,8 +520,9 @@
       if(d.state && d.state.length){
         state = d.state;
         seq = d.seq || state.reduce(function(m,g){return Math.max(m, g.id||0);}, 0);
-        extraType = d.extraType === 'zhe' ? 'zhe' : 'percent';
+        extraType = d.extraType === 'percent' ? 'percent' : 'zhe';
         extraValue = d.extraValue != null ? d.extraValue : '';
+        extraEnabled = !!d.extraEnabled;
         return true;
       }
     }catch(e){}
@@ -464,24 +531,10 @@
 
   // ---------- price parsing ----------
   function parseLineValue(line){
-    if(!line) return null;
-    var s = line.trim();
-    if(!s) return null;
-    // multiplication "qty x price" only when it leads the line (avoids hijacking
-    // pack sizes / dimensions like "2x500ml" or "5x7" that sit after the price)
-    var mul = s.match(/^(\d+(?:\.\d+)?)\s*[*x]\s*(\d+(?:\.\d+)?)/i);
-    if(mul){ return parseFloat(mul[1]) * parseFloat(mul[2]); }
-    var num = s.match(/(\d+(?:\.\d+)?)/);
-    if(num){ return parseFloat(num[1]); }
-    return null;
+    return Calc.parseLineValue(line);
   }
   function sumItems(text){
-    var total = 0, count = 0;
-    (text||'').split(/\r?\n/).forEach(function(l){
-      var v = parseLineValue(l);
-      if(v !== null && !isNaN(v)){ total += v; count++; }
-    });
-    return {total:total, count:count};
+    return Calc.sumItems(text);
   }
 
   // ---------- discount math (delegates to CartulatorCalc) ----------
@@ -549,6 +602,10 @@
     name.setAttribute('aria-label', t('catName'));
     name.addEventListener('input', function(){ g.name = name.value; save(); });
 
+    var headTotal = document.createElement('div');
+    headTotal.className = 'ghead-total'; headTotal.id = 'catpay-'+g.id;
+    headTotal.innerHTML = '<span class="k">'+t('totalPay')+'</span><span class="v">'+money(deal.final)+'</span>';
+
     var sqWrap = document.createElement('div');
     sqWrap.className = 'setqty-wrap';
     var spin = document.createElement('div');
@@ -587,11 +644,13 @@
 
     var del = document.createElement('button');
     del.className = 'danger'; del.textContent = t('remove');
+    del.setAttribute('aria-label', uiText('removeCategory'));
+    del.title = uiText('removeCategory');
     del.addEventListener('click', function(){
       if((g.items||'').trim() !== '' && !window.confirm(t('confirmRemove', g.name || ''))) return;
       state = state.filter(function(x){ return x.id !== g.id; }); render(); save();
     });
-    head.appendChild(name); head.appendChild(sqWrap); head.appendChild(del);
+    head.appendChild(name); head.appendChild(headTotal); head.appendChild(del);
 
     // body
     var body = document.createElement('div');
@@ -605,7 +664,7 @@
     var ta = document.createElement('textarea');
     ta.id = 'ta-'+g.id;
     ta.value = g.items;
-    ta.placeholder = '20\n20 cookies\n10 * 2\n10 * 2 cola\n20 for two kiwi';
+    ta.placeholder = '20\n20 cookies\n10 * 2\n20 + 5 snacks\n20 - 5 coupon';
     var fade = document.createElement('div'); fade.className='fade'; fade.id='fade-'+g.id;
     fade.appendChild(document.createElement('div')).className='more';
     ta.addEventListener('input', function(){
@@ -618,6 +677,9 @@
     var lc = document.createElement('div'); lc.className='hint'; lc.id='cnt-'+g.id;
     lc.textContent = t('itemsRead', parsed.count);
     left.appendChild(llab); left.appendChild(taWrap); left.appendChild(lc);
+    var quantityRow = document.createElement('div'); quantityRow.className = 'quantity-row';
+    quantityRow.appendChild(sqWrap);
+    left.appendChild(quantityRow);
     left.appendChild(makeBxgyControls(g, wrap));
 
     wrap.addEventListener('focusin', function(){ expandItems(ta, fade); });
@@ -627,8 +689,17 @@
 
     // right: deal + tally
     var right = document.createElement('div');
-    var card = document.createElement('div'); card.className='deal-card';
-    card.appendChild(makeDealControls(g, wrap));
+    var card = document.createElement('div'); card.className='result-card';
+    var dealDetails = document.createElement('details'); dealDetails.className = 'deal-builder';
+    dealDetails.open = !!g.dealOpen || g.threshold !== '' || g.value !== '';
+    var dealSummary = document.createElement('summary');
+    dealSummary.textContent = (g.threshold !== '' || g.value !== '') ? uiText('dealLabel') : uiText('addDeal');
+    var dealBody = document.createElement('div'); dealBody.className = 'deal-builder-body';
+    dealBody.appendChild(makeDealControls(g, wrap));
+    dealDetails.appendChild(dealSummary); dealDetails.appendChild(dealBody);
+    dealDetails.addEventListener('toggle', function(){ g.dealOpen = dealDetails.open; save(); });
+    card.appendChild(dealDetails);
+    card.appendChild(makePayHero(deal));
 
     var tally = document.createElement('div'); tally.className='tally'; tally.id='tally-'+g.id;
     tally.appendChild(buildTally(parsed, deal, g));
@@ -638,6 +709,15 @@
     body.appendChild(left); body.appendChild(right);
     wrap.appendChild(head); wrap.appendChild(body);
     return wrap;
+  }
+
+  function makePayHero(deal){
+    var hero = document.createElement('div'); hero.className = 'pay-hero';
+    var saved = deal.saved > 0 ? ' · '+t('kSaved')+' '+money(deal.saved) : '';
+    hero.innerHTML = '<div class="k">'+t('totalPay')+'</div>'+
+      '<div class="v">'+money(deal.final)+'</div>'+
+      '<div class="meta">'+t('origTotal')+' '+money(deal.original)+saved+'</div>';
+    return hero;
   }
 
   function makeBxgyControls(g, wrap){
@@ -650,23 +730,6 @@
 
     var body = document.createElement('div');
     body.className = 'bxgy-body';
-
-    var en = document.createElement('label');
-    en.className = 'check';
-    var cb = document.createElement('input');
-    cb.type = 'checkbox'; cb.checked = !!g.bxgyOn;
-    cb.addEventListener('change', function(){
-      g.bxgyOn = cb.checked;
-      if(g.bxgyOn){
-        var buy = parseFloat(g.bxgyBuy);
-        if(!isNaN(buy) && buy > 0) g.setQty = buy;
-      }
-      render(); save();
-    });
-    var enTxt = document.createElement('span');
-    enTxt.textContent = t('bxgyEnable');
-    en.appendChild(cb); en.appendChild(enTxt);
-    body.appendChild(en);
 
     var row = document.createElement('div');
     row.className = 'row';
@@ -701,6 +764,14 @@
     body.appendChild(warn); body.appendChild(proj);
 
     det.appendChild(body);
+    det.addEventListener('toggle', function(){
+      g.bxgyOn = det.open;
+      if(g.bxgyOn){
+        var buy = parseFloat(g.bxgyBuy);
+        if(!isNaN(buy) && buy > 0) g.setQty = buy;
+      }
+      refreshGroup(wrap, g); updateGrand();
+    });
     updateBxgyHints(g, warn, proj);
     return det;
   }
@@ -760,7 +831,7 @@
     var f2 = document.createElement('div'); f2.className='field field-type';
     var l2 = document.createElement('label'); l2.textContent=t('discType'); l2.htmlFor='type-'+g.id;
     var type = document.createElement('select'); type.id='type-'+g.id;
-    [['percent',t('pctOff')],['fixed',t('dollarOff')],['zhe',t('zheOff')]].forEach(function(o){
+    [['zhe',t('zheOff')],['percent',t('pctOff')],['fixed',t('dollarOff')]].forEach(function(o){
       var opt=document.createElement('option'); opt.value=o[0]; opt.textContent=o[1];
       if(g.type===o[0]) opt.selected=true; type.appendChild(opt);
     });
@@ -795,8 +866,6 @@
       var b=document.createElement('span'); b.className='val '+(cls||''); b.innerHTML=val;
       d.appendChild(a); d.appendChild(b); return d;
     }
-    frag.appendChild(line(t('origTotal'), '<span class="big">'+money(deal.original)+'</span>'));
-
     var th = parseFloat(g.threshold);
     var payBase = pricing.payBeforePromo;
     if(!isNaN(th) && th>0){
@@ -826,12 +895,6 @@
     if(promo.qualified && promo.saved > 0){
       frag.appendChild(line(t('discApplied'), '− '+money(promo.saved), 'good'));
     }
-    if(deal.bxgySaved > 0 || (promo.qualified && promo.saved > 0)){
-      frag.appendChild(line(t('afterDisc'), '<span class="big">'+money(deal.final)+'</span>', 'good'));
-    } else {
-      frag.appendChild(line(t('totalPay'), '<span class="big">'+money(deal.final)+'</span>'));
-    }
-
     if(g.recurring && g.type==='fixed' && !isNaN(th) && th>0 && payBase>0){
       var pct = Math.max(0, Math.min(100, (promo.towardNext/th)*100));
       frag.appendChild(line(t('towardNext', money(th)), t('leftToGo', money(promo.leftNext))));
@@ -854,6 +917,13 @@
     if(cnt) cnt.textContent = t('itemsRead', cr.parsed.count);
     var tally = wrap.querySelector('#tally-'+g.id);
     if(tally){ tally.innerHTML=''; tally.appendChild(buildTally(cr.parsed, cr.deal, g)); }
+    var catPay = wrap.querySelector('#catpay-'+g.id);
+    if(catPay) catPay.innerHTML = '<span class="k">'+t('totalPay')+'</span><span class="v">'+money(cr.deal.final)+'</span>';
+    var hero = wrap.querySelector('.pay-hero');
+    if(hero){
+      var saved = cr.deal.saved > 0 ? ' · '+t('kSaved')+' '+money(cr.deal.saved) : '';
+      hero.innerHTML = '<div class="k">'+t('totalPay')+'</div><div class="v">'+money(cr.deal.final)+'</div><div class="meta">'+t('origTotal')+' '+money(cr.deal.original)+saved+'</div>';
+    }
     updateBxgyHints(g);
     var sq = wrap.querySelector('#sq-'+g.id);
     if(sq && String(sq.value) !== String(g.setQty) && document.activeElement !== sq){
@@ -870,7 +940,7 @@
       afterCat += round2(cr.deal.final);
     });
     afterCat = round2(afterCat);
-    var ex = Calc.computeExtra(afterCat, { extraType: extraType, extraValue: extraValue });
+    var ex = Calc.computeExtra(afterCat, { extraType: extraType, extraValue: extraEnabled ? extraValue : '' });
     return {
       total: round2(goods),
       catSaved: round2(catSaved),
@@ -892,7 +962,7 @@
   function addGroup(prefill){
     seq++;
     state.push(Calc.migrateGroup(Object.assign({
-      id:seq, name:t('defaultCat', seq), items:'', threshold:'', type:'percent', value:'', recurring:false,
+      id:seq, name:t('defaultCat', seq), items:'', threshold:'', type:'zhe', value:'', recurring:false,
       setQty:1, bxgyOn:false, bxgyBuy:'', bxgyGet:''
     }, prefill||{})));
     render(); save();
@@ -967,9 +1037,10 @@
   function clearAll(){
     if(!window.confirm(t('confirmClear'))) return;
     try{ localStorage.removeItem(DATA_KEY); }catch(e){}
-    state=[]; seq=0; extraType='percent'; extraValue='';
-    var et=document.getElementById('extraType'); if(et) et.value='percent';
+    state=[]; seq=0; extraType='zhe'; extraValue=''; extraEnabled=false;
+    var et=document.getElementById('extraType'); if(et) et.value='zhe';
     var ep=document.getElementById('extraVal'); if(ep) ep.value='';
+    var od=document.getElementById('orderDiscount'); if(od) od.open=false;
     addGroup({name:t('firstCat')});
   }
 
@@ -995,12 +1066,14 @@
   // whole-order extra discount
   var etSel = document.getElementById('extraType');
   var epInput = document.getElementById('extraVal');
+  var orderDiscount = document.getElementById('orderDiscount');
   etSel.addEventListener('change', function(){
     extraType = etSel.value === 'zhe' ? 'zhe' : 'percent';
     applyStatic();
     updateGrand();
   });
   epInput.addEventListener('input', function(){ extraValue = epInput.value; updateGrand(); });
+  orderDiscount.addEventListener('toggle', function(){ extraEnabled = orderDiscount.open; updateGrand(); });
 
   // language segmented control
   document.getElementById('langSeg').addEventListener('click', function(e){
@@ -1049,10 +1122,11 @@
   });
 
   // ---------- init ----------
-  applyStatic();
   var restored = load();
-  etSel.value = extraType === 'zhe' ? 'zhe' : 'percent';
+  applyStatic();
+  etSel.value = extraType === 'percent' ? 'percent' : 'zhe';
   epInput.value = extraValue;
+  orderDiscount.open = extraEnabled;
   if(restored){ render(); }
   else { addGroup({name: t('firstCat')}); }
 })();

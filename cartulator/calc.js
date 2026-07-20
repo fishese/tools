@@ -16,6 +16,66 @@
   }
 
   /**
+   * Read a quick-entry price from the beginning of one line. Supports notes
+   * after the expression, and +, -, *, and x with normal multiplication
+   * precedence. A later pack size such as "20 2x500ml" is not treated as math.
+   */
+  function parseLineValue(line) {
+    if (line == null) return null;
+    var s = String(line).trim();
+    if (!s) return null;
+
+    var pos = 0;
+    function readNumber() {
+      var m = s.slice(pos).match(/^\d+(?:\.\d+)?/);
+      if (!m) return null;
+      pos += m[0].length;
+      return parseFloat(m[0]);
+    }
+    function skipSpace() {
+      while (pos < s.length && /\s/.test(s.charAt(pos))) pos++;
+    }
+
+    var first = readNumber();
+    if (first == null) return null;
+
+    var total = 0;
+    var term = first;
+    var sign = 1;
+    while (pos < s.length) {
+      skipSpace();
+      var op = s.charAt(pos);
+      if (op !== '+' && op !== '-' && op !== '*' && op.toLowerCase() !== 'x') break;
+      pos++;
+      skipSpace();
+      var next = readNumber();
+      if (next == null) break;
+
+      if (op === '*' || op.toLowerCase() === 'x') {
+        term *= next;
+      } else {
+        total += sign * term;
+        term = next;
+        sign = op === '+' ? 1 : -1;
+      }
+    }
+    return total + sign * term;
+  }
+
+  function sumItems(text) {
+    var total = 0;
+    var count = 0;
+    String(text == null ? '' : text).split(/\r?\n/).forEach(function (line) {
+      var value = parseLineValue(line);
+      if (value !== null && !isNaN(value)) {
+        total += value;
+        count++;
+      }
+    });
+    return { total: total, count: count };
+  }
+
+  /**
    * Pricing layer: items sum S × setQty, then BXGY.
    * setQty = number of sets paid for.
    */
@@ -176,24 +236,28 @@
       threshold: g.threshold == null ? '' : g.threshold,
       type: type,
       value: g.value == null ? '' : g.value,
-      recurring: !!g.recurring && type === 'fixed'
+      recurring: !!g.recurring && type === 'fixed',
+      dealOpen: !!g.dealOpen
     };
   }
 
   function migrateData(d) {
-    if (!d || typeof d !== 'object') return { state: [], seq: 0, extraType: 'percent', extraValue: '' };
-    var extraType = d.extraType === 'zhe' ? 'zhe' : 'percent';
+    if (!d || typeof d !== 'object') return { state: [], seq: 0, extraType: 'zhe', extraValue: '', extraEnabled: false };
+    var extraType = d.extraType === 'percent' ? 'percent' : (d.extraType === 'zhe' ? 'zhe' : (d.extraPct != null ? 'percent' : 'zhe'));
     var extraValue = d.extraValue;
     if (extraValue == null && d.extraPct != null) extraValue = d.extraPct;
     if (extraValue == null) extraValue = '';
+    var extraEnabled = typeof d.extraEnabled === 'boolean' ? d.extraEnabled : parseFloat(extraValue) > 0;
     var state = Array.isArray(d.state) ? d.state.map(migrateGroup) : [];
     var seq = d.seq || state.reduce(function (m, g) { return Math.max(m, g.id || 0); }, 0);
-    return { state: state, seq: seq, extraType: extraType, extraValue: extraValue };
+    return { state: state, seq: seq, extraType: extraType, extraValue: extraValue, extraEnabled: extraEnabled };
   }
 
   var api = {
     round2: round2,
     normalizeSetQty: normalizeSetQty,
+    parseLineValue: parseLineValue,
+    sumItems: sumItems,
     zhePayFraction: zhePayFraction,
     computePricing: computePricing,
     computePromo: computePromo,

@@ -6,6 +6,21 @@ function approx(a, b, msg) {
   assert.strictEqual(C.round2(a), C.round2(b), msg || (a + ' !== ' + b));
 }
 
+// --- quick item entry ---
+(function () {
+  assert.strictEqual(C.parseLineValue('20'), 20);
+  assert.strictEqual(C.parseLineValue('20 cookies'), 20);
+  assert.strictEqual(C.parseLineValue('10*2'), 20);
+  assert.strictEqual(C.parseLineValue('10x2 cola'), 20);
+  assert.strictEqual(C.parseLineValue('20 + 5 snacks'), 25);
+  assert.strictEqual(C.parseLineValue('20 - 5 coupon'), 15);
+  assert.strictEqual(C.parseLineValue('10 + 2 * 3'), 16);
+  assert.strictEqual(C.parseLineValue('20 2x500ml water'), 20);
+  var items = C.sumItems('20\n20 cookies\n10*2\n10x2 cola\n20 + 5 snacks\n20 - 5 coupon');
+  assert.strictEqual(items.count, 6);
+  assert.strictEqual(items.total, 120);
+})();
+
 // --- zhe ---
 (function () {
   var p = C.computePromo(100, { threshold: 1, type: 'zhe', value: 7, recurring: false });
@@ -134,9 +149,16 @@ function approx(a, b, msg) {
   });
   assert.strictEqual(d.extraType, 'percent');
   assert.strictEqual(d.extraValue, '5');
+  assert.strictEqual(d.extraEnabled, true);
   assert.strictEqual(d.state[0].setQty, 1);
   assert.strictEqual(d.state[0].bxgyOn, false);
   assert.strictEqual(d.state[0].type, 'percent');
+})();
+
+(function () {
+  var d = C.migrateData({ state: [{ id: 1 }] });
+  assert.strictEqual(d.extraType, 'zhe');
+  assert.strictEqual(d.extraEnabled, false);
 })();
 
 (function () {
