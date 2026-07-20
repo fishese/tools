@@ -149,7 +149,6 @@ function approx(a, b, msg) {
   });
   assert.strictEqual(d.extraType, 'percent');
   assert.strictEqual(d.extraValue, '5');
-  assert.strictEqual(d.extraEnabled, true);
   assert.strictEqual(d.state[0].setQty, 1);
   assert.strictEqual(d.state[0].bxgyOn, false);
   assert.strictEqual(d.state[0].type, 'percent');
@@ -158,7 +157,6 @@ function approx(a, b, msg) {
 (function () {
   var d = C.migrateData({ state: [{ id: 1 }] });
   assert.strictEqual(d.extraType, 'zhe');
-  assert.strictEqual(d.extraEnabled, false);
 })();
 
 (function () {

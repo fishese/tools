@@ -236,21 +236,19 @@
       threshold: g.threshold == null ? '' : g.threshold,
       type: type,
       value: g.value == null ? '' : g.value,
-      recurring: !!g.recurring && type === 'fixed',
-      dealOpen: !!g.dealOpen
+      recurring: !!g.recurring && type === 'fixed'
     };
   }
 
   function migrateData(d) {
-    if (!d || typeof d !== 'object') return { state: [], seq: 0, extraType: 'zhe', extraValue: '', extraEnabled: false };
+    if (!d || typeof d !== 'object') return { state: [], seq: 0, extraType: 'zhe', extraValue: '' };
     var extraType = d.extraType === 'percent' ? 'percent' : (d.extraType === 'zhe' ? 'zhe' : (d.extraPct != null ? 'percent' : 'zhe'));
     var extraValue = d.extraValue;
     if (extraValue == null && d.extraPct != null) extraValue = d.extraPct;
     if (extraValue == null) extraValue = '';
-    var extraEnabled = typeof d.extraEnabled === 'boolean' ? d.extraEnabled : parseFloat(extraValue) > 0;
     var state = Array.isArray(d.state) ? d.state.map(migrateGroup) : [];
     var seq = d.seq || state.reduce(function (m, g) { return Math.max(m, g.id || 0); }, 0);
-    return { state: state, seq: seq, extraType: extraType, extraValue: extraValue, extraEnabled: extraEnabled };
+    return { state: state, seq: seq, extraType: extraType, extraValue: extraValue };
   }
 
   var api = {
