@@ -1,5 +1,5 @@
 /* Bump CACHE when cached files change. App shell is network-first so deploys show up. */
-const CACHE = 'ck-v5';
+const CACHE = 'ck-v6';
 const CACHE_PREFIX = 'ck-';
 const ASSETS = [
   './index.html',
@@ -16,7 +16,8 @@ const CDN = [
   'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
   'https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js',
   'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js',
-  'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'
+  'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js',
+  'https://cdn.jsdelivr.net/npm/bwip-js@4.5.1/dist/bwip-js-min.js'
 ];
 
 self.addEventListener('install', e => {

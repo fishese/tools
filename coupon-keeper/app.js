@@ -370,6 +370,7 @@ function editCoupon(c){
   $('#f-cat').value=c.cat;$('#f-link').value=c.link;$('#f-qr').value=c.qr||'';$('#f-notes').value=c.notes;
   $('#f-kind').value=c.kind||'coupon';$('#f-balance').value=c.balance||'';
   $('#f-barcodeFmt').value=c.barcodeFormat||'auto';
+  if(c.barcodeFormat) setBarcodeFormatSelect(c.barcodeFormat);
   $('#confirmNote').style.display='none';$('#qrDetected').style.display='none';$('#ocrRawWrap').style.display='none';
   pendingPhoto=null;
   $('#keepPhotoRow').classList.remove('show');
@@ -516,7 +517,12 @@ $('#file').addEventListener('change',async e=>{
       const decoded=await decodeBarcode(f, url);
       if(decoded&&decoded.text){
         $('#f-qr').value=decoded.text;
-        if(decoded.format)$('#f-barcodeFmt').value=decoded.format;
+        if(decoded.format){
+          setBarcodeFormatSelect(decoded.format);
+          $('#qrDetected').textContent='✓ '+formatLabel(decoded.format)+' detected — the app will show the same format at the register.';
+        }else{
+          $('#qrDetected').textContent='✓ Code detected in your screenshot.';
+        }
         $('#qrDetected').style.display='block';
       }
     }catch(_){}
@@ -759,18 +765,70 @@ END:VCALENDAR`;
 function esc2(s){return (s||'').replace(/([,;\\])/g,'\\$1').replace(/\n/g,'\\n');}
 
 /* ---------- barcodes ---------- */
+const BCID={
+  QR:'qrcode', DATAMATRIX:'datamatrix', AZTEC:'azteccode', PDF417:'pdf417',
+  CODE128:'code128', CODE39:'code39', CODE93:'code93',
+  EAN13:'ean13', EAN8:'ean8', UPC:'upca', UPCE:'upce',
+  CODABAR:'rationalizedCodabar', ITF:'interleaved2of5'
+};
+const FORMAT_LABEL={
+  QR:'QR code', DATAMATRIX:'Data Matrix', AZTEC:'Aztec', PDF417:'PDF417',
+  CODE128:'Code 128', CODE39:'Code 39', CODE93:'Code 93',
+  EAN13:'EAN-13', EAN8:'EAN-8', UPC:'UPC-A', UPCE:'UPC-E',
+  CODABAR:'Codabar', ITF:'ITF'
+};
+function formatLabel(f){return FORMAT_LABEL[f]||f||'barcode';}
+function mapScannerFormat(name){
+  const n=String(name||'').toUpperCase().replace(/[\s-]+/g,'_');
+  const map={
+    QR_CODE:'QR', QR:'QR',
+    DATA_MATRIX:'DATAMATRIX', DATAMATRIX:'DATAMATRIX',
+    AZTEC:'AZTEC', AZTEC_CODE:'AZTEC',
+    PDF_417:'PDF417', PDF417:'PDF417',
+    CODE_128:'CODE128', CODE128:'CODE128',
+    CODE_39:'CODE39', CODE39:'CODE39',
+    CODE_93:'CODE93', CODE93:'CODE93',
+    CODABAR:'CODABAR',
+    ITF:'ITF', INTERLEAVED_2_OF_5:'ITF',
+    EAN_13:'EAN13', EAN13:'EAN13',
+    EAN_8:'EAN8', EAN8:'EAN8',
+    UPC_A:'UPC', UPCA:'UPC', UPC:'UPC',
+    UPC_E:'UPCE', UPCE:'UPCE'
+  };
+  return map[n]||'';
+}
+function extractScannerFormat(result){
+  if(!result||typeof result!=='object')return '';
+  const fmt=result.result&&result.result.format;
+  const name=(fmt&&(fmt.formatName||fmt.format))
+    || (result.result&&result.result.debugData&&result.result.debugData.decoderName)
+    || result.decoderName
+    || result.format
+    || '';
+  return mapScannerFormat(name);
+}
+function setBarcodeFormatSelect(format){
+  const sel=$('#f-barcodeFmt');
+  if(!sel||!format||format==='auto'){if(sel&&format)sel.value=format;return;}
+  if(![...sel.options].some(o=>o.value===format)){
+    const opt=document.createElement('option');
+    opt.value=format;opt.textContent=formatLabel(format);
+    sel.appendChild(opt);
+  }
+  sel.value=format;
+}
 function guessFormat(text){
   const t=(text||'').trim();
-  if(/^https?:\/\//i.test(t) || t.length>24) return 'QR';
+  if(/^https?:\/\//i.test(t)) return 'QR';
   if(/^\d{13}$/.test(t)) return 'EAN13';
   if(/^\d{12}$/.test(t)) return 'UPC';
   if(/^\d{8}$/.test(t)) return 'EAN8';
-  return 'CODE128';
+  return '';
 }
 function resolveFormat(c){
   const f=(c.barcodeFormat||'auto');
   if(f&&f!=='auto') return f;
-  return guessFormat(c.qr);
+  return guessFormat(c.qr)||'QR';
 }
 function genQR(text){
   try{
@@ -779,12 +837,41 @@ function genQR(text){
     return qr.createDataURL(8,16);
   }catch(e){return'';}
 }
+function genWithBwip(text, format){
+  const api=(typeof bwipjs!=='undefined')?bwipjs:null;
+  if(!api||typeof api.toCanvas!=='function')return '';
+  const bcid=BCID[format];
+  if(!bcid)return '';
+  const canvas=document.createElement('canvas');
+  const is2d=['QR','DATAMATRIX','AZTEC','PDF417'].includes(format);
+  const opts={
+    bcid,
+    text:String(text),
+    scale:is2d?6:3,
+    includetext:!is2d,
+    textxalign:'center',
+    backgroundcolor:'FFFFFF',
+    barcolor:'000000'
+  };
+  if(!is2d) opts.height=16;
+  if(format==='QR') opts.eclevel='M';
+  api.toCanvas(canvas, opts);
+  return canvas.toDataURL('image/png');
+}
 function genBarcodeDataUrl(text, format){
-  if(format==='QR') return genQR(text);
+  if(!text)return '';
+  const fmt=format&&format!=='auto'?format:guessFormat(text)||'QR';
+  try{
+    const bw=genWithBwip(text, fmt);
+    if(bw)return bw;
+  }catch(e){console.warn('bwip-js could not draw', fmt, e);}
+  if(fmt==='QR'||!BCID[fmt]||['DATAMATRIX','AZTEC','PDF417'].includes(fmt)){
+    return genQR(text);
+  }
   if(typeof JsBarcode==='undefined') return genQR(text);
   try{
     const cv=document.createElement('canvas');
-    JsBarcode(cv, text, {format, displayValue:true, fontSize:16, margin:12, width:2, height:80, lineColor:'#0f172a', background:'#ffffff'});
+    JsBarcode(cv, text, {format:fmt, displayValue:true, fontSize:16, margin:12, width:2, height:80, lineColor:'#0f172a', background:'#ffffff'});
     return cv.toDataURL('image/png');
   }catch(e){
     return genQR(text);
@@ -792,7 +879,7 @@ function genBarcodeDataUrl(text, format){
 }
 function decodeQR(src){
   return new Promise(resolve=>{
-    if(typeof jsQR==='undefined'){resolve('');return;}
+    if(typeof jsQR==='undefined'){resolve(null);return;}
     const img=new Image();
     img.onload=()=>{
       try{
@@ -802,59 +889,70 @@ function decodeQR(src){
         const ctx=cv.getContext('2d');ctx.drawImage(img,0,0,cv.width,cv.height);
         const d=ctx.getImageData(0,0,cv.width,cv.height);
         const code=jsQR(d.data,cv.width,cv.height);
-        resolve(code&&code.data?code.data:'');
-      }catch(e){resolve('');}
+        if(code&&code.data) resolve({text:code.data, format:'QR', version:code.version});
+        else resolve(null);
+      }catch(e){resolve(null);}
     };
-    img.onerror=()=>resolve('');
+    img.onerror=()=>resolve(null);
     img.src=src;
   });
 }
 async function decodeBarcode(file, url){
   if(typeof Html5Qrcode==='function'){
     try{
-      const host='barcodeScanHost';
-      const reader=new Html5Qrcode(host, {verbose:false});
-      let text='', name='';
+      const reader=new Html5Qrcode('barcodeScanHost', {verbose:false});
+      let text='', format='';
       if(typeof reader.scanFileV2==='function'){
         const result=await reader.scanFileV2(file, false);
-        text=(result&&(result.decodedText||result.text))||'';
-        name=(result&&(result.decoderName||result.format))||'';
+        text=(result&&(result.decodedText|| (result.result&&result.result.text)))||'';
+        format=extractScannerFormat(result);
       }else{
         text=await reader.scanFile(file, false);
       }
       try{await reader.clear();}catch(_){}
       if(text){
-        name=String(name).toUpperCase();
-        let format='auto';
-        if(name.includes('QR'))format='QR';
-        else if(name.includes('EAN_13')||name.includes('EAN13'))format='EAN13';
-        else if(name.includes('EAN_8')||name.includes('EAN8'))format='EAN8';
-        else if(name.includes('UPC'))format='UPC';
-        else if(name.includes('CODE_39')||name.includes('CODE39'))format='CODE39';
-        else if(name.includes('CODABAR'))format='CODABAR';
-        else if(name.includes('ITF'))format='ITF';
-        else if(name.includes('CODE_128')||name.includes('CODE128'))format='CODE128';
-        else format=guessFormat(text);
-        return {text:String(text), format};
+        if(!format) format=guessFormat(text);
+        return {text:String(text), format:format||'QR'};
       }
     }catch(_){}
   }
   const qr=await decodeQR(url);
-  if(qr) return {text:qr, format:'QR'};
+  if(qr) return qr;
   return null;
+}
+async function detectFormatFromPhoto(c){
+  if(!c||!c.hasPhoto)return '';
+  try{
+    const blob=await photoGet(c.id);
+    if(!blob)return '';
+    const file=new File([blob],'saved.jpg',{type:blob.type||'image/jpeg'});
+    const url=URL.createObjectURL(file);
+    try{
+      const decoded=await decodeBarcode(file, url);
+      return (decoded&&decoded.format&&decoded.format!=='auto')?decoded.format:'';
+    }finally{URL.revokeObjectURL(url);}
+  }catch(_){return '';}
 }
 let _wakeLock=null;
 async function showCode(c){
   const text=c.qr||'';
-  const format=resolveFormat(c);
+  let format=resolveFormat(c);
+  if(text && (!c.barcodeFormat || c.barcodeFormat==='auto') && c.hasPhoto){
+    const detected=await detectFormatFromPhoto(c);
+    if(detected){
+      format=detected;
+      c.barcodeFormat=detected;
+      persist();
+    }
+  }
   $('#qrStore').textContent=c.store+(c.value?' · '+c.value:'');
-  $('#qrVal').textContent=text+(format&&format!=='auto'?' · '+format:'');
+  $('#qrVal').textContent=text+(format?' · '+formatLabel(format):'');
   const el=$('#qrImg'),canvas=$('#barcodeCanvas'),err=$('#qrErr');
-  el.style.display='none';canvas.style.display='none';err.textContent='';
+  el.style.display='none';if(canvas)canvas.style.display='none';err.textContent='';
   const img=text?genBarcodeDataUrl(text, format):'';
   if(img){el.src=img;el.style.display='block';}
   else err.textContent=text?'Could not render that barcode.':'No barcode value saved.';
-  $('#qrHint').textContent='Hold the screen up to the scanner. Turn your brightness up if it won\'t scan.';
+  $('#qrHint').textContent='Showing '+formatLabel(format)+'. Hold the screen up to the scanner and turn brightness up if needed.';
   $('#qrModal').classList.add('show');
   try{if('wakeLock'in navigator)_wakeLock=await navigator.wakeLock.request('screen');}catch(_){}
 }
