@@ -1,5 +1,5 @@
 /* Bump CACHE when cached files change. App shell is network-first so deploys show up. */
-const CACHE = 'ck-v6';
+const CACHE = 'ck-v9';
 const CACHE_PREFIX = 'ck-';
 const ASSETS = [
   './index.html',

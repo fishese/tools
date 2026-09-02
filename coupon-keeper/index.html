@@ -206,10 +206,10 @@
 
     <div class="settings-card">
       <h4>Install as an app</h4>
-      <p><b>Android (Chrome):</b> Tap <b>⬇ Install</b> in the header when it appears. That installs a real app (WebAPK) in your app drawer — not a Chrome shortcut. If you only see “Add to home screen” and it asks you to name a shortcut, the previous version was not installable; after this update, choose <b>Install app</b>.<br>
+      <p><b>Android (Chrome):</b> Tap <b>⬇ Install</b> when it appears (or Chrome’s Install app). That installs a real app with no URL bar — not a Chrome shortcut. If you already added a shortcut that still shows the name and URL at the top, remove that icon and Install again.<br>
       <b>iPhone / iPad (Safari):</b> Share (□↑) → <b>Add to Home Screen</b>.</p>
     </div>
-    <div class="hint" style="text-align:center">Coupon Keeper · works offline · v2.0</div>
+    <div class="hint" style="text-align:center">Coupon Keeper · works offline · v2.3</div>
     <div style="text-align:center; margin-top: 24px; font-size: 11px; opacity: 0.4;">
       <a href="../" style="color: var(--muted); text-decoration: none;">0oo.fish.oo0</a>
     </div>
@@ -228,6 +228,7 @@
 <div id="qrModal">
   <div id="qrClose">✕ Close</div>
   <div id="qrBox">
+    <button type="button" id="qrBoxClose" class="qr-box-close" aria-label="Close">✕ Close</button>
     <div id="qrStore"></div>
     <div id="qrImgWrap">
       <img id="qrImg" alt="Barcode">

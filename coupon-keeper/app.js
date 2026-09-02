@@ -461,6 +461,22 @@ async function compressImage(file, max=1100, quality=0.72){
     img.src=src;
   });
 }
+async function scaleImageForOcr(file, max=2000){
+  return new Promise(resolve=>{
+    const img=new Image();const src=URL.createObjectURL(file);
+    img.onload=()=>{
+      const scale=Math.min(max/Math.max(img.naturalWidth,img.naturalHeight),2);
+      const w=Math.max(1,Math.round(img.naturalWidth*scale));
+      const h=Math.max(1,Math.round(img.naturalHeight*scale));
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(src);
+      cv.toBlob(b=>resolve(b||file),'image/png');
+    };
+    img.onerror=()=>{URL.revokeObjectURL(src);resolve(file);};
+    img.src=src;
+  });
+}
 async function preprocessImage(file){
   return new Promise(resolve=>{
     const img=new Image();const src=URL.createObjectURL(file);
@@ -484,6 +500,43 @@ async function preprocessImage(file){
     img.src=src;
   });
 }
+function ocrScore(text){
+  const t=text||'';
+  const cjk=(t.match(/[\u4e00-\u9fff]/g)||[]).length;
+  const letters=(t.match(/[A-Za-z]/g)||[]).length;
+  return cjk*2+letters+Math.min(t.length,400)/10;
+}
+function ocrLooksWeak(text){return ocrScore(text)<20;}
+function ocrLogger(m){
+  if(m.status==='recognizing text'){$('#progbar').style.width=Math.round(m.progress*100)+'%';
+    $('#ocrStatus').textContent='Reading text… '+Math.round(m.progress*100)+'%';}
+  else if(m.status&&m.status.indexOf('language')>=0){$('#ocrStatus').textContent='Downloading language data (one time)…';}
+  else if(m.status)$('#ocrStatus').textContent=m.status.charAt(0).toUpperCase()+m.status.slice(1)+'…';
+}
+async function ocrBest(file, langs){
+  if(typeof Tesseract.createWorker==='function'){
+    const worker=await Tesseract.createWorker(langs,1,{logger:ocrLogger});
+    try{
+      await worker.setParameters({tessedit_pageseg_mode:'6'});
+      const mild=await scaleImageForOcr(file);
+      const r1=await worker.recognize(mild);
+      let text=(r1.data&&r1.data.text)||'';
+      if(ocrLooksWeak(text)){
+        $('#ocrStatus').textContent='Trying a clearer scan…';
+        const processed=await preprocessImage(file);
+        const r2=await worker.recognize(processed);
+        const t2=(r2.data&&r2.data.text)||'';
+        if(ocrScore(t2)>ocrScore(text)) text=t2;
+      }
+      return text;
+    }finally{
+      try{await worker.terminate();}catch(_){}
+    }
+  }
+  const mild=await scaleImageForOcr(file);
+  const r1=await Tesseract.recognize(mild,langs,{logger:ocrLogger});
+  return (r1.data&&r1.data.text)||'';
+}
 $('#file').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
   clearPreview();
@@ -497,7 +550,7 @@ $('#file').addEventListener('change',async e=>{
   $('#imgPreviewWrap').removeAttribute('open'); // Ensure it is collapsed initially
   
   $('#progwrap').classList.add('show');$('#ocrStatus').classList.add('show');
-  $('#ocrStatus').textContent='Enhancing image…';
+  $('#ocrStatus').textContent='Reading text…';
   
   // Explicitly sort languages so Traditional Chinese takes priority over Simplified Chinese for the OCR engine
   const PRIORITY=['eng','chi_tra','chi_sim','jpn'];
@@ -505,14 +558,8 @@ $('#file').addEventListener('change',async e=>{
   const langs=userLangs.slice().sort((a,b)=>PRIORITY.indexOf(a)-PRIORITY.indexOf(b)).join('+');
   
   try{
-    const processed=await preprocessImage(f);
-    const {data}=await Tesseract.recognize(processed,langs,{logger:m=>{
-      if(m.status==='recognizing text'){$('#progbar').style.width=Math.round(m.progress*100)+'%';
-        $('#ocrStatus').textContent='Reading text… '+Math.round(m.progress*100)+'%';}
-      else if(m.status&&m.status.indexOf('language')>=0){$('#ocrStatus').textContent='Downloading language data (one time)…';}
-      else if(m.status){$('#ocrStatus').textContent=m.status.charAt(0).toUpperCase()+m.status.slice(1)+'…';}
-    }});
-    fillFromText(data.text);
+    const text=await ocrBest(f, langs);
+    fillFromText(text);
     try{
       const decoded=await decodeBarcode(f, url);
       if(decoded&&decoded.text){
@@ -545,7 +592,7 @@ function inferCategory(text){
     [/\b(pharmacy|drugstore|medicine|vitamin|supplement|wellness|health\s+product)|(藥房|藥局|保健品|健康食品|醫藥品|薬局|薬|医薬品)/,'Health'],
     [/\b(electronics|gadget|computer|laptop|smartphone|mobile\s+phone|tablet|camera)|(電器|電腦|手機|家電|電子機器|スマホ|パソコン|テクノロジー)/,'Electronics'],
     [/\b(beauty|cosmetic|makeup|skincare|moistur|serum|lipstick|salon|spa)|(美妆|美妝|美容|護膚|彩妝|美髮|護髮|化粧品|スキンケア|コスメ)/,'Beauty'],
-    [/\b(hotel|flight|airline|travel|tour|booking|accommodation)|(旅行|旅遊|酒店|航空|民宿|宿泊|旅館|ホテル)/,'Travel'],
+    [/\b(hotel|flight|airline|travel|tour|booking|accommodation|airport\s*express)|(旅行|旅遊|酒店|航空|民宿|宿泊|旅館|ホテル|機場|空港)/,'Travel'],
     [/\b(cinema|movie|theatre|theater|concert|ticket|gym|fitness|sport)|(娛樂|映画|スポーツ|ゲーム|フィットネス|健身|映画館)/,'Entertainment'],
     [/\b(book|stationery|office\s+supply|school\s+supply)|(文具|書籍|教材|本|雑誌|辦公)/,'Books & Office'],
     [/\b(furniture|home\s+d[eé]cor|kitchenware|appliance|household)|(家具|家居|家電|廚具|生活用品|インテリア|家庭用品)/,'Home'],
@@ -584,6 +631,54 @@ function detectVoucherAmount(t){
   return '';
 }
 
+const KNOWN_STORES=[
+  [/機場快[綫線]|airport\s*express/i,'機場快綫 Airport Express'],
+  [/\b港鐵\b|\bmtr\b/i,'MTR 港鐵'],
+  [/百佳|parknshop/i,'ParknShop 百佳'],
+  [/惠康|wellcome/i,'Wellcome 惠康'],
+  [/萬寧|mannings/i,'Mannings 萬寧'],
+  [/屈臣|watsons/i,'Watsons 屈臣氏'],
+  [/7-?eleven|seven\s*eleven|七.?十一/i,'7-Eleven'],
+  [/city'?s?uper/i,"city'super"],
+  [/\baeon\b|永旺/i,'AEON'],
+  [/\byata\b|一田/i,'YATA 一田'],
+  [/starbucks|星巴克/i,'Starbucks'],
+  [/mcdonald|麥當勞|麦当劳/i,"McDonald's"],
+  [/\bkfc\b|肯德基/i,'KFC'],
+  [/uniqlo|優衣庫|优衣库/i,'UNIQLO'],
+  [/\bikea\b|宜家/i,'IKEA']
+];
+function pickStore(lines, text){
+  for(const [re,name] of KNOWN_STORES){
+    if(re.test(text)) return name;
+  }
+  const skip=/客戶|客户|親愛|亲爱|多謝|多谢|折|円|年|月|日|有效|有効|期限|[满滿]|[减減]|扫|掃|码|碼|獎賞|奖赏|詳情|详情|領取|领取|前往|請按|请按|二維|二维|禮券|礼券|現金券|现金券|電子券|电子券|優惠券|优惠券|eVoucher|Voucher|valid\s+until|ticket\s*no/i;
+  const amtLine=lines.find(l=>(/(?:HK|US|NT)?\s?[S$＄¥￥]\s?\d/i.test(l)||/\d\s*[円元圓]/.test(l))&&/[぀-ヿ一-鿿]/.test(l)&&l.length<60);
+  if(amtLine){
+    const s=amtLine.split(/(?:HK|US|NT)?\s?[S$＄¥￥]\s?\d|\d+\s*[円元圓]|[\[\(【]/i)[0].replace(/[^\p{L}\p{N} &'.\-]/gu,'').trim();
+    if(s.length>=2) return s;
+  }
+  const scored=[];
+  for(const l of lines){
+    const cl=l.replace(/[^\p{L}\p{N} &'.\-—–()（）]/gu,'').trim();
+    if(cl.length<4||cl.length>52) continue;
+    if(/^\d/.test(cl)) continue;
+    if(/^[A-Z0-9#\-_]{8,}$/i.test(cl)) continue;
+    if(/%|\$|http|code|expir|valid|until|ticket\s*no/i.test(cl)) continue;
+    if(skip.test(l)) continue;
+    let s=0;
+    if(/[票券]|ticket|voucher|coupon/i.test(cl)) s+=8;
+    if(/[\u4e00-\u9fff]/.test(cl)&&/[A-Za-z]/.test(cl)) s+=6;
+    if(cl.length>=8&&cl.length<=40) s+=4;
+    if(cl.length<=4) s-=10;
+    if(/^[\u4e00-\u9fff]{2,4}$/.test(cl)) s-=8;
+    if(/成人|兒童|單程|來回|airport|express|station/i.test(cl)) s+=5;
+    scored.push({cl,s});
+  }
+  scored.sort((a,b)=>b.s-a.s);
+  return (scored[0]&&scored[0].s>0)?scored[0].cl:'';
+}
+
 function fillFromText(text){
   const t=text.normalize('NFKC').replace(/ /g,' ');
   const lines=t.split('\n').map(l=>l.trim()).filter(Boolean);
@@ -606,12 +701,18 @@ function fillFromText(text){
   if(!value&&/free shipping|免运费|免運費|免費運費|包邮|包郵|送料無料|宅配無料/i.test(t)) value='Free shipping';
   if(!value){ m=t.match(/立[减減]\s*(\d{1,5})/); if(m)value='-¥'+m[1]+' (立减)'; }
   if(!value){ m=t.match(/每[满滿]\s*(\d{1,5})\s*[减減]\s*(\d{1,5})/); if(m)value='-¥'+m[2]+' (每满'+m[1]+')'; }
+  if(!value && /單程票/.test(t)) value = /成人/.test(t) ? '單程票 (成人)' : '單程票';
+  if(!value && /single\s+journey/i.test(t)) value = 'Single journey';
   if(!value) value=detectAmount(t);
   
-  // code
+  // code — ticket numbers first so a labelled "Ticket No." beats the long QR payload
   let code='';
-  m=t.match(/(?:code|promo(?:tion)?|coupon|voucher|discount\s+code|offer\s+code|redeem|enter\s+code|apply|use\s+code|优惠码|優惠碼|折扣码|折扣碼|促销码|促銷碼|兑换码|兌換碼|代码|代碼|序号|序號|号码|號碼|券码|券碼|番号|券号|クーポンコード|クーポン番号|コード|引換コード|バウチャー)[^a-zA-Z0-9]{0,6}([A-Z0-9#\-_]{5,20})(?=$|[^a-zA-Z0-9#\-_])/i);
+  m=t.match(/(?:ticket\s*(?:no\.?|number|#)|車票編號|車票號碼|票號|票号)[:\s]*([A-Z][A-Z0-9\-]{6,36})/i);
   if(m)code=m[1].toUpperCase();
+  if(!code){
+    m=t.match(/(?:code|promo(?:tion)?|coupon|voucher|discount\s+code|offer\s+code|redeem|enter\s+code|apply|use\s+code|优惠码|優惠碼|折扣码|折扣碼|促销码|促銷碼|兑换码|兌換碼|代码|代碼|序号|序號|号码|號碼|券码|券碼|番号|券号|クーポンコード|クーポン番号|コード|引換コード|バウチャー)[^a-zA-Z0-9]{0,6}([A-Z0-9#\-_]{5,20})(?=$|[^a-zA-Z0-9#\-_])/i);
+    if(m)code=m[1].toUpperCase();
+  }
 
   if(!code){
     const NOISE=/^(https?|www|the|and|for|off|use|get|buy|save|you|your|valid|until|after|from|with|this|only|new|free|see|more|shop|here|our|all|any|now|per|app|day|time|item|date|order|amount|total)$/i;
@@ -656,18 +757,7 @@ function fillFromText(text){
   let exp=findDate(t);
   
   // store
-  let store='';
-  const skip=/客戶|客户|親愛|亲爱|多謝|多谢|折|円|年|月|日|有效|有効|期限|[满滿]|[减減]|扫|掃|码|碼|獎賞|奖赏|詳情|详情|領取|领取|前往|請按|请按|二維|二维|禮券|礼券|現金券|现金券|電子券|电子券|優惠券|优惠券|eVoucher|Voucher/i;
-  
-  const amtLine=lines.find(l=>(/(?:HK|US|NT)?\s?[S$＄¥￥]\s?\d/i.test(l)||/\d\s*[円元圓]/.test(l))&&/[぀-ヿ一-鿿]/.test(l)&&l.length<60);
-  
-  if(amtLine){store=amtLine.split(/(?:HK|US|NT)?\s?[S$＄¥￥]\s?\d|\d+\s*[円元圓]|[\[\(【]/i)[0].replace(/[^\p{L}\p{N} &'.\-]/gu,'').trim();}
-  if(!store){
-    for(const l of lines){
-      const cl=l.replace(/[^\p{L}\p{N} &'.\-]/gu,'').trim();
-      if(cl.length>=2&&cl.length<=28&&!/^\d/.test(cl)&&!/%|\$|http|code|expir|valid/i.test(cl)&&!skip.test(l)){store=cl;break;}
-    }
-  }
+  const store=pickStore(lines, t);
   
   // fill
   if(store)$('#f-store').value=store;
@@ -933,6 +1023,55 @@ async function detectFormatFromPhoto(c){
     }finally{URL.revokeObjectURL(url);}
   }catch(_){return '';}
 }
+function cropQrFromUrl(src){
+  return new Promise(resolve=>{
+    if(typeof jsQR==='undefined'){resolve('');return;}
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const scale=Math.min(1600/Math.max(img.naturalWidth,img.naturalHeight),1)||1;
+        const cv=document.createElement('canvas');
+        cv.width=Math.round(img.naturalWidth*scale);cv.height=Math.round(img.naturalHeight*scale);
+        const ctx=cv.getContext('2d');ctx.drawImage(img,0,0,cv.width,cv.height);
+        const d=ctx.getImageData(0,0,cv.width,cv.height);
+        const code=jsQR(d.data,cv.width,cv.height,{inversionAttempts:'attemptBoth'});
+        if(!code||!code.location){resolve('');return;}
+        const loc=code.location;
+        const pts=[loc.topLeftCorner,loc.topRightCorner,loc.bottomRightCorner,loc.bottomLeftCorner];
+        const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+        const qrW=Math.max(...xs)-Math.min(...xs);
+        const pad=Math.max(8, qrW*0.08);
+        const x=Math.max(0, Math.min(...xs)-pad);
+        const y=Math.max(0, Math.min(...ys)-pad);
+        const w=Math.min(cv.width-x, Math.max(...xs)-x+pad);
+        const h=Math.min(cv.height-y, Math.max(...ys)-y+pad);
+        if(w<24||h<24){resolve('');return;}
+        const out=document.createElement('canvas');
+        const size=Math.max(w,h);
+        out.width=out.height=Math.round(size);
+        const octx=out.getContext('2d');
+        octx.fillStyle='#fff';
+        octx.fillRect(0,0,out.width,out.height);
+        octx.drawImage(cv,x,y,w,h,(out.width-w)/2,(out.height-h)/2,w,h);
+        resolve(out.toDataURL('image/png'));
+      }catch(e){resolve('');}
+    };
+    img.onerror=()=>resolve('');
+    img.src=src;
+  });
+}
+async function cropCodeFromPhoto(c){
+  if(!c||!c.hasPhoto) return '';
+  const format=resolveFormat(c);
+  if(format&&format!=='QR'&&format!=='auto') return '';
+  try{
+    const blob=await photoGet(c.id);
+    if(!blob) return '';
+    const url=URL.createObjectURL(blob);
+    try{return await cropQrFromUrl(url);}
+    finally{URL.revokeObjectURL(url);}
+  }catch(_){return '';}
+}
 let _wakeLock=null;
 async function showCode(c){
   const text=c.qr||'';
@@ -949,10 +1088,21 @@ async function showCode(c){
   $('#qrVal').textContent=text+(format?' · '+formatLabel(format):'');
   const el=$('#qrImg'),canvas=$('#barcodeCanvas'),err=$('#qrErr');
   el.style.display='none';if(canvas)canvas.style.display='none';err.textContent='';
-  const img=text?genBarcodeDataUrl(text, format):'';
-  if(img){el.src=img;el.style.display='block';}
+  let img='';
+  let fromPhoto=false;
+  if(format==='QR'||format==='auto'||!format){
+    img=await cropCodeFromPhoto(c);
+    fromPhoto=!!img;
+  }
+  if(!img) img=text?genBarcodeDataUrl(text, format):'';
+  if(img){
+    el.style.imageRendering='pixelated';
+    el.src=img;el.style.display='block';
+  }
   else err.textContent=text?'Could not render that barcode.':'No barcode value saved.';
-  $('#qrHint').textContent='Showing '+formatLabel(format)+'. Hold the screen up to the scanner and turn brightness up if needed.';
+  $('#qrHint').textContent=fromPhoto
+    ?'Original code from your photo. Hold the screen up to the scanner and turn brightness up if needed.'
+    :'Showing '+formatLabel(format)+'. Hold the screen up to the scanner and turn brightness up if needed.';
   $('#qrModal').classList.add('show');
   try{if('wakeLock'in navigator)_wakeLock=await navigator.wakeLock.request('screen');}catch(_){}
 }
@@ -965,7 +1115,7 @@ async function showPhoto(id){
     $('#qrVal').textContent='';
     $('#qrErr').textContent='';
     $('#barcodeCanvas').style.display='none';
-    const el=$('#qrImg');el.src=url;el.style.display='block';
+    const el=$('#qrImg');el.style.imageRendering='auto';el.src=url;el.style.display='block';
     $('#qrHint').textContent='Saved on this device only.';
     $('#qrModal').classList.add('show');
     el.onload=()=>URL.revokeObjectURL(url);
@@ -990,6 +1140,7 @@ document.addEventListener('visibilitychange',async()=>{
   }
 });
 $('#qrClose').onclick=closeQR;
+$('#qrBoxClose').onclick=closeQR;
 $('#qrModal').addEventListener('click',e=>{if(e.target.id==='qrModal')closeQR();});
 
 /* ---------- settings ---------- */
@@ -1046,7 +1197,7 @@ function updateNotifState(){
   const s=$('#notifState');
   if(!('Notification'in window)){s.textContent='This browser does not support pop-up notifications. Calendar reminders still work.';return;}
   let extra='';
-  if(window.matchMedia('(display-mode: standalone)').matches) extra=' Installed as an app.';
+  if(isStandalone()) extra=' Installed as an app.';
   s.textContent='Status: '+Notification.permission+'.'+extra;
 }
 $('#notifBtn').onclick=async()=>{
@@ -1137,28 +1288,51 @@ function checkReminders(force){
 }
 
 /* ---------- PWA install ---------- */
+function isStandalone(){
+  return (window.matchMedia&&(
+      window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: fullscreen)').matches
+      || window.matchMedia('(display-mode: window-controls-overlay)').matches
+      || window.matchMedia('(display-mode: minimal-ui)').matches
+    )) || navigator.standalone===true;
+}
+function setInstallVisible(on){
+  const btn=$('#installBtn');
+  if(btn) btn.style.display=on?'inline-block':'none';
+}
+function syncAppChrome(){
+  document.documentElement.classList.toggle('app-shell', isStandalone());
+}
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();
   deferredPrompt=e;
-  $('#installBtn').style.display='inline-block';
+  setInstallVisible(true);
 });
 $('#installBtn').onclick=async()=>{
   if(deferredPrompt){
     deferredPrompt.prompt();
     const choice=await deferredPrompt.userChoice;
     deferredPrompt=null;
-    $('#installBtn').style.display='none';
+    setInstallVisible(false);
     if(choice&&choice.outcome==='accepted') toast('Installing…');
   }
 };
 window.addEventListener('appinstalled',()=>{
-  $('#installBtn').style.display='none';
+  setInstallVisible(false);
   deferredPrompt=null;
   toast('App installed ✓');
   requestPersistentStorage();
   registerBackgroundSync();
 });
+try{
+  ['standalone','minimal-ui','fullscreen'].forEach(mode=>{
+    const mq=window.matchMedia('(display-mode: '+mode+')');
+    if(mq.addEventListener) mq.addEventListener('change', syncAppChrome);
+    else if(mq.addListener) mq.addListener(syncAppChrome);
+  });
+}catch(_){}
+syncAppChrome();
 
 async function registerSW(){
   if(!('serviceWorker' in navigator)) return null;
