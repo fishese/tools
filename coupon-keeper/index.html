@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0f766e">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Coupons">
@@ -21,7 +22,7 @@
   html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
     font-size:16px;line-height:1.45}
-  body{padding-bottom:84px;max-width:680px;margin:0 auto}
+  body{padding-bottom:100px;max-width:680px;margin:0 auto}
   header{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#0f766e,#0e7490);
     padding:14px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 14px rgba(0,0,0,.4)}
   header h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.3px}
@@ -109,7 +110,7 @@
     border:1px solid var(--accent);padding:11px 18px;border-radius:30px;font-size:14px;z-index:60;
     opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center}
   .toast.show{opacity:1}
-  .settings-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .settings-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;scroll-margin-bottom:110px}
   .settings-card h4{margin:0 0 4px;font-size:15px}
   .settings-card p{margin:0 0 10px;color:var(--muted);font-size:13px}
   .daychips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -198,7 +199,7 @@
 
       <div class="row2">
         <div>
-          <label>Value / discount *</label>
+          <label>Value / discount</label>
           <input type="text" id="f-value" placeholder="e.g. 20% off">
         </div>
         <div>
@@ -275,8 +276,10 @@
 
     <div class="settings-card">
       <h4>Your data</h4>
-      <p>Everything is stored only on this device (in this browser's local storage). Back it up or move it to another phone here.</p>
+      <p>Everything stays on this device (IndexedDB, with a localStorage backup). Nothing is uploaded. Safari can still wipe unused site data after 7 days unless you Add to Home Screen.</p>
+      <p class="hint" id="storageStatus" style="margin:8px 0 12px">Checking storage…</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="persistBtn">Protect storage</button>
         <button class="btn ghost" id="exportBtn">⬆ Export backup</button>
         <button class="btn ghost" id="importBtn">⬇ Replace with backup</button>
         <button class="btn ghost" id="mergeBtn">⇄ Merge backup</button>
@@ -290,7 +293,7 @@
       <p><b>Android (Chrome):</b> Tap the <b>⬇ Install</b> button in the header when it appears, or tap ⋮ → <b>Add to Home screen</b>.<br>
       <b>iPhone / iPad (Safari):</b> Tap the Share button (□↑) → <b>Add to Home Screen</b>.</p>
     </div>
-    <div class="hint" style="text-align:center">Coupon Keeper · works offline · v1.8</div>
+    <div class="hint" style="text-align:center">Coupon Keeper · works offline · v1.9</div>
     <div style="text-align:center; margin-top: 24px; font-size: 11px; opacity: 0.4;">
       <a href="../" style="color: var(--muted); text-decoration: none;">0oo.fish.oo0</a>
     </div>
@@ -319,25 +322,152 @@
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js"></script>
 <script>
-/* ---------- storage ---------- */
-const DB_KEY='ck_coupons_v1', SET_KEY='ck_settings_v1', NOTE_KEY='ck_notified_v1';
-const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
-const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-let coupons=load(DB_KEY,[]);
-// Default to Traditional first to ensure correct OCR priority
-let settings=load(SET_KEY,{reminderDays:[7,1],langs:['eng','chi_tra','chi_sim','jpn'],badgeHours:48});
-if(!settings.langs||!settings.langs.length)settings.langs=['eng','chi_tra','chi_sim','jpn'];
-let notified=load(NOTE_KEY,{});
+/* ---------- storage (IndexedDB + localStorage backup + persist()) ---------- */
+const LS_KEY='ck_state_v2';
+const OLD_DB_KEY='ck_coupons_v1', OLD_SET_KEY='ck_settings_v1', OLD_NOTE_KEY='ck_notified_v1';
+const IDB_NAME='coupon-keeper', IDB_STORE='kv', IDB_KEY='state';
+const DEFAULT_SETTINGS={reminderDays:[7,1],langs:['eng','chi_tra','chi_sim','jpn'],badgeHours:48};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const lsParse=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+
+let coupons=[], settings={...DEFAULT_SETTINGS}, notified={};
+let storeReady=false, persistStatus='checking';
+
+function stripQrImg(list){
+  if(!Array.isArray(list))return [];
+  return list.filter(c=>c&&typeof c==='object').map(c=>{const copy={...c};delete copy.qrImg;return copy;});
+}
+function normalizeSettings(s){
+  const out={...DEFAULT_SETTINGS,...(s||{})};
+  if(!out.langs||!out.langs.length)out.langs=['eng','chi_tra','chi_sim','jpn'];
+  if(!Array.isArray(out.reminderDays))out.reminderDays=[7,1];
+  if(out.badgeHours==null||isNaN(+out.badgeHours))out.badgeHours=48;
+  return out;
+}
+function stateFromParts(c,s,n,savedAt){
+  return {v:2,savedAt:savedAt||Date.now(),coupons:stripQrImg(c||[]),settings:normalizeSettings(s),notified:(n&&typeof n==='object')?n:{}};
+}
+function applyState(st){
+  if(!st||typeof st!=='object')return false;
+  coupons=stripQrImg(st.coupons||[]);
+  settings=normalizeSettings(st.settings);
+  notified=(st.notified&&typeof st.notified==='object')?st.notified:{};
+  return true;
+}
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    if(!('indexedDB'in window)){reject(new Error('no IndexedDB'));return;}
+    const req=indexedDB.open(IDB_NAME,1);
+    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(IDB_STORE))req.result.createObjectStore(IDB_STORE);};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+function idbGet(){
+  return idbOpen().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readonly');
+    const r=tx.objectStore(IDB_STORE).get(IDB_KEY);
+    r.onsuccess=()=>resolve(r.result||null);
+    r.onerror=()=>reject(r.error);
+    tx.oncomplete=()=>{try{db.close();}catch(_){}};
+  }));
+}
+function idbPut(state){
+  return idbOpen().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).put(state,IDB_KEY);
+    tx.oncomplete=()=>{try{db.close();}catch(_){} resolve();};
+    tx.onerror=()=>{try{db.close();}catch(_){} reject(tx.error);};
+  }));
+}
+function pruneNotified(obj){
+  const keep={}, cutoff=Date.now()-14*864e5;
+  Object.keys(obj||{}).forEach(k=>{
+    const d=new Date((k.split('|')[1]||''));
+    if(!isNaN(d)&&d.getTime()>=cutoff)keep[k]=obj[k];
+  });
+  return keep;
+}
+function updateStorageUI(){
+  const el=document.getElementById('storageStatus');
+  if(!el)return;
+  const n=coupons.length;
+  const map={
+    granted:'Protected from automatic cleanup on this device.',
+    prompt:'Not fully protected yet — tap Protect storage (and Add to Home Screen on iPhone).',
+    denied:'This browser may still clear site data. Export a backup regularly.',
+    checking:'Checking storage…',
+    unsupported:'Export backups, and on iPhone use Add to Home Screen so Safari does not wipe unused data after 7 days.'
+  };
+  el.textContent=`${n} coupon${n===1?'':'s'} saved on this device. ${map[persistStatus]||''}`;
+}
+async function saveAll(quiet){
+  notified=pruneNotified(notified);
+  coupons=stripQrImg(coupons);
+  const state=stateFromParts(coupons,settings,notified,Date.now());
+  let idbOk=false, lsOk=false;
+  try{await idbPut(state);idbOk=true;}catch(e){console.error('IndexedDB write failed',e);}
+  try{localStorage.setItem(LS_KEY,JSON.stringify(state));lsOk=true;}
+  catch(e){
+    console.error('localStorage write failed',e);
+    try{localStorage.setItem(LS_KEY,JSON.stringify({...state,notified:{}}));lsOk=true;}catch(_){}
+  }
+  updateStorageUI();
+  if(!idbOk&&!lsOk){
+    if(!quiet)toast('Could not save — storage is blocked or full');
+    throw new Error('save failed');
+  }
+}
+function persist(){
+  if(!storeReady)return;
+  saveAll(false).then(()=>updateAppBadge()).catch(()=>{});
+}
+async function loadAll(){
+  let idbState=null, lsState=null;
+  try{idbState=await idbGet();}catch(e){console.warn('IndexedDB read failed',e);}
+  try{
+    const raw=lsParse(LS_KEY,null);
+    if(raw&&typeof raw==='object'&&Array.isArray(raw.coupons))lsState=raw;
+  }catch(_){}
+  const legacyCoupons=lsParse(OLD_DB_KEY,null);
+  const candidates=[];
+  if(idbState&&Array.isArray(idbState.coupons))candidates.push({src:'idb',st:idbState,t:idbState.savedAt||0});
+  if(lsState)candidates.push({src:'ls',st:lsState,t:lsState.savedAt||0});
+  if(Array.isArray(legacyCoupons)){
+    candidates.push({src:'legacy',st:stateFromParts(legacyCoupons,lsParse(OLD_SET_KEY,null),lsParse(OLD_NOTE_KEY,null),0),t:0});
+  }
+  if(!candidates.length){
+    coupons=[];settings=normalizeSettings(null);notified={};
+    return;
+  }
+  const rank={idb:2,ls:1,legacy:0};
+  candidates.sort((a,b)=> (b.t-a.t) || ((b.st.coupons||[]).length-(a.st.coupons||[]).length) || (rank[b.src]-rank[a.src]));
+  applyState(candidates[0].st);
+  try{await saveAll(true);}catch(_){}
+}
+async function requestPersistentStorage(){
+  if(!navigator.storage||!navigator.storage.persist){
+    persistStatus='unsupported';updateStorageUI();return false;
+  }
+  try{
+    if(await navigator.storage.persisted()){persistStatus='granted';updateStorageUI();return true;}
+    const ok=await navigator.storage.persist();
+    persistStatus=ok?'granted':'prompt';
+    updateStorageUI();
+    return ok;
+  }catch(_){
+    persistStatus='unsupported';updateStorageUI();return false;
+  }
+}
 
 /* ---------- helpers ---------- */
 const $=s=>document.querySelector(s);
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
-const parseDate=s=>{const d=new Date(s+'T00:00:00');d.setHours(0,0,0,0);return d;};
-const daysLeft=s=>Math.round((parseDate(s)-today())/864e5);
+const parseDate=s=>{const d=new Date((s||'')+'T00:00:00');d.setHours(0,0,0,0);return d;};
+const daysLeft=s=>{const d=parseDate(s);if(isNaN(d))return -9999;return Math.round((d-today())/864e5);};
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 function fallbackCopy(text){const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('Code copied');}catch(e){toast('Tap & hold to copy');}ta.remove();}
-function fmtDate(s){const d=parseDate(s);return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});}
+function fmtDate(s){const d=parseDate(s);if(isNaN(d))return s||'—';return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});}
 
 function updateAppBadge() {
   if ('setAppBadge' in navigator) {
@@ -396,7 +526,13 @@ function renderList(){
   const cat=$('#filterCat').value;
   const fs=$('#filterStatus').value;
   refreshCats();
-  let items=coupons.slice().sort((a,b)=>parseDate(a.exp)-parseDate(b.exp));
+  let items=coupons.slice().sort((a,b)=>{
+    const au=a.used?1:0,bu=b.used?1:0;if(au!==bu)return au-bu;
+    const ae=daysLeft(a.exp)<0?1:0,be=daysLeft(b.exp)<0?1:0;if(ae!==be)return ae-be;
+    const da=parseDate(a.exp),db=parseDate(b.exp);
+    if(isNaN(da)&&isNaN(db))return 0;if(isNaN(da))return 1;if(isNaN(db))return -1;
+    return da-db;
+  });
   items=items.filter(c=>{
     const st=statusOf(c);
     if(fs==='active'&&(c.used||daysLeft(c.exp)<0))return false;
@@ -431,7 +567,7 @@ function renderList(){
       ${c.notes?`<div class="meta">📝 ${esc(c.notes)}</div>`:''}
       ${tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}
       <div class="actions">
-        ${(c.qr||c.qrImg)?`<button class="btn primary" data-qr="${c.id}">📱 Show QR</button>`:''}
+        ${c.qr?`<button class="btn primary" data-qr="${c.id}">📱 Show QR</button>`:''}
         <button class="btn ghost" data-cal="${c.id}">📅 Calendar</button>
         <button class="btn ghost" data-edit="${c.id}">✏️ Edit</button>
         <button class="btn ghost" data-use="${c.id}">${c.used?'↩️ Unmark':'✅ Used'}</button>
@@ -456,7 +592,7 @@ $('#list').addEventListener('click',e=>{
   else if(t.dataset.use){c.used=!c.used;persist();renderList();toast(c.used?'Marked used':'Reactivated');}
   else if(t.dataset.cal){downloadICS(c);}
 });
-['search','filterCat','filterStatus'].forEach(id=>$('#'+id).addEventListener('input',renderList));
+['search','filterCat','filterStatus'].forEach(id=>{const el=$('#'+id);el.addEventListener('input',renderList);el.addEventListener('change',renderList);});
 
 function refreshCats(){
   const cats=[...new Set(coupons.map(c=>c.cat).filter(Boolean))].sort();
@@ -467,11 +603,18 @@ function refreshCats(){
 }
 
 /* ---------- form ---------- */
+let previewUrl='';
+function clearPreview(){
+  if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl='';}
+  $('#preview').removeAttribute('src');$('#formImgPreview').removeAttribute('src');
+}
 function resetForm(){
   $('#form').reset();$('#f-id').value='';
   $('#confirmNote').style.display='none';$('#qrDetected').style.display='none';$('#ocrRawWrap').style.display='none';
-  $('#imgPreviewWrap').style.display='none';$('#imgPreviewWrap').removeAttribute('open');$('#formImgPreview').src='';
+  $('#imgPreviewWrap').style.display='none';$('#imgPreviewWrap').removeAttribute('open');
   $('#preview').style.display='none';$('#ocrStatus').classList.remove('show');
+  clearPreview();
+  const file=$('#file');if(file)file.value='';
   setMode('scan');
 }
 function editCoupon(c){
@@ -491,10 +634,9 @@ $('#form').addEventListener('submit',e=>{
   const id=$('#f-id').value||uid();
   const existing=coupons.find(c=>c.id===id);
   const qr=$('#f-qr').value.trim();
-  const qrImg=(existing&&existing.qr===qr&&existing.qrImg)?existing.qrImg:(qr?genQR(qr):'');
   const c={id,store:$('#f-store').value.trim(),value:$('#f-value').value.trim(),
     code:$('#f-code').value.trim(),exp,min:$('#f-min').value.trim(),
-    cat:$('#f-cat').value.trim(),link:$('#f-link').value.trim(),qr,qrImg,
+    cat:$('#f-cat').value.trim(),link:$('#f-link').value.trim(),qr,
     notes:$('#f-notes').value.trim(),used:existing?existing.used:false,
     created:existing?existing.created:Date.now()};
   if(existing)Object.assign(existing,c);else coupons.push(c);
@@ -540,7 +682,9 @@ async function preprocessImage(file){
 }
 $('#file').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
-  const url=URL.createObjectURL(f);
+  clearPreview();
+  previewUrl=URL.createObjectURL(f);
+  const url=previewUrl;
   $('#preview').src=url;$('#preview').style.display='block';
   
   // Set the temporary image preview for the confirmation form
@@ -571,7 +715,7 @@ $('#file').addEventListener('change',async e=>{
     console.error(err);
     $('#ocrStatus').textContent='Could not read that image — enter details manually below.';
     setMode('manual');
-  }finally{$('#progwrap').classList.remove('show');}
+  }finally{$('#progwrap').classList.remove('show');e.target.value='';}
 });
 
 function inferCategory(text){
@@ -827,17 +971,21 @@ function decodeQR(src){
 }
 let _wakeLock=null;
 async function showQR(c){
-  let img=c.qrImg;
-  if(!img&&c.qr){img=genQR(c.qr);if(img){c.qrImg=img;persist();}}
+  const img=c.qr?genQR(c.qr):'';
   $('#qrStore').textContent=c.store+(c.value?' · '+c.value:'');
   $('#qrVal').textContent=c.qr||'';
   const el=$('#qrImg'),err=$('#qrErr');
   if(img){el.src=img;el.style.display='block';err.textContent='';}
-  else{el.style.display='none';err.textContent=c.qr?'Could not render the QR offline. Connect to the internet once and reopen this to save it for offline use.':'No QR value saved for this coupon.';}
+  else{el.style.display='none';err.textContent=c.qr?'Could not render the QR.':'No QR value saved for this coupon.';}
   $('#qrModal').classList.add('show');
   try{if('wakeLock'in navigator)_wakeLock=await navigator.wakeLock.request('screen');}catch(_){}
 }
 function closeQR(){$('#qrModal').classList.remove('show');if(_wakeLock){_wakeLock.release().catch(()=>{});_wakeLock=null;}}
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState==='visible'&&$('#qrModal').classList.contains('show')&&'wakeLock'in navigator){
+    try{_wakeLock=await navigator.wakeLock.request('screen');}catch(_){}
+  }
+});
 $('#qrClose').onclick=closeQR;
 $('#qrModal').addEventListener('click',e=>{if(e.target.id==='qrModal')closeQR();});
 
@@ -849,7 +997,7 @@ function renderSettings(){
     `<span class="daychip">${d} day${d===1?'':'s'} before <button data-rmday="${d}">✕</button></span>`).join('')
     :'<span class="hint">No reminders set.</span>';
   wrap.querySelectorAll('[data-rmday]').forEach(b=>b.onclick=()=>{
-    settings.reminderDays=settings.reminderDays.filter(x=>x!==+b.dataset.rmday);save(SET_KEY,settings);renderSettings();
+    settings.reminderDays=settings.reminderDays.filter(x=>x!==+b.dataset.rmday);persist();renderSettings();
   });
   renderLangs();
   updateNotifState();
@@ -860,10 +1008,11 @@ $('#badgeHours').addEventListener('change', async e => {
   const v = parseInt(e.target.value, 10);
   if (!isNaN(v) && v >= 0) {
     settings.badgeHours = v;
-    save(SET_KEY, settings);
+    persist();
     if (v > 0 && 'Notification' in window && Notification.permission === 'default') {
       await Notification.requestPermission();
       updateNotifState();
+      await requestPersistentStorage();
     }
     updateAppBadge();
     toast('Badge settings saved');
@@ -881,14 +1030,14 @@ function renderLangs(){
     const s=new Set(settings.langs||[]);
     cb.checked?s.add(cb.dataset.lang):s.delete(cb.dataset.lang);
     if(s.size===0){s.add('eng');toast('At least one language is required');}
-    settings.langs=[...s];save(SET_KEY,settings);renderLangs();
+    settings.langs=[...s];persist();renderLangs();
   });
 }
 $('#addDay').onclick=()=>{
   const v=parseInt($('#newDay').value,10);
   if(isNaN(v)||v<0){toast('Enter a number of days');return;}
   settings.reminderDays=[...new Set([...(settings.reminderDays||[]),v])];
-  save(SET_KEY,settings);$('#newDay').value='';renderSettings();toast('Reminder added');
+  persist();$('#newDay').value='';renderSettings();toast('Reminder added');
 };
 function updateNotifState(){
   const s=$('#notifState');
@@ -898,14 +1047,23 @@ function updateNotifState(){
 $('#notifBtn').onclick=async()=>{
   if(!('Notification'in window)){toast('Not supported here');return;}
   const p=await Notification.requestPermission();updateNotifState();
-  if(p==='granted'){toast('Notifications on');checkReminders(true);}
+  if(p==='granted'){await requestPersistentStorage();toast('Notifications on');checkReminders(true);}
 };
 
 /* export / import */
+$('#persistBtn').onclick=async()=>{
+  if('Notification'in window&&Notification.permission==='default'){
+    await Notification.requestPermission();
+    updateNotifState();
+  }
+  const ok=await requestPersistentStorage();
+  toast(ok?'Storage protected ✓':(persistStatus==='unsupported'?'This browser cannot lock storage — export a backup':'Not locked yet — Add to Home Screen, then try again'));
+};
 $('#exportBtn').onclick=()=>{
-  const blob=new Blob([JSON.stringify({coupons,settings},null,2)],{type:'application/json'});
+  const blob=new Blob([JSON.stringify({coupons:stripQrImg(coupons),settings,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;
   a.download=`coupon-keeper-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('Backup downloaded');
 };
 $('#importBtn').onclick=()=>$('#importFile').click();
 $('#importFile').addEventListener('change',e=>{
@@ -913,9 +1071,9 @@ $('#importFile').addEventListener('change',e=>{
   if(coupons.length&&!confirm(`Replace all ${coupons.length} coupon${coupons.length!==1?'s':''} and settings with this backup?`)){e.target.value='';return;}
   const r=new FileReader();
   r.onload=()=>{try{const d=JSON.parse(r.result);
-    if(Array.isArray(d.coupons))coupons=d.coupons;
-    if(d.settings)settings=d.settings;
-    persist();save(SET_KEY,settings);renderSettings();renderList();toast('Backup imported ✓');
+    if(Array.isArray(d.coupons))coupons=stripQrImg(d.coupons);
+    if(d.settings)settings=normalizeSettings(d.settings);
+    persist();renderSettings();renderList();toast('Backup imported ✓');
   }catch(err){toast('Invalid backup file');}
   e.target.value='';};
   r.readAsText(f);
@@ -927,7 +1085,7 @@ $('#mergeFile').addEventListener('change',e=>{
   r.onload=()=>{try{const d=JSON.parse(r.result);
     if(!Array.isArray(d.coupons)){toast('No coupons found in file');e.target.value='';return;}
     let added=0,updated=0;
-    d.coupons.forEach(imp=>{const idx=coupons.findIndex(c=>c.id===imp.id);if(idx>=0){coupons[idx]=imp;updated++;}else{coupons.push(imp);added++;}});
+    stripQrImg(d.coupons).forEach(imp=>{const idx=coupons.findIndex(c=>c.id===imp.id);if(idx>=0){coupons[idx]=imp;updated++;}else{coupons.push(imp);added++;}});
     persist();renderList();toast(`Merged: +${added} new, ${updated} updated`);
   }catch(err){toast('Invalid backup file');}
   e.target.value='';};
@@ -935,7 +1093,6 @@ $('#mergeFile').addEventListener('change',e=>{
 });
 
 /* ---------- reminders (in-app) ---------- */
-function persist(){save(DB_KEY,coupons); updateAppBadge();}
 function checkReminders(force){
   const days=settings.reminderDays||[];
   const due=[];
@@ -956,13 +1113,14 @@ function checkReminders(force){
   // notifications (once per coupon+day)
   if('Notification'in window&&Notification.permission==='granted'){
     const key=new Date().toDateString();
+    let dirty=false;
     due.forEach(({c,dl})=>{
       const nk=c.id+'|'+key+'|'+dl;
       if(notified[nk]&&!force)return;
-      notified[nk]=true;
+      notified[nk]=true;dirty=true;
       try{new Notification('🎟️ Coupon expiring',{body:`${c.store}${c.value?' — '+c.value:''} ${dl===0?'expires today':'expires in '+dl+' days'}`});}catch(e){}
     });
-    save(NOTE_KEY,notified);
+    if(dirty)persist();
   }
 }
 
@@ -970,14 +1128,22 @@ function checkReminders(force){
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('#installBtn').style.display='inline-block';});
 $('#installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('#installBtn').style.display='none';}};
-window.addEventListener('appinstalled',()=>{$('#installBtn').style.display='none';deferredPrompt=null;toast('App installed ✓');});
+window.addEventListener('appinstalled',()=>{$('#installBtn').style.display='none';deferredPrompt=null;toast('App installed ✓');requestPersistentStorage();});
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(err => console.log('SW registration failed:', err));
 }
 
 /* ---------- init ---------- */
-renderList();checkReminders(false); updateAppBadge();
+(async function boot(){
+  await loadAll();
+  storeReady=true;
+  await requestPersistentStorage();
+  renderList();
+  checkReminders(false);
+  updateAppBadge();
+  updateStorageUI();
+})();
 </script>
 </body>
 </html>
