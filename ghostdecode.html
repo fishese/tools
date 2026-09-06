@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Easy GPS Mock Route Decoder</title>
+<style>
+  :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  body { max-width: 900px; margin: 32px auto; padding: 0 16px; line-height: 1.45; }
+  h1 { margin-bottom: 6px; }
+  .muted { opacity: .72; }
+  textarea { width: 100%; min-height: 140px; box-sizing: border-box; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+  button { padding: 9px 14px; margin: 8px 8px 8px 0; cursor: pointer; }
+  .card { border: 1px solid #ccc; border-radius: 10px; padding: 14px; margin: 16px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 7px 8px; border-bottom: 1px solid #ddd; text-align: left; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+  pre { white-space: pre-wrap; word-break: break-word; }
+  .error { color: #b00020; white-space: pre-wrap; }
+  .ok { color: #147a2e; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<h1>Easy GPS Mock Route Decoder</h1>
+<p class="muted">Runs entirely in your browser. Nothing is uploaded anywhere.</p>
+
+<label for="input"><strong>Shared text, share URL, or p= payload</strong></label>
+<textarea id="input" placeholder="Paste the whole sharing message here, e.g. 幽靈路徑分享連結 / 路徑名稱 / 有效期限 / 連結：https://easygpsmock.web.app/share?p=..."></textarea>
+
+<div>
+  <button id="decodeBtn">Decode route</button>
+  <button id="csvBtn" disabled>Export CSV</button>
+  <button id="gpxBtn" disabled>Export GPX</button>
+</div>
+
+<div id="status"></div>
+
+<div id="metaCard" class="card hidden">
+  <h2>Route metadata</h2>
+  <table id="metaTable"></table>
+</div>
+
+<div id="coordsCard" class="card hidden">
+  <h2>Coordinates</h2>
+  <pre id="coords"></pre>
+</div>
+
+<script>
+const KEY_TEXT = "GhostRouteShareKey20260628AESGCM";
+let lastDecoded = null;
+
+function b64urlToBytes(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s);
+  return Uint8Array.from(bin, c => c.charCodeAt(0));
+}
+
+function extractPayload(input) {
+  input = input.trim();
+  if (!input) throw new Error("Paste the shared text, share URL, or p= payload first.");
+
+  // Normal use case: the entire sharing message was pasted, e.g.
+  // 路徑名稱：...
+  // 有效期限：...
+  // 連結：https://easygpsmock.web.app/share?p=...
+  //
+  // Find the Easy GPS Mock share URL anywhere in the text and ignore
+  // everything before and after it.
+  const urlMatch = input.match(
+    /https?:\/\/easygpsmock\.web\.app\/share\?[^ \t\r\n<>"']*?\bp=([A-Za-z0-9_-]+={0,2})/i
+  );
+  if (urlMatch) return urlMatch[1];
+
+  // Also accept another URL containing a p parameter, in case the host or
+  // share-page format changes while the payload format stays the same.
+  const paramMatch = input.match(/[?&]p=([A-Za-z0-9_-]+={0,2})(?=[&#\s<>"']|$)/i);
+  if (paramMatch) return paramMatch[1];
+
+  // Finally accept "p=..." or the bare Base64URL payload by itself.
+  const raw = input.replace(/^p\s*=\s*/i, "").trim();
+  if (/^[A-Za-z0-9_-]+={0,2}$/.test(raw)) return raw;
+
+  throw new Error("No Easy GPS Mock share link or valid p= payload was found in the pasted text.");
+}
+
+async function gunzip(bytes) {
+  if (!("DecompressionStream" in window)) {
+    throw new Error("This browser does not support DecompressionStream. Try a current Chrome, Edge, Firefox, or Safari.");
+  }
+  const ds = new DecompressionStream("gzip");
+  const out = await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(out);
+}
+
+function readVarint(buf, pos) {
+  let x = 0n, shift = 0n;
+  while (pos < buf.length) {
+    const b = BigInt(buf[pos++]);
+    x |= (b & 0x7fn) << shift;
+    if ((b & 0x80n) === 0n) return { value: x, pos };
+    shift += 7n;
+    if (shift > 70n) throw new Error("Invalid varint");
+  }
+  throw new Error("Unexpected end of varint");
+}
+
+function parseProto(buf) {
+  const fields = {};
+  let pos = 0;
+  while (pos < buf.length) {
+    const tagRes = readVarint(buf, pos);
+    const tag = Number(tagRes.value);
+    pos = tagRes.pos;
+    const fieldNo = tag >> 3;
+    const wire = tag & 7;
+
+    let value;
+    if (wire === 0) {
+      const r = readVarint(buf, pos);
+      value = r.value;
+      pos = r.pos;
+    } else if (wire === 1) {
+      if (pos + 8 > buf.length) throw new Error("Truncated fixed64");
+      value = buf.slice(pos, pos + 8);
+      pos += 8;
+    } else if (wire === 2) {
+      const r = readVarint(buf, pos);
+      const len = Number(r.value);
+      pos = r.pos;
+      if (pos + len > buf.length) throw new Error("Truncated length-delimited field");
+      value = buf.slice(pos, pos + len);
+      pos += len;
+    } else if (wire === 5) {
+      if (pos + 4 > buf.length) throw new Error("Truncated fixed32");
+      value = buf.slice(pos, pos + 4);
+      pos += 4;
+    } else {
+      throw new Error(`Unsupported protobuf wire type ${wire}`);
+    }
+    (fields[fieldNo] ??= []).push({ wire, value });
+  }
+  return fields;
+}
+
+function bytesToUtf8(bytes) {
+  return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+}
+
+function fixed32FloatLE(bytes) {
+  return new DataView(bytes.buffer, bytes.byteOffset, 4).getFloat32(0, true);
+}
+
+function decodePolyline6(str) {
+  const coords = [];
+  let index = 0, lat = 0, lng = 0;
+  while (index < str.length) {
+    let result = 0, shift = 0, b;
+    do {
+      if (index >= str.length) throw new Error("Invalid encoded polyline");
+      b = str.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlat = (result & 1) ? ~(result >> 1) : (result >> 1);
+    lat += dlat;
+
+    result = 0; shift = 0;
+    do {
+      if (index >= str.length) throw new Error("Invalid encoded polyline");
+      b = str.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
+    lng += dlng;
+
+    coords.push([lat / 1e6, lng / 1e6]);
+  }
+  return coords;
+}
+
+function getField(fields, n) {
+  return fields[n]?.[0] ?? null;
+}
+
+function formatEpochMs(v) {
+  try {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return String(v);
+    return new Date(n).toLocaleString();
+  } catch {
+    return String(v);
+  }
+}
+
+async function decodeRoute(input) {
+  const payload = extractPayload(input);
+  const compressed = b64urlToBytes(payload);
+  const protoBytes = await gunzip(compressed);
+  const fields = parseProto(protoBytes);
+
+  const cipherField = getField(fields, 1);
+  const nonceField = getField(fields, 2);
+  if (!cipherField || cipherField.wire !== 2) throw new Error("Encrypted route field not found.");
+  if (!nonceField || nonceField.wire !== 2) throw new Error("Nonce field not found.");
+
+  const keyBytes = new TextEncoder().encode(KEY_TEXT);
+  const key = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-GCM" }, false, ["decrypt"]);
+
+  let plainBuf;
+  try {
+    plainBuf = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: nonceField.value },
+      key,
+      cipherField.value
+    );
+  } catch {
+    throw new Error("AES-GCM decryption failed. The app may have changed its share format or key.");
+  }
+
+  const encodedPolyline = bytesToUtf8(new Uint8Array(plainBuf));
+  const coordinates = decodePolyline6(encodedPolyline);
+
+  const metadata = {};
+  const f3 = getField(fields, 3);
+  const f4 = getField(fields, 4);
+  const f5 = getField(fields, 5);
+  const f6 = getField(fields, 6);
+  const f7 = getField(fields, 7);
+  const f8 = getField(fields, 8);
+  const f9 = getField(fields, 9);
+  const f10 = getField(fields, 10);
+
+  if (f3?.wire === 5) metadata["Field 3"] = fixed32FloatLE(f3.value);
+  if (f4?.wire === 0) metadata["Field 4"] = Number(f4.value);
+  if (f5?.wire === 2) metadata["Mode"] = bytesToUtf8(f5.value);
+  if (f6?.wire === 0) metadata["Expires"] = formatEpochMs(f6.value);
+  if (f7?.wire === 0) metadata["Created"] = formatEpochMs(f7.value);
+  if (f8?.wire === 0) metadata["Validity (seconds)"] = Number(f8.value);
+  if (f9?.wire === 2) metadata["Route name"] = bytesToUtf8(f9.value);
+  if (f10?.wire === 0) metadata["Field 10"] = Number(f10.value);
+  metadata["Points"] = coordinates.length;
+
+  return { metadata, coordinates, encodedPolyline };
+}
+
+function escapeXml(s) {
+  return String(s).replace(/[<>&'"]/g, c => ({
+    '<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'
+  }[c]));
+}
+
+function download(name, content, type) {
+  const blob = new Blob([content], { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function safeName(name) {
+  return (name || "route").replace(/[\\/:*?"<>|]+/g, "_").trim() || "route";
+}
+
+document.getElementById("decodeBtn").addEventListener("click", async () => {
+  const status = document.getElementById("status");
+  const metaCard = document.getElementById("metaCard");
+  const coordsCard = document.getElementById("coordsCard");
+  const csvBtn = document.getElementById("csvBtn");
+  const gpxBtn = document.getElementById("gpxBtn");
+
+  status.className = "";
+  status.textContent = "Decoding…";
+  metaCard.classList.add("hidden");
+  coordsCard.classList.add("hidden");
+  csvBtn.disabled = true;
+  gpxBtn.disabled = true;
+  lastDecoded = null;
+
+  try {
+    const result = await decodeRoute(document.getElementById("input").value);
+    lastDecoded = result;
+
+    const mt = document.getElementById("metaTable");
+    mt.innerHTML = "";
+    for (const [k, v] of Object.entries(result.metadata)) {
+      const tr = document.createElement("tr");
+      const th = document.createElement("th");
+      const td = document.createElement("td");
+      th.textContent = k;
+      td.textContent = v;
+      tr.append(th, td);
+      mt.appendChild(tr);
+    }
+
+    document.getElementById("coords").textContent =
+      result.coordinates.map(([lat,lng]) => `${lat.toFixed(6)},${lng.toFixed(6)}`).join("\n");
+
+    metaCard.classList.remove("hidden");
+    coordsCard.classList.remove("hidden");
+    csvBtn.disabled = false;
+    gpxBtn.disabled = false;
+    status.className = "ok";
+    status.textContent = `Decoded ${result.coordinates.length} points successfully.`;
+  } catch (e) {
+    status.className = "error";
+    status.textContent = e?.message || String(e);
+  }
+});
+
+document.getElementById("csvBtn").addEventListener("click", () => {
+  if (!lastDecoded) return;
+  const rows = ["latitude,longitude", ...lastDecoded.coordinates.map(([a,b]) => `${a},${b}`)];
+  const name = safeName(lastDecoded.metadata["Route name"]);
+  download(`${name}.csv`, rows.join("\n"), "text/csv;charset=utf-8");
+});
+
+document.getElementById("gpxBtn").addEventListener("click", () => {
+  if (!lastDecoded) return;
+  const name = lastDecoded.metadata["Route name"] || "Easy GPS Mock route";
+  const points = lastDecoded.coordinates
+    .map(([lat,lon]) => `    <trkpt lat="${lat}" lon="${lon}"></trkpt>`)
+    .join("\n");
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Easy GPS Mock Route Decoder"
+ xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>${escapeXml(name)}</name>
+    <trkseg>
+${points}
+    </trkseg>
+  </trk>
+</gpx>
+`;
+  download(`${safeName(name)}.gpx`, gpx, "application/gpx+xml;charset=utf-8");
+});
+</script>
+</body>
+</html>
