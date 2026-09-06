@@ -23,7 +23,6 @@
 </head>
 <body>
 <h1>Easy GPS Mock Route Decoder</h1>
-<p class="muted">Runs entirely in your browser. Nothing is uploaded anywhere.</p>
 
 <label for="input"><strong>Shared text, share URL, or p= payload</strong></label>
 <textarea id="input" placeholder="Paste the whole sharing message here, e.g. 幽靈路徑分享連結 / 路徑名稱 / 有效期限 / 連結：https://easygpsmock.web.app/share?p=..."></textarea>
@@ -43,7 +42,10 @@
 
 <div id="coordsCard" class="card hidden">
   <h2>Coordinates</h2>
-  <pre id="coords"></pre>
+  <div>
+    <button id="copyBtn" type="button">Copy to clipboard</button>
+  </div>
+  <textarea id="coords" readonly style="min-height: 320px;"></textarea>
 </div>
 
 <script>
@@ -296,7 +298,7 @@ document.getElementById("decodeBtn").addEventListener("click", async () => {
       mt.appendChild(tr);
     }
 
-    document.getElementById("coords").textContent =
+    document.getElementById("coords").value =
       result.coordinates.map(([lat,lng]) => `${lat.toFixed(6)},${lng.toFixed(6)}`).join("\n");
 
     metaCard.classList.remove("hidden");
@@ -309,6 +311,29 @@ document.getElementById("decodeBtn").addEventListener("click", async () => {
     status.className = "error";
     status.textContent = e?.message || String(e);
   }
+});
+
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  const box = document.getElementById("coords");
+  const text = box.value;
+  if (!text) return;
+
+  const btn = document.getElementById("copyBtn");
+  const original = btn.textContent;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = "Copied!";
+  } catch {
+    box.focus();
+    box.select();
+    const ok = document.execCommand("copy");
+    btn.textContent = ok ? "Copied!" : "Select all and copy";
+  }
+
+  setTimeout(() => {
+    btn.textContent = original;
+  }, 1500);
 });
 
 document.getElementById("csvBtn").addEventListener("click", () => {
