@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPX Loop Center Extractor</title>
+    <style>
+        /* Added universal box-sizing for better mobile rendering */
+        * {
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-color: #1e1e2e;
+            --container-bg: #282a36;
+            --text-main: #f8f8f2;
+            --accent: #bd93f9;
+            --accent-hover: #ff79c6;
+            --border: #44475a;
+            --button-secondary: #6272a4;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: var(--container-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid var(--border);
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            color: var(--accent);
+        }
+        .file-drop-area {
+            display: block; /* FIXED: Prevents vertical margin/padding collapse */
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            margin: 1.5rem 0;
+            cursor: pointer;
+            transition: border-color 0.3s;
+            word-wrap: break-word; /* FIXED: Prevents long filenames from overflowing */
+        }
+        .file-drop-area:hover, .file-drop-area.drag-over {
+            border-color: var(--accent);
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .btn {
+            background-color: var(--accent);
+            color: #282a36;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+            margin-bottom: 0.5rem;
+        }
+        .btn:hover {
+            background-color: var(--accent-hover);
+        }
+        .btn:disabled {
+            background-color: var(--border);
+            cursor: not-allowed;
+            color: var(--button-secondary);
+        }
+        #status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #8be9fd;
+            text-align: center;
+            min-height: 1.2em;
+        }
+        #result-area {
+            display: none;
+            margin-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            padding-top: 1.5rem;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            margin-bottom: 0.75rem;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-secondary {
+            background-color: var(--button-secondary);
+            color: var(--text-main);
+            flex: 1;
+            margin-bottom: 0;
+        }
+        .btn-secondary:hover {
+            background-color: #7986b5;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>GPX Loop Center Extractor</h1>
+    <p style="font-size: 0.9rem; color: #bfbfbf;">Upload a GPX file containing circular tracks. This tool will calculate the center of each loop, download a new GPX, and list the coordinates below.</p>
+    
+    <label class="file-drop-area" id="drop-area">
+        <span id="file-name">Click or drag GPX file here</span>
+        <input type="file" id="file-input" accept=".gpx">
+    </label>
+
+    <button id="process-btn" class="btn" disabled>Process & Download GPX</button>
+    <div id="status"></div>
+
+    <div id="result-area">
+        <textarea id="coord-output" readonly></textarea>
+        <div class="btn-group">
+            <button id="select-all-btn" class="btn btn-secondary">Select All</button>
+            <button id="copy-btn" class="btn btn-secondary">Copy</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('file-input');
+    const dropArea = document.getElementById('drop-area');
+    const fileNameDisplay = document.getElementById('file-name');
+    const processBtn = document.getElementById('process-btn');
+    const statusDisplay = document.getElementById('status');
+    const resultArea = document.getElementById('result-area');
+    const coordOutput = document.getElementById('coord-output');
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    let currentFile = null;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, () => dropArea.classList.add('drag-over'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, () => dropArea.classList.remove('drag-over'), false);
+    });
+
+    dropArea.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        handleFiles(dt.files);
+    });
+
+    fileInput.addEventListener('change', function() {
+        handleFiles(this.files);
+    });
+
+    function handleFiles(files) {
+        if (files.length > 0) {
+            currentFile = files[0];
+            fileNameDisplay.textContent = currentFile.name;
+            processBtn.disabled = false;
+            resultArea.style.display = 'none';
+            statusDisplay.textContent = "File loaded. Ready to process.";
+            statusDisplay.style.color = "#8be9fd";
+        }
+    }
+
+    processBtn.addEventListener('click', () => {
+        if (!currentFile) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const gpxText = e.target.result;
+                const centers = extractLoopCenters(gpxText);
+                
+                if (centers.length === 0) {
+                    statusDisplay.textContent = "No circular loops detected in the file.";
+                    statusDisplay.style.color = "#ff5555";
+                    resultArea.style.display = 'none';
+                    return;
+                }
+
+                const newGpx = generateGPX(centers);
+                downloadBlob(newGpx, currentFile.name.replace('.gpx', '_centers.gpx'));
+                
+                const csvText = centers.map(c => `${c.lat},${c.lon}`).join('\n');
+                coordOutput.value = csvText;
+                resultArea.style.display = 'block';
+                
+                statusDisplay.textContent = `Success! Extracted ${centers.length} center points.`;
+                statusDisplay.style.color = "#50fa7b";
+            } catch (error) {
+                statusDisplay.textContent = "Error processing file: " + error.message;
+                statusDisplay.style.color = "#ff5555";
+            }
+        };
+        reader.readAsText(currentFile);
+    });
+
+    selectAllBtn.addEventListener('click', () => {
+        coordOutput.select();
+    });
+
+    copyBtn.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(coordOutput.value);
+            triggerCopyFeedback();
+        } catch (err) {
+            coordOutput.select();
+            document.execCommand('copy');
+            triggerCopyFeedback();
+        }
+    });
+
+    function triggerCopyFeedback() {
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = 'Copied!';
+        copyBtn.style.backgroundColor = '#50fa7b';
+        copyBtn.style.color = '#282a36';
+        
+        setTimeout(() => {
+            copyBtn.textContent = originalText;
+            copyBtn.style.backgroundColor = '';
+            copyBtn.style.color = '';
+        }, 2000);
+    }
+
+    function extractLoopCenters(gpxText) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(gpxText, "text/xml");
+        const trkpts = xmlDoc.querySelectorAll('trkpt');
+        
+        const points = Array.from(trkpts).map(pt => ({
+            lat: parseFloat(pt.getAttribute('lat')),
+            lon: parseFloat(pt.getAttribute('lon'))
+        }));
+
+        const centers = [];
+        let i = 0;
+        
+        while (i < points.length) {
+            let loopFound = false;
+            const maxLookahead = Math.min(i + 60, points.length - 1);
+            
+            for (let j = maxLookahead; j >= i + 10; j--) {
+                const dLat = Math.abs(points[i].lat - points[j].lat);
+                const dLon = Math.abs(points[i].lon - points[j].lon);
+                
+                if (dLat < 0.00005 && dLon < 0.00005) {
+                    const loopPoints = points.slice(i, j + 1);
+                    
+                    const minLat = Math.min(...loopPoints.map(p => p.lat));
+                    const maxLat = Math.max(...loopPoints.map(p => p.lat));
+                    const minLon = Math.min(...loopPoints.map(p => p.lon));
+                    const maxLon = Math.max(...loopPoints.map(p => p.lon));
+                    
+                    centers.push({
+                        lat: ((minLat + maxLat) / 2).toFixed(6),
+                        lon: ((minLon + maxLon) / 2).toFixed(6)
+                    });
+                    
+                    i = j; 
+                    loopFound = true;
+                    break;
+                }
+            }
+            i++;
+        }
+        
+        return centers;
+    }
+
+    function generateGPX(centers) {
+        let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        gpx += '<gpx version="1.1" creator="GPX Loop Center Extractor">\n';
+        
+        centers.forEach((center, index) => {
+            gpx += `  <wpt lat="${center.lat}" lon="${center.lon}">\n`;
+            gpx += `    <name>Center ${index + 1}</name>\n`;
+            gpx += `  </wpt>\n`;
+        });
+        
+        gpx += '</gpx>';
+        return gpx;
+    }
+
+    function downloadBlob(content, filename) {
+        const blob = new Blob([content], { type: 'application/gpx+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>
