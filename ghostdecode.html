@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Easy GPS Mock Route Decoder</title>
+<title>GPS Mock Route Decoder</title>
 <style>
   :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
   body { max-width: 900px; margin: 32px auto; padding: 0 16px; line-height: 1.45; }
@@ -22,10 +22,10 @@
 </style>
 </head>
 <body>
-<h1>Easy GPS Mock Route Decoder</h1>
+<h1>GPS Mock Route Decoder</h1>
 
 <label for="input"><strong>Shared text, share URL, or p= payload</strong></label>
-<textarea id="input" placeholder="Paste the whole sharing message here, e.g. 幽靈路徑分享連結 / 路徑名稱 / 有效期限 / 連結：https://easygpsmock.web.app/share?p=..."></textarea>
+<textarea id="input" placeholder="Paste the whole sharing message here, including either an Easy GPS Mock ?p= link or an AutoCool /p/ short link..."></textarea>
 
 <div>
   <button id="decodeBtn">Decode route</button>
@@ -59,32 +59,35 @@ function b64urlToBytes(s) {
   return Uint8Array.from(bin, c => c.charCodeAt(0));
 }
 
-function extractPayload(input) {
+function findFirstUrl(input) {
+  const m = input.match(/https?:\/\/[^\s<>"']+/i);
+  return m ? m[0].replace(/[),.;!?，。；！？]+$/, "") : null;
+}
+
+function classifyInput(input) {
   input = input.trim();
   if (!input) throw new Error("Paste the shared text, share URL, or p= payload first.");
 
-  // Normal use case: the entire sharing message was pasted, e.g.
-  // 路徑名稱：...
-  // 有效期限：...
-  // 連結：https://easygpsmock.web.app/share?p=...
-  //
-  // Find the Easy GPS Mock share URL anywhere in the text and ignore
-  // everything before and after it.
-  const urlMatch = input.match(
-    /https?:\/\/easygpsmock\.web\.app\/share\?[^ \t\r\n<>"']*?\bp=([A-Za-z0-9_-]+={0,2})/i
-  );
-  if (urlMatch) return urlMatch[1];
-
-  // Also accept another URL containing a p parameter, in case the host or
-  // share-page format changes while the payload format stays the same.
+  // Any domain carrying an Easy GPS Mock-compatible ?p= payload.
   const paramMatch = input.match(/[?&]p=([A-Za-z0-9_-]+={0,2})(?=[&#\s<>"']|$)/i);
-  if (paramMatch) return paramMatch[1];
+  if (paramMatch) return { type: "easy", payload: paramMatch[1] };
 
-  // Finally accept "p=..." or the bare Base64URL payload by itself.
+  // Raw p=... or bare Base64URL payload.
   const raw = input.replace(/^p\s*=\s*/i, "").trim();
-  if (/^[A-Za-z0-9_-]+={0,2}$/.test(raw)) return raw;
+  if (/^[A-Za-z0-9_-]+={0,2}$/.test(raw) && raw.length > 40) {
+    return { type: "easy", payload: raw };
+  }
 
-  throw new Error("No Easy GPS Mock share link or valid p= payload was found in the pasted text.");
+  const urlText = findFirstUrl(input);
+  if (urlText) {
+    try {
+      const u = new URL(urlText);
+      const m = u.pathname.match(/\/p\/([A-Za-z0-9_-]+)\/?$/i);
+      if (m) return { type: "autocool", code: m[1], url: u.href, origin: u.origin };
+    } catch {}
+  }
+
+  throw new Error("No compatible share link or payload was found in the pasted text.");
 }
 
 async function gunzip(bytes) {
@@ -197,8 +200,7 @@ function formatEpochMs(v) {
   }
 }
 
-async function decodeRoute(input) {
-  const payload = extractPayload(input);
+async function decodeEasyRoute(payload) {
   const compressed = b64urlToBytes(payload);
   const protoBytes = await gunzip(compressed);
   const fields = parseProto(protoBytes);
@@ -248,6 +250,121 @@ async function decodeRoute(input) {
   return { metadata, coordinates, encodedPolyline };
 }
 
+
+function findRouteObject(value, depth = 0) {
+  if (depth > 6 || value == null) return null;
+  if (typeof value === "string") {
+    const t = value.trim();
+    if ((t.startsWith("{") && t.endsWith("}")) || (t.startsWith("[") && t.endsWith("]"))) {
+      try { return findRouteObject(JSON.parse(t), depth + 1); } catch {}
+    }
+    return null;
+  }
+  if (Array.isArray(value)) return null;
+  if (typeof value !== "object") return null;
+  if (Array.isArray(value.route) || typeof value.route === "string") return value;
+  for (const key of ["data", "result", "payload", "phantom", "routeData"]) {
+    if (key in value) {
+      const found = findRouteObject(value[key], depth + 1);
+      if (found) return found;
+    }
+  }
+  for (const v of Object.values(value)) {
+    const found = findRouteObject(v, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+function routeToCoordinates(route) {
+  if (typeof route === "string") {
+    try { route = JSON.parse(route); }
+    catch { throw new Error("AutoCool returned a route in an unknown format."); }
+  }
+  if (!Array.isArray(route)) throw new Error("AutoCool response does not contain a route array.");
+
+  const out = [];
+  for (const point of route) {
+    let lat, lon;
+    if (Array.isArray(point)) {
+      const nums = point.filter(v => typeof v === "number" && Number.isFinite(v));
+      if (nums.length >= 2) [lat, lon] = nums;
+    } else if (point && typeof point === "object") {
+      lat = point.lat ?? point.latitude;
+      lon = point.lon ?? point.lng ?? point.longitude;
+    } else if (typeof point === "string") {
+      const m = point.match(/^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/);
+      if (m) { lat = Number(m[1]); lon = Number(m[2]); }
+    }
+    lat = Number(lat); lon = Number(lon);
+    if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      out.push([lat, lon]);
+    }
+  }
+  if (!out.length) throw new Error("The AutoCool route was found, but its coordinate format was not recognized.");
+  return out;
+}
+
+async function fetchJsonCandidate(url) {
+  const r = await fetch(url, { method: "GET", redirect: "follow", cache: "no-store" });
+  const text = await r.text();
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  try { return JSON.parse(text); } catch {
+    // Some public share pages may embed the API JSON in HTML/script text.
+    const candidates = text.match(/\{[\s\S]*\}/g) || [];
+    for (const c of candidates) {
+      try {
+        const obj = JSON.parse(c);
+        if (findRouteObject(obj)) return obj;
+      } catch {}
+    }
+    throw new Error("Response was not compatible JSON.");
+  }
+}
+
+async function decodeAutoCoolRoute(info) {
+  const code = info.code;
+  const attempts = [
+    `${info.origin}/api/phantom/${encodeURIComponent(code)}`,
+    `https://mushgo-control.coco394.workers.dev/api/phantom/${encodeURIComponent(code)}`,
+    info.url
+  ];
+  let lastError = null;
+  for (const url of [...new Set(attempts)]) {
+    try {
+      const json = await fetchJsonCandidate(url);
+      const obj = findRouteObject(json);
+      if (!obj) throw new Error("No route object found in response.");
+      const coordinates = routeToCoordinates(obj.route);
+      const metadata = {};
+      const labels = {
+        label: "Route name", pointCount: "Points", speedKmh: "Speed (km/h)",
+        routingMode: "Routing mode", loopMode: "Loop mode", repeatCount: "Repeat count",
+        executionStride: "Execution stride", simulationSeconds: "Simulation seconds"
+      };
+      for (const [key, label] of Object.entries(labels)) {
+        if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") metadata[label] = obj[key];
+      }
+      if (obj.validUntil) metadata["Valid until"] = formatEpochMs(BigInt(obj.validUntil));
+      if (obj.serverTime) metadata["Server time"] = formatEpochMs(BigInt(obj.serverTime));
+      metadata["Points"] = coordinates.length;
+      return { metadata, coordinates, source: "AutoCool" };
+    } catch (e) { lastError = e; }
+  }
+  throw new Error(
+    "AutoCool short code was recognized, but its route data could not be fetched. " +
+    "The link may have expired, or the server may block requests from a local HTML file (CORS)." +
+    (lastError?.message ? ` Last error: ${lastError.message}` : "")
+  );
+}
+
+async function decodeAny(input) {
+  const info = classifyInput(input);
+  if (info.type === "easy") return decodeEasyRoute(info.payload);
+  if (info.type === "autocool") return decodeAutoCoolRoute(info);
+  throw new Error("Unsupported link type.");
+}
+
 function escapeXml(s) {
   return String(s).replace(/[<>&'"]/g, c => ({
     '<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'
@@ -283,7 +400,7 @@ document.getElementById("decodeBtn").addEventListener("click", async () => {
   lastDecoded = null;
 
   try {
-    const result = await decodeRoute(document.getElementById("input").value);
+    const result = await decodeAny(document.getElementById("input").value);
     lastDecoded = result;
 
     const mt = document.getElementById("metaTable");
