@@ -193,6 +193,17 @@
   .text-link{color:var(--muted);text-decoration:underline;cursor:pointer}
   .text-link:hover{color:var(--ink)}
 
+  /* ---------- Coordinates popup ---------- */
+  .coord-modal{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(4,6,10,.76)}
+  .coord-modal.show{display:flex}
+  .coord-dialog{width:min(560px,100%);max-height:calc(100vh - 36px);overflow:auto;background:var(--panel);border:1px solid var(--border2);border-radius:14px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.55)}
+  .coord-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .coord-dialog h3{font-size:16px}
+  .coord-close{background:none;border:0;color:var(--muted);font-size:24px;line-height:1;cursor:pointer;padding:0 2px}
+  .coord-close:hover{color:var(--ink)}
+  #coordinatesText{min-height:240px;resize:vertical;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;line-height:1.55}
+  .coord-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+
   /* ---------- Toasts ---------- */
   #toasts{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px;max-width:320px}
   .toast{background:#141822;border:1px solid var(--border2);border-radius:9px;padding:11px 14px;font-size:12.5px;
@@ -441,8 +452,26 @@
   <div class="save-bar-inner">
     <button class="btn btn-save" id="copyGpxBtn" disabled>📋 Copy GPX</button>
     <button class="btn btn-save" id="downloadGpxBtn" disabled>⬇️ Download GPX</button>
+    <button class="btn btn-save" id="showCoordsBtn" disabled>📍 Coordinates</button>
   </div>
   <p class="hint" id="saveHint">Add at least one point to enable saving.</p>
+</div>
+
+<div class="coord-modal" id="coordinatesModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="coordinatesTitle">
+  <div class="coord-dialog">
+    <div class="coord-dialog-head">
+      <div>
+        <h3 id="coordinatesTitle">Coordinates</h3>
+        <p class="hint">Current reviewed point order, one latitude / longitude pair per line.</p>
+      </div>
+      <button class="coord-close" id="closeCoordinatesBtn" type="button" aria-label="Close">×</button>
+    </div>
+    <textarea id="coordinatesText" spellcheck="false" aria-label="Coordinates" readonly></textarea>
+    <div class="coord-actions">
+      <button class="btn btn-ghost" id="closeCoordinatesFooterBtn" type="button">Close</button>
+      <button class="btn btn-primary" id="copyCoordinatesBtn" type="button">📋 Copy coordinates</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -856,6 +885,24 @@ function copyText(text, label){
     document.body.removeChild(ta);
   }
 }
+function coordinatesText(){
+  return points.map(p=>`${p.lat.toFixed(7)}, ${p.lon.toFixed(7)}`).join('\n');
+}
+function openCoordinatesModal(){
+  if(!points.length){ toast('Add at least one point first.', 'error'); return; }
+  const modal = $('coordinatesModal');
+  $('coordinatesText').value = coordinatesText();
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(()=> $('coordinatesText').focus());
+}
+function closeCoordinatesModal(){
+  const modal = $('coordinatesModal');
+  modal.classList.remove('show');
+  modal.setAttribute('aria-hidden', 'true');
+  $('showCoordsBtn').focus();
+}
+
 function downloadText(text, filename, mime){
   try{
     const blob = new Blob([text], { type: mime });
@@ -1193,7 +1240,8 @@ function updateCopyDownloadState(){
   const ready = !!combinedResult;
   $('copyGpxBtn').disabled = !ready;
   $('downloadGpxBtn').disabled = !ready;
-  $('marker3').classList.toggle('filled', ready);
+  $('showCoordsBtn').disabled = points.length < 1;
+  $('marker3').classList.toggle('filled', ready || points.length > 0);
   let hint = '';
   if(!ready){
     if(!$('includeJump').checked && !$('includeWalk').checked) hint = 'Select at least one output above to enable saving.';
@@ -1240,6 +1288,12 @@ $('buildBtn').onclick = async () => {
 
 $('copyGpxBtn').onclick = () => combinedResult && copyText(combinedResult.gpx, 'GPX');
 $('downloadGpxBtn').onclick = () => combinedResult && downloadText(combinedResult.gpx, combinedResult.filenameBase + '.gpx', 'application/gpx+xml');
+$('showCoordsBtn').onclick = openCoordinatesModal;
+$('copyCoordinatesBtn').onclick = () => copyText(coordinatesText(), 'Coordinates');
+$('closeCoordinatesBtn').onclick = closeCoordinatesModal;
+$('closeCoordinatesFooterBtn').onclick = closeCoordinatesModal;
+$('coordinatesModal').addEventListener('click', e=>{ if(e.target === $('coordinatesModal')) closeCoordinatesModal(); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && $('coordinatesModal').classList.contains('show')) closeCoordinatesModal(); });
 $('copyJsonBtn').onclick = () => combinedResult && combinedResult.json && copyText(combinedResult.json, 'JSON');
 $('downloadJsonBtn').onclick = () => combinedResult && combinedResult.json && downloadText(combinedResult.json, combinedResult.filenameBase + '.json', 'application/json');
 
