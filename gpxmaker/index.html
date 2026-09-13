@@ -508,8 +508,8 @@ function setTab(which){
 // ============================== Map ==============================
 function initMap(){
   map = L.map('map', { zoomControl:true }).setView([20, 0], 2);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom:19, attribution:'&copy; OpenStreetMap contributors &copy; CARTO'
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:19, attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
   baseLayer = L.layerGroup().addTo(map);
   jumpLayer = L.layerGroup().addTo(map);
@@ -1321,15 +1321,21 @@ const CATEGORY_DEFS = {
 const GEMS_MAX_RADIUS_KM = 5; // bounded search keeps Overpass fast; whole-city-area queries time out on large places
 // Keys scanned when the user adds custom comma-separated terms.
 const CUSTOM_KEYS = ['"amenity"','"shop"','"tourism"','"leisure"','"historic"','"cuisine"','"name"'];
-// Wikidata instance-of (P31) QID -> our category, for the Famous landmarks path. Anything else -> sights.
-const WD_TYPE_TO_CAT = {
-  Q33506:'museums', Q207694:'museums', Q1970365:'museums',
-  Q7075:'libraries', Q22806:'libraries', Q856234:'libraries',
-  Q11707:'restaurants', Q40080:'parks',
-  Q30022:'cafes', Q329683:'cafes',
-  Q22698:'parks', Q22746:'parks', Q1107656:'parks', Q473972:'parks', Q4421:'parks',
-  Q213441:'shops', Q11315:'shops'
-};
+// Wikidata class roots accepted by the Famous landmarks path. Using P31/subclass matching
+// keeps events, outbreaks, administrative topics, etc. out instead of treating unknown types as sights.
+const WD_CATEGORY_ROOTS = [
+  ['Q570116','sights'],   // tourist attraction
+  ['Q4989906','sights'],  // monument
+  ['Q5003624','sights'],  // memorial
+  ['Q33506','museums'],   // museum
+  ['Q7075','libraries'],  // library
+  ['Q11707','restaurants'],
+  ['Q30022','cafes'],
+  ['Q22698','parks'],
+  ['Q1107656','parks'],   // garden
+  ['Q213441','shops'],
+  ['Q11315','shops']      // shopping mall
+];
 // Preset category -> Geoapify Places category string(s).
 const GEOAPIFY_CATS = {
   sights:'tourism.sights', museums:'entertainment.museum', restaurants:'catering.restaurant',
@@ -1470,16 +1476,18 @@ async function sparqlQuery(q){
 }
 async function famousViaWikidata(place, cats, customTerms){
   const rad = radiusKmFromBbox(place.bbox);
-  const q = `SELECT ?item ?itemLabel ?loc ?sitelinks ?type WHERE {
+  const wdValues = WD_CATEGORY_ROOTS.map(([qid,cat])=>`(wd:${qid} "${cat}")`).join(' ');
+  const q = `SELECT ?item ?itemLabel ?loc ?sitelinks ?category WHERE {
   SERVICE wikibase:around {
     ?item wdt:P625 ?loc .
     bd:serviceParam wikibase:center "Point(${place.lon} ${place.lat})"^^geo:wktLiteral .
     bd:serviceParam wikibase:radius "${rad}" .
   }
+  VALUES (?root ?category) { ${wdValues} }
+  ?item wdt:P31/wdt:P279* ?root .
   ?item wikibase:sitelinks ?sitelinks .
   FILTER(?sitelinks >= 4)
   FILTER NOT EXISTS { ?item wdt:P1082 ?pop . }
-  OPTIONAL { ?item wdt:P31 ?type . }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en,[AUTO_LANGUAGE]" . }
 }
 ORDER BY DESC(?sitelinks)
@@ -1494,8 +1502,8 @@ LIMIT 300`;
     if(!m) return;
     const lon = parseFloat(m[1]), lat = parseFloat(m[2]);
     const sitelinks = b.sitelinks ? parseInt(b.sitelinks.value,10) : 0;
-    const typeQid = b.type ? b.type.value.split('/').pop() : null;
-    const cat = WD_TYPE_TO_CAT[typeQid] || 'sights';
+    const cat = b.category ? b.category.value : null;
+    if(!cat) return;
     const ex = map.get(qid);
     if(!ex){ map.set(qid, { name, lat, lon, sitelinks, category:cat, source:'wikidata' }); }
     else { if(ex.category==='sights' && cat!=='sights') ex.category=cat; if(sitelinks>ex.sitelinks) ex.sitelinks=sitelinks; }
