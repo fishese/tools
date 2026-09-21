@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@400;700&family=Signika:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="adobe-blank.css">
 <script src="three.min.js"></script>
 <script src="carrier-data.js"></script>
 <style>
@@ -375,7 +376,15 @@ function getCarrier() {
 // ---------------- text rasterization ----------------
 function fontString(sz) {
   const weight = FONT_BOLD ? (WEB_FONT_BOLD_WEIGHT[FONT_FAMILY] || 700) : 400;
-  return `${weight} ${sz}px "${FONT_FAMILY}", Arial, sans-serif`;
+  return `${weight} ${sz}px "${FONT_FAMILY}", AdobeBlank`;
+}
+
+function glyphPresent(ctx, ch, sz) {
+  if (!ch || !ch.trim()) return true;
+  ctx.font = fontString(sz);
+  const m = ctx.measureText(ch);
+  const ink = (m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0);
+  return m.width > 0.35 && ink > 0.35;
 }
 
 function nameChars(text) {
@@ -397,19 +406,25 @@ function trackingPx(ch, sz) {
 function measureSpaced(ctx, chars, sz) {
   if (!chars.length) return 0;
   let w = 0;
+  let prev = null;
   for (let i = 0; i < chars.length; i++) {
+    if (!glyphPresent(ctx, chars[i], sz)) continue;
+    if (prev !== null) w += trackingPx(prev, sz);
     w += ctx.measureText(chars[i]).width;
-    if (i < chars.length - 1) w += trackingPx(chars[i], sz);
+    prev = chars[i];
   }
   return w;
 }
 
 function fillTextSpaced(ctx, chars, x, y, sz) {
   let cx = x;
+  let prev = null;
   for (let i = 0; i < chars.length; i++) {
+    if (!glyphPresent(ctx, chars[i], sz)) continue;
+    if (prev !== null) cx += trackingPx(prev, sz);
     ctx.fillText(chars[i], cx, y);
     cx += ctx.measureText(chars[i]).width;
-    if (i < chars.length - 1) cx += trackingPx(chars[i], sz);
+    prev = chars[i];
   }
 }
 
@@ -430,6 +445,7 @@ function rasterizeName(name) {
     const width = measureSpaced(ctx, chars, sz);
     let ascent = 0, descent = 0;
     for (const ch of chars) {
+      if (!glyphPresent(ctx, ch, sz)) continue;
       const cm = ctx.measureText(ch);
       const a = (cm.actualBoundingBoxAscent !== undefined && cm.actualBoundingBoxAscent > 0) ? cm.actualBoundingBoxAscent : sz * 0.72;
       const d = (cm.actualBoundingBoxDescent !== undefined) ? cm.actualBoundingBoxDescent : sz * 0.2;
@@ -453,8 +469,9 @@ function rasterizeName(name) {
   const yBaseline = (ch - m.height) / 2 + m.ascent;
   fillTextSpaced(ctx, chars, x, yBaseline, size);
 
+  const missing = [...new Set(chars.filter(ch => !glyphPresent(ctx, ch, size)))];
   const imgData = ctx.getImageData(0, 0, cw, ch).data;
-  return { cw, ch, imgData, fontSizeMm: size / PX_PER_MM, tooSmall };
+  return { cw, ch, imgData, fontSizeMm: size / PX_PER_MM, tooSmall, missing };
 }
 
 function sampleMask(raster, x, z) {
@@ -758,7 +775,10 @@ let refreshGen = 0;
 function ensureFontLoaded(text) {
   if (!document.fonts || !document.fonts.load) return Promise.resolve();
   const sample = (text && text.trim()) ? text : 'Aa';
-  return document.fonts.load(fontString(64), sample);
+  return Promise.all([
+    document.fonts.load('64px AdobeBlank'),
+    document.fonts.load(fontString(64), sample)
+  ]);
 }
 
 function refresh() {
@@ -773,8 +793,14 @@ function refresh() {
       try {
         currentMesh = buildMeshForName(name);
         updateMesh(currentMesh.vertices, currentMesh.faces);
-        fitWarning.textContent = lastRaster.tooSmall ? 'small font at this length' : '';
-        fitWarning.className = lastRaster.tooSmall ? 'warn' : '';
+        const missing = lastRaster.missing || [];
+        if (missing.length) {
+          fitWarning.textContent = 'not in this font: ' + missing.join('');
+          fitWarning.className = 'warn';
+        } else {
+          fitWarning.textContent = lastRaster.tooSmall ? 'small font at this length' : '';
+          fitWarning.className = lastRaster.tooSmall ? 'warn' : '';
+        }
         fontSpec.textContent = (FONT_BOLD ? 'Bold ' : '') + FONT_FAMILY;
         statusText.textContent = 'Ready';
         downloadBtn.disabled = !name.trim();
