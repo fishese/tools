@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hose Retainer Name Engraver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@400;700&family=Signika:wght@400;700&display=swap" rel="stylesheet">
 <script src="three.min.js"></script>
 <script src="carrier-data.js"></script>
 <style>
@@ -169,7 +172,7 @@
     <div id="canvasWrap">
       <canvas id="threeCanvas"></canvas>
       <button id="resetViewBtn" type="button">Reset view</button>
-      <div class="hint">drag to rotate &middot; scroll to zoom</div>
+      <div class="hint">drag to rotate &middot; pinch or scroll to zoom</div>
     </div>
     <div class="actions">
       <button id="downloadBtn">Download STL</button>
@@ -229,11 +232,10 @@ const PX_PER_MM = 14;
 let ENGRAVE_DEPTH = 0.9;     // mm
 let TEXT_INSET = 3.0;        // mm, keeps letters clear of the reserved-window edge
 let FONT_FAMILY = 'Arial';
-let FONT_LANG = '';
 let FONT_BOLD = true;
 
 // ---- Font list: a cross-platform curated set, narrowed down to whichever of
-// these the browser can actually detect installed (see detectAvailableFonts).
+// these the browser can actually detect installed (see detectInstalledFonts).
 // "Try my installed fonts" additionally offers the real system list via the
 // experimental Local Font Access API, where supported. ----
 const CURATED_FONTS = [
@@ -289,25 +291,18 @@ function isFontAvailable(fontName) {
   }
   return false;
 }
-function detectAvailableFonts(list) {
-  const found = list.filter(isFontAvailable);
+
+const WEB_FONTS = [
+  'Noto Sans JP', 'Noto Sans TC', 'Klee One', 'LXGW WenKai TC',
+  'Signika', 'Nunito'
+];
+// Klee One has no 700 cut; SemiBold (600) is the boldest Google Fonts file.
+const WEB_FONT_BOLD_WEIGHT = { 'Klee One': 600 };
+
+function detectInstalledFonts(list) {
+  const found = list.filter(f => !WEB_FONTS.includes(f) && isFontAvailable(f));
   return found.length ? found : ['Arial', 'Helvetica', 'sans-serif'];
 }
-
-// Chrome on Android does not match CSS font-family against installed Noto CJK
-// (and similar) files, so canvas name-detection never sees them. Language
-// presets use generic sans-serif + a lang tag, which is how Android actually
-// selects the right system CJK/script font.
-const SCRIPT_FONTS = [
-  { value: '__script_zh-Hans', label: '中文简体  Chinese Simplified', family: 'sans-serif', lang: 'zh-Hans' },
-  { value: '__script_zh-Hant', label: '中文繁體  Chinese Traditional', family: 'sans-serif', lang: 'zh-Hant' },
-  { value: '__script_ja', label: '日本語  Japanese', family: 'sans-serif', lang: 'ja' },
-  { value: '__script_ko', label: '한국어  Korean', family: 'sans-serif', lang: 'ko' },
-  { value: '__script_ar', label: 'العربية  Arabic', family: 'sans-serif', lang: 'ar' },
-  { value: '__script_th', label: 'ไทย  Thai', family: 'sans-serif', lang: 'th' },
-  { value: '__script_he', label: 'עברית  Hebrew', family: 'sans-serif', lang: 'he' },
-  { value: '__script_hi', label: 'हिन्दी  Hindi', family: 'sans-serif', lang: 'hi' }
-];
 
 // ---------------- base64 -> ArrayBuffer ----------------
 function base64ToArrayBuffer(b64) {
@@ -379,10 +374,43 @@ function getCarrier() {
 
 // ---------------- text rasterization ----------------
 function fontString(sz) {
-  const weight = FONT_BOLD ? 'bold ' : '';
-  const generic = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui)$/i.test(FONT_FAMILY);
-  const family = generic ? FONT_FAMILY : `"${FONT_FAMILY}"`;
-  return `${weight}${sz}px ${family}, Arial, sans-serif`;
+  const weight = FONT_BOLD ? (WEB_FONT_BOLD_WEIGHT[FONT_FAMILY] || 700) : 400;
+  return `${weight} ${sz}px "${FONT_FAMILY}", Arial, sans-serif`;
+}
+
+function nameChars(text) {
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)].map(s => s.segment);
+  }
+  return Array.from(text);
+}
+
+function trackingPx(ch, sz) {
+  if (!ch) return 0;
+  const code = ch.codePointAt(0);
+  // CJK / kana / fullwidth already sit on a wide em; Latin needs more gap so
+  // bold strokes do not merge when recessed.
+  if (code >= 0x2E80) return sz * 0.05;
+  return sz * 0.12;
+}
+
+function measureSpaced(ctx, chars, sz) {
+  if (!chars.length) return 0;
+  let w = 0;
+  for (let i = 0; i < chars.length; i++) {
+    w += ctx.measureText(chars[i]).width;
+    if (i < chars.length - 1) w += trackingPx(chars[i], sz);
+  }
+  return w;
+}
+
+function fillTextSpaced(ctx, chars, x, y, sz) {
+  let cx = x;
+  for (let i = 0; i < chars.length; i++) {
+    ctx.fillText(chars[i], cx, y);
+    cx += ctx.measureText(chars[i]).width;
+    if (i < chars.length - 1) cx += trackingPx(chars[i], sz);
+  }
 }
 
 function rasterizeName(name) {
@@ -390,20 +418,26 @@ function rasterizeName(name) {
   const cw = Math.round(rectW * PX_PER_MM), ch = Math.round(rectH * PX_PER_MM);
   const canvas = document.createElement('canvas');
   canvas.width = cw; canvas.height = ch;
-  canvas.lang = FONT_LANG || 'en';
   const ctx = canvas.getContext('2d');
-  if ('lang' in ctx) ctx.lang = FONT_LANG || 'en';
   ctx.clearRect(0, 0, cw, ch);
 
+  const chars = nameChars(name);
   const availW = cw - 2 * TEXT_INSET * PX_PER_MM;
   const availH = ch - 2 * TEXT_INSET * PX_PER_MM;
 
   function measureAt(sz) {
     ctx.font = fontString(sz);
-    const m = ctx.measureText(name);
-    const ascent = (m.actualBoundingBoxAscent !== undefined && m.actualBoundingBoxAscent > 0) ? m.actualBoundingBoxAscent : sz * 0.72;
-    const descent = (m.actualBoundingBoxDescent !== undefined) ? m.actualBoundingBoxDescent : sz * 0.2;
-    return { width: m.width, ascent, descent, height: ascent + descent };
+    const width = measureSpaced(ctx, chars, sz);
+    let ascent = 0, descent = 0;
+    for (const ch of chars) {
+      const cm = ctx.measureText(ch);
+      const a = (cm.actualBoundingBoxAscent !== undefined && cm.actualBoundingBoxAscent > 0) ? cm.actualBoundingBoxAscent : sz * 0.72;
+      const d = (cm.actualBoundingBoxDescent !== undefined) ? cm.actualBoundingBoxDescent : sz * 0.2;
+      if (a > ascent) ascent = a;
+      if (d > descent) descent = d;
+    }
+    if (!chars.length) { ascent = sz * 0.72; descent = sz * 0.2; }
+    return { width, ascent, descent, height: ascent + descent };
   }
 
   let size = availH;
@@ -417,7 +451,7 @@ function rasterizeName(name) {
   ctx.fillStyle = '#fff';
   const x = (cw - m.width) / 2;
   const yBaseline = (ch - m.height) / 2 + m.ascent;
-  ctx.fillText(name, x, yBaseline);
+  fillTextSpaced(ctx, chars, x, yBaseline, size);
 
   const imgData = ctx.getImageData(0, 0, cw, ch).data;
   return { cw, ch, imgData, fontSizeMm: size / PX_PER_MM, tooSmall };
@@ -523,13 +557,53 @@ function initThree() {
   window.addEventListener('resize', resizeRenderer);
 
   const wrap = document.getElementById('canvasWrap');
+  const pointers = new Map();
+  let pinchStartGap = 0, pinchStartDist = 0;
+
+  function pointerXY(e) { return { x: e.clientX, y: e.clientY }; }
+  function pinchGap() {
+    const pts = [...pointers.values()];
+    if (pts.length < 2) return 0;
+    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  }
+  function endPointer(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinchStartGap = 0;
+    if (pointers.size === 1) {
+      const left = [...pointers.values()][0];
+      dragging = true;
+      lastX = left.x; lastY = left.y;
+    }
+    if (pointers.size === 0) dragging = false;
+  }
+
   wrap.addEventListener('pointerdown', (e) => {
     if (e.target.closest('#resetViewBtn')) return;
-    dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    pointers.set(e.pointerId, pointerXY(e));
+    try { wrap.setPointerCapture(e.pointerId); } catch (_) {}
+    if (pointers.size === 1) {
+      dragging = true;
+      lastX = e.clientX; lastY = e.clientY;
+    } else {
+      dragging = false;
+      pinchStartGap = pinchGap();
+      pinchStartDist = dist;
+    }
   });
-  wrap.addEventListener('pointerup', () => dragging = false);
-  wrap.addEventListener('pointercancel', () => dragging = false);
+  wrap.addEventListener('pointerup', endPointer);
+  wrap.addEventListener('pointercancel', endPointer);
   wrap.addEventListener('pointermove', (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, pointerXY(e));
+    if (pointers.size >= 2) {
+      const gap = pinchGap();
+      if (pinchStartGap > 0 && gap > 0) {
+        dist = pinchStartDist * (pinchStartGap / gap);
+        dist = Math.max(60, Math.min(700, dist));
+      }
+      return;
+    }
     if (!dragging) return;
     rotY += (e.clientX - lastX) * 0.008;
     rotX += (e.clientY - lastY) * 0.008;
@@ -616,45 +690,34 @@ const fontSpec = document.getElementById('fontSpec');
 const detectFontsBtn = document.getElementById('detectFontsBtn');
 const fontDetectStatus = document.getElementById('fontDetectStatus');
 
-function applySelectedFont() {
-  const opt = fontSelect.selectedOptions[0];
-  if (!opt) return;
-  FONT_FAMILY = opt.dataset.family || opt.value;
-  FONT_LANG = opt.dataset.lang || '';
-}
-
-function populateFontSelect(fonts, selected) {
-  const prev = selected || fontSelect.value || FONT_FAMILY;
-  fontSelect.innerHTML = '';
-
-  const installed = document.createElement('optgroup');
-  installed.label = 'Installed fonts';
+function appendFontOptions(group, fonts) {
   fonts.forEach(f => {
     const opt = document.createElement('option');
     opt.value = f; opt.textContent = f;
-    opt.dataset.family = f;
     opt.style.fontFamily = `"${f}"`;
-    installed.appendChild(opt);
+    group.appendChild(opt);
   });
-  fontSelect.appendChild(installed);
+}
 
-  const scripts = document.createElement('optgroup');
-  scripts.label = 'Other languages';
-  SCRIPT_FONTS.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.value;
-    opt.textContent = s.label;
-    opt.dataset.family = s.family;
-    opt.dataset.lang = s.lang;
-    scripts.appendChild(opt);
-  });
-  fontSelect.appendChild(scripts);
+function populateFontSelect(installed, selected) {
+  const prev = selected || fontSelect.value || FONT_FAMILY;
+  fontSelect.innerHTML = '';
+
+  const webGroup = document.createElement('optgroup');
+  webGroup.label = 'Web Fonts';
+  appendFontOptions(webGroup, WEB_FONTS);
+  fontSelect.appendChild(webGroup);
+
+  const instGroup = document.createElement('optgroup');
+  instGroup.label = 'Installed fonts';
+  appendFontOptions(instGroup, (installed || []).filter(f => !WEB_FONTS.includes(f)));
+  fontSelect.appendChild(instGroup);
 
   const values = [...fontSelect.options].map(o => o.value);
-  fontSelect.value = values.includes(prev) ? prev : (fonts[0] || SCRIPT_FONTS[0].value);
-  applySelectedFont();
+  fontSelect.value = values.includes(prev) ? prev : WEB_FONTS[0];
+  FONT_FAMILY = fontSelect.value;
 }
-populateFontSelect(detectAvailableFonts(CURATED_FONTS), 'Arial');
+populateFontSelect(detectInstalledFonts(CURATED_FONTS), 'Arial');
 
 detectFontsBtn.addEventListener('click', async () => {
   if (!('queryLocalFonts' in window)) {
@@ -665,7 +728,7 @@ detectFontsBtn.addEventListener('click', async () => {
   try {
     const fonts = await window.queryLocalFonts();
     const families = [...new Set(fonts.map(f => f.family))].sort();
-    populateFontSelect(families, fontSelect.value);
+    populateFontSelect(families, FONT_FAMILY);
     fontDetectStatus.textContent = `Loaded ${families.length} installed fonts`;
     refresh();
   } catch (e) {
@@ -673,7 +736,7 @@ detectFontsBtn.addEventListener('click', async () => {
   }
 });
 
-fontSelect.addEventListener('change', () => { applySelectedFont(); refresh(); });
+fontSelect.addEventListener('change', () => { FONT_FAMILY = fontSelect.value; refresh(); });
 boldCheckbox.addEventListener('change', () => { FONT_BOLD = boldCheckbox.checked; refresh(); });
 depthInput.addEventListener('input', () => {
   const v = parseFloat(depthInput.value);
@@ -690,26 +753,39 @@ marginInput.addEventListener('input', () => {
 
 let currentMesh = null;
 let debounceTimer = null;
+let refreshGen = 0;
+
+function ensureFontLoaded(text) {
+  if (!document.fonts || !document.fonts.load) return Promise.resolve();
+  const sample = (text && text.trim()) ? text : 'Aa';
+  return document.fonts.load(fontString(64), sample);
+}
 
 function refresh() {
   const name = nameInput.value;
+  const gen = ++refreshGen;
   charCount.textContent = `${name.length} / 24`;
   statusText.textContent = 'Building...';
   downloadBtn.disabled = true;
   setTimeout(() => {
-    try {
-      currentMesh = buildMeshForName(name);
-      updateMesh(currentMesh.vertices, currentMesh.faces);
-      fitWarning.textContent = lastRaster.tooSmall ? 'small font at this length' : '';
-      fitWarning.className = lastRaster.tooSmall ? 'warn' : '';
-      const fontLabel = (fontSelect.selectedOptions[0] && fontSelect.selectedOptions[0].textContent) || FONT_FAMILY;
-      fontSpec.textContent = (FONT_BOLD ? 'Bold ' : '') + fontLabel;
-      statusText.textContent = 'Ready';
-      downloadBtn.disabled = !name.trim();
-    } catch (err) {
-      statusText.textContent = 'Error building preview';
+    ensureFontLoaded(name).then(() => {
+      if (gen !== refreshGen) return;
+      try {
+        currentMesh = buildMeshForName(name);
+        updateMesh(currentMesh.vertices, currentMesh.faces);
+        fitWarning.textContent = lastRaster.tooSmall ? 'small font at this length' : '';
+        fitWarning.className = lastRaster.tooSmall ? 'warn' : '';
+        fontSpec.textContent = (FONT_BOLD ? 'Bold ' : '') + FONT_FAMILY;
+        statusText.textContent = 'Ready';
+        downloadBtn.disabled = !name.trim();
+      } catch (err) {
+        statusText.textContent = 'Error building preview';
+        console.error(err);
+      }
+    }).catch((err) => {
       console.error(err);
-    }
+      statusText.textContent = 'Error loading font';
+    });
   }, 10);
 }
 
