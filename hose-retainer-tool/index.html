@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hose Retainer Name Engraver</title>
+<script src="three.min.js"></script>
+<script src="carrier-data.js"></script>
+<style>
+  :root {
+    --bg: #10151b;
+    --panel: #1a222b;
+    --panel-2: #212b36;
+    --line: #2c3947;
+    --text: #e7edf2;
+    --text-dim: #8fa1b0;
+    --accent: #4fd1c5;
+    --accent-dim: #2f7f79;
+    --mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+    --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f2f4f6;
+      --panel: #ffffff;
+      --panel-2: #eef1f4;
+      --line: #d7dee4;
+      --text: #16202a;
+      --text-dim: #5b6b78;
+      --accent: #0f8f86;
+      --accent-dim: #bfe9e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10151b; --panel: #1a222b; --panel-2: #212b36; --line: #2c3947;
+    --text: #e7edf2; --text-dim: #8fa1b0; --accent: #4fd1c5; --accent-dim: #2f7f79;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); min-height: 100%;
+  }
+  .wrap {
+    max-width: 920px; margin: 0 auto; padding: 28px 20px 60px;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
+    color: var(--accent); margin: 0 0 6px;
+  }
+  h1 {
+    font-size: 22px; font-weight: 600; margin: 0 0 4px; line-height: 1.3;
+  }
+  .sub {
+    color: var(--text-dim); font-size: 14px; margin: 0 0 28px; max-width: 60ch;
+    line-height: 1.5;
+  }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 20px; margin-bottom: 16px;
+  }
+  label {
+    display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 8px;
+  }
+  input[type="text"] {
+    width: 100%; font-size: 20px; font-family: var(--sans); font-weight: 600;
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; padding: 12px 14px; outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  .meta-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 8px; font-size: 12px; color: var(--text-dim); font-family: var(--mono);
+  }
+  .warn { color: #e0a339; }
+  #canvasWrap {
+    width: 100%; aspect-ratio: 16/7; background: var(--panel-2);
+    border-radius: 8px; overflow: hidden; position: relative; touch-action: none;
+    cursor: grab;
+  }
+  #canvasWrap:active { cursor: grabbing; }
+  #threeCanvas { display: block; width: 100%; height: 100%; }
+  .hint {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: var(--text-dim); font-family: var(--mono);
+    background: rgba(0,0,0,0.25); padding: 3px 8px; border-radius: 4px;
+    pointer-events: none;
+  }
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  button {
+    font-family: var(--sans); font-size: 15px; font-weight: 600;
+    padding: 12px 22px; border-radius: 8px; border: none; cursor: pointer;
+  }
+  #downloadBtn { background: var(--accent); color: #04211e; }
+  #downloadBtn:disabled { background: var(--line); color: var(--text-dim); cursor: not-allowed; }
+  #downloadBtn:not(:disabled):hover { filter: brightness(1.08); }
+  .status { font-size: 13px; color: var(--text-dim); font-family: var(--mono); }
+  .specs {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+    gap: 10px; margin-top: 4px;
+  }
+  .spec {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .spec .k { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
+  .spec .v { font-size: 14px; margin-top: 2px; }
+  details { }
+  summary {
+    cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text);
+    list-style: none; display: flex; align-items: center; gap: 6px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: '▸'; color: var(--accent); font-size: 12px; transition: transform 0.15s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  .settings-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr));
+    gap: 14px; margin-top: 16px;
+  }
+  .field label { margin-bottom: 6px; }
+  select, input[type="number"] {
+    width: 100%; font-size: 14px; font-family: var(--sans);
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; padding: 9px 10px; outline: none;
+  }
+  select:focus, input[type="number"]:focus { border-color: var(--accent); }
+  .checkbox-field { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
+  .checkbox-field input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .checkbox-field label { margin: 0; font-size: 14px; color: var(--text); }
+  .detect-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  #detectFontsBtn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    font-size: 13px; padding: 8px 14px;
+  }
+  #detectFontsBtn:hover { border-color: var(--accent); }
+  #fontDetectStatus { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+  footer { color: var(--text-dim); font-size: 12px; margin-top: 24px; line-height: 1.6; }
+  footer a { color: var(--accent); }
+  footer .attribution { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">HOSE RETAINER · NAME ENGRAVER</p>
+  <h1>Generate a personalized retainer</h1>
+  <p class="sub">Type any name. The 3D model updates live and the download produces a print-ready STL with that name recessed 0.9&nbsp;mm into the smooth face &mdash; same geometry as the reference part, otherwise unchanged.</p>
+
+  <div class="panel">
+    <label for="nameInput">Name to engrave</label>
+    <input id="nameInput" type="text" maxlength="24" value="Fishese" autocomplete="off" spellcheck="false">
+    <div class="meta-row">
+      <span id="charCount">6 / 24</span>
+      <span id="fitWarning"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div id="canvasWrap">
+      <canvas id="threeCanvas"></canvas>
+      <div class="hint">drag to rotate &middot; scroll to zoom</div>
+    </div>
+    <div class="actions">
+      <button id="downloadBtn">Download STL</button>
+      <span class="status" id="statusText">Ready</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <details id="settingsDetails">
+      <summary>Appearance settings</summary>
+      <div class="settings-grid">
+        <div class="field">
+          <label for="fontSelect">Font</label>
+          <select id="fontSelect"></select>
+        </div>
+        <div class="checkbox-field">
+          <input type="checkbox" id="boldCheckbox" checked>
+          <label for="boldCheckbox">Bold</label>
+        </div>
+        <div class="field">
+          <label for="depthInput">Engrave depth (mm)</label>
+          <input type="number" id="depthInput" value="0.9" min="0.2" max="3" step="0.1">
+        </div>
+        <div class="field">
+          <label for="marginInput">Edge margin (mm)</label>
+          <input type="number" id="marginInput" value="3.0" min="1" max="8" step="0.5">
+        </div>
+      </div>
+      <div class="detect-row">
+        <button id="detectFontsBtn" type="button">Try my installed fonts</button>
+        <span id="fontDetectStatus"></span>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <div class="specs">
+      <div class="spec"><div class="k">LENGTH</div><div class="v">211.2 mm</div></div>
+      <div class="spec"><div class="k">ENGRAVE DEPTH</div><div class="v" id="depthSpec">0.9 mm</div></div>
+      <div class="spec"><div class="k">FONT</div><div class="v" id="fontSpec">Bold Arial</div></div>
+      <div class="spec"><div class="k">TRIANGLES</div><div class="v" id="triCount">&mdash;</div></div>
+    </div>
+  </div>
+
+  <footer>
+    Geometry, fillets, serration and slot are identical to the source part &mdash; only the nameplate area is regenerated per name. Very long names shrink to fit; extremely long names may print small. The reserved nameplate rectangle itself can't be resized here since the base part has that exact window pre-cut into it.
+    <div class="attribution">Model based on <a href="https://www.thingiverse.com/thing:5394977" target="_blank" rel="noopener">Scuba Long Hose Retainer</a> by henryci on Thingiverse.</div>
+  </footer>
+</div>
+
+<script>
+// ---- Nameplate rectangle (fixed -- baked into the carrier's pre-cut window) ----
+const RECT_XMIN = 14.0, RECT_XMAX = 67.0;
+const RECT_ZMIN = 1.5,  RECT_ZMAX = 14.5;
+const Y_BG = 146.0;          // fixed -- the real surface height of the carrier
+const GRID_STEP = 0.25;      // fixed -- matches the carrier's pre-densified boundary
+const PX_PER_MM = 14;
+
+// ---- Adjustable appearance settings (safe to change without touching the carrier) ----
+let ENGRAVE_DEPTH = 0.9;     // mm
+let TEXT_INSET = 3.0;        // mm, keeps letters clear of the reserved-window edge
+let FONT_FAMILY = 'Arial';
+let FONT_BOLD = true;
+
+// ---- Font list: a cross-platform curated set, narrowed down to whichever of
+// these the browser can actually detect installed (see detectAvailableFonts).
+// "Try my installed fonts" additionally offers the real system list via the
+// experimental Local Font Access API, where supported. ----
+const CURATED_FONTS = [
+  'Arial', 'Arial Black', 'Helvetica', 'Helvetica Neue', 'Verdana', 'Tahoma',
+  'Trebuchet MS', 'Segoe UI', 'Calibri', 'Candara', 'Corbel', 'Century Gothic',
+  'Futura', 'Avenir', 'Avenir Next', 'Gill Sans', 'Optima', 'Lucida Sans',
+  'Franklin Gothic Medium', 'DejaVu Sans', 'Liberation Sans', 'Noto Sans',
+  'Ubuntu', 'Droid Sans', 'Roboto', 'Open Sans', 'PT Sans', 'Impact',
+  'Georgia', 'Times New Roman', 'Palatino', 'Garamond', 'Baskerville',
+  'Cambria', 'Constantia', 'Book Antiqua', 'Rockwell', 'Copperplate',
+  'Courier New', 'Consolas', 'Monaco', 'Menlo', 'Comic Sans MS', 'Papyrus'
+];
+
+function isFontAvailable(fontName) {
+  const testString = 'mmmmmmmmmmlli0123';
+  const testSize = 100;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const baselineFamilies = ['monospace', 'sans-serif', 'serif'];
+  const baselineWidths = baselineFamilies.map(f => {
+    ctx.font = `${testSize}px ${f}`;
+    return ctx.measureText(testString).width;
+  });
+  return baselineFamilies.some((f, i) => {
+    ctx.font = `${testSize}px "${fontName}", ${f}`;
+    return ctx.measureText(testString).width !== baselineWidths[i];
+  });
+}
+function detectAvailableFonts(list) {
+  const found = list.filter(isFontAvailable);
+  return found.length ? found : ['Arial', 'Helvetica', 'sans-serif'];
+}
+
+// ---------------- base64 -> ArrayBuffer ----------------
+function base64ToArrayBuffer(b64) {
+  const binStr = atob(b64);
+  const len = binStr.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binStr.charCodeAt(i);
+  return bytes.buffer;
+}
+
+// ---------------- binary STL parse/write ----------------
+function parseSTL(buffer) {
+  const dv = new DataView(buffer);
+  const nTri = dv.getUint32(80, true);
+  const vertices = [];
+  const faces = [];
+  let offset = 84;
+  for (let i = 0; i < nTri; i++) {
+    offset += 12;
+    const idx = [];
+    for (let v = 0; v < 3; v++) {
+      const x = dv.getFloat32(offset, true); offset += 4;
+      const y = dv.getFloat32(offset, true); offset += 4;
+      const z = dv.getFloat32(offset, true); offset += 4;
+      vertices.push([x, y, z]);
+      idx.push(vertices.length - 1);
+    }
+    faces.push(idx);
+    offset += 2;
+  }
+  return { vertices, faces };
+}
+
+function writeSTL(vertices, faces) {
+  const nTri = faces.length;
+  const buffer = new ArrayBuffer(84 + 50 * nTri);
+  const dv = new DataView(buffer);
+  dv.setUint32(80, nTri, true);
+  let offset = 84;
+  for (const f of faces) {
+    const p0 = vertices[f[0]], p1 = vertices[f[1]], p2 = vertices[f[2]];
+    const ux = p1[0]-p0[0], uy = p1[1]-p0[1], uz = p1[2]-p0[2];
+    const vx = p2[0]-p0[0], vy = p2[1]-p0[1], vz = p2[2]-p0[2];
+    let nx = uy*vz - uz*vy, ny = uz*vx - ux*vz, nz = ux*vy - uy*vx;
+    const len = Math.sqrt(nx*nx+ny*ny+nz*nz) || 1;
+    nx/=len; ny/=len; nz/=len;
+    dv.setFloat32(offset, nx, true); offset+=4;
+    dv.setFloat32(offset, ny, true); offset+=4;
+    dv.setFloat32(offset, nz, true); offset+=4;
+    for (const pidx of f) {
+      const p = vertices[pidx];
+      dv.setFloat32(offset, p[0], true); offset+=4;
+      dv.setFloat32(offset, p[1], true); offset+=4;
+      dv.setFloat32(offset, p[2], true); offset+=4;
+    }
+    dv.setUint16(offset, 0, true); offset+=2;
+  }
+  return buffer;
+}
+
+// ---------------- carrier (loaded once) ----------------
+let CARRIER = null;
+function getCarrier() {
+  if (!CARRIER) {
+    CARRIER = parseSTL(base64ToArrayBuffer(CARRIER_STL_B64));
+  }
+  return CARRIER;
+}
+
+// ---------------- text rasterization ----------------
+function fontString(sz) {
+  const weight = FONT_BOLD ? 'bold ' : '';
+  return `${weight}${sz}px "${FONT_FAMILY}", Arial, sans-serif`;
+}
+
+function rasterizeName(name) {
+  const rectW = RECT_XMAX - RECT_XMIN, rectH = RECT_ZMAX - RECT_ZMIN;
+  const cw = Math.round(rectW * PX_PER_MM), ch = Math.round(rectH * PX_PER_MM);
+  const canvas = document.createElement('canvas');
+  canvas.width = cw; canvas.height = ch;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, cw, ch);
+
+  const availW = cw - 2 * TEXT_INSET * PX_PER_MM;
+  const availH = ch - 2 * TEXT_INSET * PX_PER_MM;
+
+  function measureAt(sz) {
+    ctx.font = fontString(sz);
+    const m = ctx.measureText(name);
+    const ascent = (m.actualBoundingBoxAscent !== undefined && m.actualBoundingBoxAscent > 0) ? m.actualBoundingBoxAscent : sz * 0.72;
+    const descent = (m.actualBoundingBoxDescent !== undefined) ? m.actualBoundingBoxDescent : sz * 0.2;
+    return { width: m.width, ascent, descent, height: ascent + descent };
+  }
+
+  let size = availH;
+  let m = measureAt(size);
+  for (let iter = 0; iter < 4 && m.width > availW && size > 2; iter++) {
+    size = Math.max(2, size * (availW / m.width) * 0.98);
+    m = measureAt(size);
+  }
+  const tooSmall = size < 3.0 * (PX_PER_MM); // < ~3mm cap height is getting hard to print cleanly
+  ctx.font = fontString(size);
+  ctx.fillStyle = '#fff';
+  const x = (cw - m.width) / 2;
+  const yBaseline = (ch - m.height) / 2 + m.ascent;
+  ctx.fillText(name, x, yBaseline);
+
+  const imgData = ctx.getImageData(0, 0, cw, ch).data;
+  return { cw, ch, imgData, fontSizeMm: size / PX_PER_MM, tooSmall };
+}
+
+function sampleMask(raster, x, z) {
+  const u = (x - RECT_XMIN) / (RECT_XMAX - RECT_XMIN);
+  const v = (z - RECT_ZMIN) / (RECT_ZMAX - RECT_ZMIN);
+  const px = Math.min(raster.cw - 1, Math.max(0, Math.round(u * (raster.cw - 1))));
+  const py = Math.min(raster.ch - 1, Math.max(0, Math.round(v * (raster.ch - 1))));
+  const idx = (py * raster.cw + px) * 4;
+  return raster.imgData[idx + 3] > 127;
+}
+
+// ---------------- relief grid ----------------
+function buildReliefGrid(raster) {
+  const yLetter = Y_BG - ENGRAVE_DEPTH;
+  const nx = Math.round((RECT_XMAX - RECT_XMIN) / GRID_STEP) + 1;
+  const nz = Math.round((RECT_ZMAX - RECT_ZMIN) / GRID_STEP) + 1;
+  const xs = [], zs = [];
+  for (let i = 0; i < nx; i++) xs.push(RECT_XMIN + i * (RECT_XMAX - RECT_XMIN) / (nx - 1));
+  for (let i = 0; i < nz; i++) zs.push(RECT_ZMIN + i * (RECT_ZMAX - RECT_ZMIN) / (nz - 1));
+
+  const vertices = [];
+  const vidx = [];
+  for (let iz = 0; iz < nz; iz++) {
+    const row = [];
+    for (let ix = 0; ix < nx; ix++) {
+      const x = xs[ix], z = zs[iz];
+      const isLetter = sampleMask(raster, x, z);
+      row.push(vertices.length);
+      vertices.push([x, isLetter ? yLetter : Y_BG, z]);
+    }
+    vidx.push(row);
+  }
+
+  const faces = [];
+  for (let iz = 0; iz < nz - 1; iz++) {
+    for (let ix = 0; ix < nx - 1; ix++) {
+      const a = vidx[iz][ix], b = vidx[iz][ix+1], c = vidx[iz+1][ix+1], d = vidx[iz+1][ix];
+      faces.push([a, c, b]);
+      faces.push([a, d, c]);
+    }
+  }
+  return { vertices, faces };
+}
+
+function combineMeshes(carrier, grid) {
+  const vertices = carrier.vertices.concat(grid.vertices);
+  const offset = carrier.vertices.length;
+  const faces = carrier.faces.concat(grid.faces.map(f => [f[0]+offset, f[1]+offset, f[2]+offset]));
+  return { vertices, faces };
+}
+
+// ---------------- build full mesh for a given name ----------------
+let lastRaster = null;
+function buildMeshForName(name) {
+  const cleanName = (name || '').trim() || ' ';
+  lastRaster = rasterizeName(cleanName);
+  const grid = buildReliefGrid(lastRaster);
+  return combineMeshes(getCarrier(), grid);
+}
+
+// ---------------- Three.js preview ----------------
+// Camera convention (verified against the validated non-mirrored engraving
+// orientation): up = world -Z, camera parked mainly on the +Y side (the
+// smooth/engraved face). With up=(0,0,-1) and the camera positioned via
+// x=dist*cos(phi)*sin(theta), y=dist*cos(phi)*cos(theta), z=-dist*sin(phi),
+// screen-right works out to +X, matching the text's baked-in reading
+// direction -- confirmed by rendering an asymmetric test glyph and checking
+// it did not come out mirrored.
+let scene, camera, renderer, meshObj, group;
+let rotY = -0.35, rotX = 0.25, dist = 230;
+let dragging = false, lastX = 0, lastY = 0;
+
+function initThree() {
+  const canvas = document.getElementById('threeCanvas');
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(38, 2, 0.5, 3000);
+  camera.up.set(0, 0, -1);
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+  group = new THREE.Group();
+  scene.add(group);
+
+  const key = new THREE.DirectionalLight(0xffffff, 1.0);
+  key.position.set(1, 1.4, 1.2);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.4);
+  fill.position.set(-1, -0.5, -1);
+  scene.add(fill);
+  scene.add(new THREE.AmbientLight(0x9fb3c0, 0.55));
+
+  resizeRenderer();
+  window.addEventListener('resize', resizeRenderer);
+
+  const wrap = document.getElementById('canvasWrap');
+  wrap.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.setPointerCapture(e.pointerId); });
+  wrap.addEventListener('pointerup', () => dragging = false);
+  wrap.addEventListener('pointercancel', () => dragging = false);
+  wrap.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    rotY += (e.clientX - lastX) * 0.008;
+    rotX += (e.clientY - lastY) * 0.008;
+    rotX = Math.max(-1.4, Math.min(1.4, rotX));
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  wrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    dist *= (1 + e.deltaY * 0.001);
+    dist = Math.max(60, Math.min(700, dist));
+  }, { passive: false });
+
+  animate();
+}
+
+function resizeRenderer() {
+  const wrap = document.getElementById('canvasWrap');
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  camera.position.set(
+    dist * Math.cos(rotX) * Math.sin(rotY),
+    dist * Math.cos(rotX) * Math.cos(rotY),
+    -dist * Math.sin(rotX)
+  );
+  camera.up.set(0, 0, -1);
+  camera.lookAt(0, 0, 0);
+  renderer.render(scene, camera);
+}
+
+function updateMesh(vertices, faces) {
+  if (meshObj) {
+    group.remove(meshObj);
+    meshObj.geometry.dispose();
+    meshObj.material.dispose();
+  }
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(vertices.length * 3);
+  for (let i = 0; i < vertices.length; i++) {
+    pos[i*3] = vertices[i][0]; pos[i*3+1] = vertices[i][1]; pos[i*3+2] = vertices[i][2];
+  }
+  const idx = (vertices.length > 65535) ? new Uint32Array(faces.length*3) : new Uint16Array(faces.length*3);
+  for (let i = 0; i < faces.length; i++) {
+    idx[i*3]=faces[i][0]; idx[i*3+1]=faces[i][1]; idx[i*3+2]=faces[i][2];
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  geo.computeVertexNormals();
+  geo.computeBoundingBox();
+
+  const mat = new THREE.MeshStandardMaterial({ color: 0xcfd6db, metalness: 0.15, roughness: 0.55, side: THREE.DoubleSide });
+  meshObj = new THREE.Mesh(geo, mat);
+
+  const c = new THREE.Vector3();
+  geo.boundingBox.getCenter(c);
+  meshObj.position.set(-c.x, -c.y, -c.z);
+  group.add(meshObj);
+
+  document.getElementById('triCount').textContent = faces.length.toLocaleString();
+}
+
+// ---------------- wiring ----------------
+const nameInput = document.getElementById('nameInput');
+const charCount = document.getElementById('charCount');
+const fitWarning = document.getElementById('fitWarning');
+const downloadBtn = document.getElementById('downloadBtn');
+const statusText = document.getElementById('statusText');
+const fontSelect = document.getElementById('fontSelect');
+const boldCheckbox = document.getElementById('boldCheckbox');
+const depthInput = document.getElementById('depthInput');
+const marginInput = document.getElementById('marginInput');
+const depthSpec = document.getElementById('depthSpec');
+const fontSpec = document.getElementById('fontSpec');
+const detectFontsBtn = document.getElementById('detectFontsBtn');
+const fontDetectStatus = document.getElementById('fontDetectStatus');
+
+function populateFontSelect(fonts, selected) {
+  const prev = selected || fontSelect.value || FONT_FAMILY;
+  fontSelect.innerHTML = '';
+  fonts.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f; opt.textContent = f;
+    opt.style.fontFamily = `"${f}"`;
+    fontSelect.appendChild(opt);
+  });
+  fontSelect.value = fonts.includes(prev) ? prev : fonts[0];
+  FONT_FAMILY = fontSelect.value;
+}
+populateFontSelect(detectAvailableFonts(CURATED_FONTS), 'Arial');
+
+detectFontsBtn.addEventListener('click', async () => {
+  if (!('queryLocalFonts' in window)) {
+    fontDetectStatus.textContent = 'Not supported in this browser (Chrome/Edge only)';
+    return;
+  }
+  fontDetectStatus.textContent = 'Requesting permission...';
+  try {
+    const fonts = await window.queryLocalFonts();
+    const families = [...new Set(fonts.map(f => f.family))].sort();
+    populateFontSelect(families, FONT_FAMILY);
+    fontDetectStatus.textContent = `Loaded ${families.length} installed fonts`;
+    refresh();
+  } catch (e) {
+    fontDetectStatus.textContent = 'Permission denied or unavailable';
+  }
+});
+
+fontSelect.addEventListener('change', () => { FONT_FAMILY = fontSelect.value; refresh(); });
+boldCheckbox.addEventListener('change', () => { FONT_BOLD = boldCheckbox.checked; refresh(); });
+depthInput.addEventListener('input', () => {
+  const v = parseFloat(depthInput.value);
+  if (!isNaN(v) && v > 0) { ENGRAVE_DEPTH = Math.max(0.2, Math.min(3, v)); depthSpec.textContent = ENGRAVE_DEPTH.toFixed(1) + ' mm'; }
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(refresh, 150);
+});
+marginInput.addEventListener('input', () => {
+  const v = parseFloat(marginInput.value);
+  if (!isNaN(v) && v > 0) { TEXT_INSET = Math.max(1, Math.min(8, v)); }
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(refresh, 150);
+});
+
+let currentMesh = null;
+let debounceTimer = null;
+
+function refresh() {
+  const name = nameInput.value;
+  charCount.textContent = `${name.length} / 24`;
+  statusText.textContent = 'Building...';
+  downloadBtn.disabled = true;
+  setTimeout(() => {
+    try {
+      currentMesh = buildMeshForName(name);
+      updateMesh(currentMesh.vertices, currentMesh.faces);
+      fitWarning.textContent = lastRaster.tooSmall ? 'small font at this length' : '';
+      fitWarning.className = lastRaster.tooSmall ? 'warn' : '';
+      fontSpec.textContent = (FONT_BOLD ? 'Bold ' : '') + FONT_FAMILY;
+      statusText.textContent = 'Ready';
+      downloadBtn.disabled = !name.trim();
+    } catch (err) {
+      statusText.textContent = 'Error building preview';
+      console.error(err);
+    }
+  }, 10);
+}
+
+nameInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(refresh, 150);
+});
+
+downloadBtn.addEventListener('click', () => {
+  if (!currentMesh) return;
+  statusText.textContent = 'Preparing file...';
+  downloadBtn.disabled = true;
+  setTimeout(() => {
+    try {
+      const stlBuffer = writeSTL(currentMesh.vertices, currentMesh.faces);
+      const blob = new Blob([stlBuffer], { type: 'application/octet-stream' });
+      const safeName = (nameInput.value.trim() || 'name').replace(/[^a-z0-9\-_ ]/gi, '').trim().replace(/\s+/g, '_') || 'name';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HoseRetainer_${safeName}.stl`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      statusText.textContent = 'Downloaded';
+    } catch (err) {
+      console.error(err);
+      statusText.textContent = 'Error preparing file';
+    }
+    downloadBtn.disabled = !nameInput.value.trim();
+  }, 10);
+});
+
+initThree();
+refresh();
+</script>
+</body>
+</html>
