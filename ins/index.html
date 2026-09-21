@@ -39,7 +39,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef } = React;
 
     // --- I18N DICTIONARY ---
     const t = {
@@ -48,6 +48,12 @@
         lock: "上鎖",
         unlock: "解鎖 / 登入",
         masterPwd: "請輸入主密碼",
+        biometricUnlock: "使用指紋解鎖",
+        biometricEnable: "啟用指紋解鎖",
+        biometricDisable: "停用指紋解鎖",
+        biometricDesc: "主密碼會以 Android Keystore 加密，並在讀取前要求指紋驗證。",
+        biometricUnavailable: "此裝置未設定可供應用程式使用的強生物認證。",
+        biometricFailed: "指紋驗證未完成或已取消，請重試或使用主密碼登入。",
         sharedPool: "共用門診次數 (全年)",
         visits: "次",
         applicableTo: "適用於: 普通科、專科、物理治療、脊醫、中醫",
@@ -106,6 +112,12 @@
         lock: "Lock",
         unlock: "Unlock / Login",
         masterPwd: "Enter Master Password",
+        biometricUnlock: "Unlock with fingerprint",
+        biometricEnable: "Enable fingerprint unlock",
+        biometricDisable: "Disable fingerprint unlock",
+        biometricDesc: "Your master password is encrypted with Android Keystore and requires fingerprint verification before use.",
+        biometricUnavailable: "No strong app-compatible biometric is enrolled on this device.",
+        biometricFailed: "Fingerprint verification did not complete or was cancelled. Try again or use your master password.",
         sharedPool: "Shared Outpatient Visits",
         visits: "visits",
         applicableTo: "Applies to: General, Specialist, Physio, Chiro, Chinese Med",
@@ -307,7 +319,60 @@
 
     const OUTPATIENT_MAX_VISITS = 50;
     const STORAGE_KEY = "aia_plan002_vault_v4";
+    const BIOMETRIC_SERVER = "local.aia-fleximax.vault";
     const HOSP_ID = "hospital_claim";
+
+    // Native builds use Android SharedPreferences as the primary vault store.
+    // localStorage remains a web fallback and a one-time migration source.
+    const nativePlugin = (name) => window.Capacitor?.Plugins?.[name];
+    const isNativeApp = () => Boolean(window.Capacitor?.isNativePlatform?.());
+    const vaultStorage = {
+      async get() {
+        const preferences = nativePlugin('Preferences');
+        if (!isNativeApp() || !preferences) return localStorage.getItem(STORAGE_KEY);
+
+        const { value } = await preferences.get({ key: STORAGE_KEY });
+        if (value) return value;
+
+        const legacyValue = localStorage.getItem(STORAGE_KEY);
+        if (legacyValue) await preferences.set({ key: STORAGE_KEY, value: legacyValue });
+        return legacyValue;
+      },
+      async set(value) {
+        const preferences = nativePlugin('Preferences');
+        if (isNativeApp() && preferences) await preferences.set({ key: STORAGE_KEY, value });
+        localStorage.setItem(STORAGE_KEY, value);
+      },
+      async remove() {
+        const preferences = nativePlugin('Preferences');
+        if (isNativeApp() && preferences) await preferences.remove({ key: STORAGE_KEY });
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    };
+
+    const deliverFile = async (filename, content, mimeType) => {
+      const filesystem = nativePlugin('Filesystem');
+      const share = nativePlugin('Share');
+      if (isNativeApp() && filesystem && share) {
+        const saved = await filesystem.writeFile({
+          path: filename,
+          data: content,
+          directory: 'CACHE',
+          encoding: 'utf8',
+          recursive: true
+        });
+        await share.share({ title: filename, files: [saved.uri], dialogTitle: filename });
+        return;
+      }
+
+      const blob = new Blob([content], { type: mimeType });
+      const link = document.createElement("a");
+      const objectUrl = URL.createObjectURL(blob);
+      link.setAttribute("href", objectUrl);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    };
 
     // --- POLICY YEAR (May 1 - Apr 30) ---
     const POLICY_YEAR_START_MONTH = 5; // May (1-indexed)
@@ -447,21 +512,46 @@
       const [activeTab, setActiveTab] = useState("dashboard"); // dashboard, hospital, history, settings
       const [selectedCategory, setSelectedCategory] = useState(null);
       const [records, setRecords] = useState([]);
+      const [biometricAvailable, setBiometricAvailable] = useState(false);
+      const [biometricEnabled, setBiometricEnabled] = useState(false);
+      const biometricPromptActiveRef = useRef(false);
+      const autoUnlockAttemptedRef = useRef(false);
       
       const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
       const [formAmount, setFormAmount] = useState("");
       const [formProcedure, setFormProcedure] = useState("");
       const [editingRecord, setEditingRecord] = useState(null); // { id, date, amount, procedure }
 
+      const lockAppState = () => {
+        setIsLocked(true);
+        setPassword("");
+        setRecords([]);
+        setSelectedCategory(null);
+        setActiveTab("dashboard");
+      };
+
+      const refreshBiometricState = async () => {
+        const biometric = nativePlugin('NativeBiometric');
+        if (!isNativeApp() || !biometric) return;
+        try {
+          const availability = await biometric.isAvailable();
+          const saved = await biometric.isCredentialsSaved({ server: BIOMETRIC_SERVER });
+          setBiometricAvailable(Boolean(availability.isAvailable && availability.strongBiometryIsAvailable));
+          setBiometricEnabled(Boolean(saved.isSaved));
+        } catch (err) {
+          console.warn('Unable to check biometric availability', err);
+        }
+      };
+
       const handleUnlock = async (e) => {
         e.preventDefault();
         setErrorMsg(""); setRestoreMsg("");
         try {
-          const stored = localStorage.getItem(STORAGE_KEY);
+          const stored = await vaultStorage.get();
           if (!stored) {
             const initialData = JSON.stringify([]);
             const encrypted = await encryptData(password, initialData);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(encrypted));
+            await vaultStorage.set(JSON.stringify(encrypted));
             setRecords([]); setIsLocked(false);
           } else {
             const encryptedObj = JSON.parse(stored);
@@ -473,13 +563,137 @@
         }
       };
 
-      const handleLock = () => {
-        setIsLocked(true); setPassword(""); setRecords([]); setSelectedCategory(null); setActiveTab("dashboard");
+      const handleBiometricUnlock = async () => {
+        const biometric = nativePlugin('NativeBiometric');
+        if (!biometric || biometricPromptActiveRef.current) return;
+        biometricPromptActiveRef.current = true;
+        setErrorMsg(""); setRestoreMsg("");
+        try {
+          await biometric.verifyIdentity({
+            reason: l.biometricUnlock,
+            title: l.biometricUnlock,
+            subtitle: l.appTitle,
+            negativeButtonText: lang === 'zh' ? '取消' : 'Cancel',
+            allowedBiometryTypes: [3],
+            maxAttempts: 5
+          });
+          const credentials = await biometric.getCredentials({ server: BIOMETRIC_SERVER });
+          const stored = await vaultStorage.get();
+          if (!stored) throw new Error('Vault is missing');
+          const decryptedStr = await decryptData(credentials.password, JSON.parse(stored));
+          setPassword(credentials.password);
+          setRecords(JSON.parse(decryptedStr));
+          setIsLocked(false);
+        } catch (err) {
+          console.warn('Biometric unlock failed', err);
+          setErrorMsg(l.biometricFailed);
+        } finally {
+          biometricPromptActiveRef.current = false;
+          if (document.visibilityState === 'hidden') {
+            autoUnlockAttemptedRef.current = false;
+            lockAppState();
+          }
+        }
       };
 
-      const handleResetVault = () => {
+      const attemptAutoBiometricUnlock = async () => {
+        const biometric = nativePlugin('NativeBiometric');
+        if (!isNativeApp() || !biometric || biometricPromptActiveRef.current || autoUnlockAttemptedRef.current) return;
+        autoUnlockAttemptedRef.current = true;
+        try {
+          const [stored, availability, saved] = await Promise.all([
+            vaultStorage.get(),
+            biometric.isAvailable(),
+            biometric.isCredentialsSaved({ server: BIOMETRIC_SERVER })
+          ]);
+          const available = Boolean(availability.isAvailable && availability.strongBiometryIsAvailable);
+          const enabled = Boolean(saved.isSaved);
+          setBiometricAvailable(available);
+          setBiometricEnabled(enabled);
+          if (stored && available && enabled && document.visibilityState === 'visible') {
+            await handleBiometricUnlock();
+          }
+        } catch (err) {
+          console.warn('Unable to start automatic biometric unlock', err);
+        }
+      };
+
+      useEffect(() => {
+        if (isNativeApp()) {
+          attemptAutoBiometricUnlock();
+        } else {
+          navigator.storage?.persist?.().catch(() => {});
+        }
+      }, []);
+
+      useEffect(() => {
+        const handleVisibilityChange = () => {
+          // Android temporarily hides the WebView while its biometric activity is open.
+          if (biometricPromptActiveRef.current) return;
+          if (document.visibilityState === 'hidden') {
+            autoUnlockAttemptedRef.current = false;
+            lockAppState();
+            return;
+          }
+          attemptAutoBiometricUnlock();
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }, [lang]);
+
+      const toggleBiometric = async () => {
+        const biometric = nativePlugin('NativeBiometric');
+        if (!biometric) return;
+        setErrorMsg("");
+        try {
+          if (biometricEnabled) {
+            await biometric.deleteCredentials({ server: BIOMETRIC_SERVER });
+            setBiometricEnabled(false);
+            return;
+          }
+          if (!biometricAvailable) {
+            alert(l.biometricUnavailable);
+            return;
+          }
+          if (biometricPromptActiveRef.current) return;
+          biometricPromptActiveRef.current = true;
+          await biometric.verifyIdentity({
+            reason: l.biometricEnable,
+            title: l.biometricEnable,
+            subtitle: l.appTitle,
+            negativeButtonText: lang === 'zh' ? '取消' : 'Cancel',
+            allowedBiometryTypes: [3],
+            maxAttempts: 5
+          });
+          await biometric.deleteCredentials({ server: BIOMETRIC_SERVER }).catch(() => {});
+          await biometric.setCredentials({
+            username: 'vault',
+            password,
+            server: BIOMETRIC_SERVER
+          });
+          setBiometricEnabled(true);
+        } catch (err) {
+          console.warn('Unable to change biometric setting', err);
+          alert(l.biometricFailed);
+        } finally {
+          biometricPromptActiveRef.current = false;
+          if (document.visibilityState === 'hidden') {
+            autoUnlockAttemptedRef.current = false;
+            lockAppState();
+          }
+        }
+      };
+
+      const handleLock = () => {
+        lockAppState();
+      };
+
+      const handleResetVault = async () => {
         if (confirm(l.resetConfirm)) {
-          localStorage.removeItem(STORAGE_KEY);
+          await vaultStorage.remove();
+          const biometric = nativePlugin('NativeBiometric');
+          if (biometric) await biometric.deleteCredentials({ server: BIOMETRIC_SERVER }).catch(() => {});
+          setBiometricEnabled(false);
           setPassword(""); setErrorMsg("");
           setRestoreMsg(lang === 'zh' ? "系統已重設，請輸入新密碼以建立新資料庫。" : "Vault reset. Enter new password to initialize.");
         }
@@ -489,7 +703,7 @@
         setRecords(newRecords);
         try {
           const encrypted = await encryptData(password, JSON.stringify(newRecords));
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(encrypted));
+          await vaultStorage.set(JSON.stringify(encrypted));
         } catch (err) { alert("Error saving data!"); }
       };
 
@@ -548,7 +762,7 @@
         if (confirm(l.deleteConfirm)) await saveRecords(records.filter(r => r.id !== recordId));
       };
 
-      const exportCSV = () => {
+      const exportCSV = async () => {
         const headers = ['Date', 'Category', 'Procedure', 'Amount', 'Claimable', 'PolicyYear', 'Submitted', 'Approved'];
         const rows = [...records].sort((a,b) => new Date(b.date) - new Date(a.date)).map(r => {
            const cat = CATEGORIES.find(c => c.id === r.categoryId);
@@ -558,38 +772,31 @@
            const proc = (r.procedure || '').replace(/"/g, '""');
            return `${r.date},"${catName}","${proc}",${r.amount},${claimable},${yearTag},${r.isSubmitted ? 'Y' : 'N'},${r.isApproved ? 'Y' : 'N'}`;
         });
-        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(','), ...rows].join('\n');
-        const link = document.createElement("a");
-        link.setAttribute("href", encodeURI(csvContent));
-        link.setAttribute("download", `AIA_Claims_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        const csvContent = "\uFEFF" + [headers.join(','), ...rows].join('\n');
+        await deliverFile(`AIA_Claims_${new Date().toISOString().split('T')[0]}.csv`, csvContent, 'text/csv;charset=utf-8');
       };
 
-      const downloadBackup = () => {
-        const data = localStorage.getItem(STORAGE_KEY);
+      const downloadBackup = async () => {
+        const data = await vaultStorage.get();
         if (!data) return alert("No data to backup.");
-        const blob = new Blob([data], { type: 'application/json' });
-        const link = document.createElement("a");
-        link.setAttribute("href", URL.createObjectURL(blob));
-        link.setAttribute("download", `AIA_Backup_${new Date().toISOString().split('T')[0]}.json`);
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        await deliverFile(`AIA_Backup_${new Date().toISOString().split('T')[0]}.json`, data, 'application/json');
       };
 
-      const handleFileUpload = (e) => {
+      const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        const existing = localStorage.getItem(STORAGE_KEY);
+        const existing = await vaultStorage.get();
         if (existing) {
           const proceed = confirm(l.restoreOverwriteConfirm);
           if (!proceed) { e.target.value = ''; return; }
         }
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
           try {
             const content = event.target.result;
             const parsed = JSON.parse(content);
             if (parsed.salt && parsed.iv && parsed.data) {
-              localStorage.setItem(STORAGE_KEY, content);
+              await vaultStorage.set(content);
               setRestoreMsg(lang === 'zh' ? "備份已還原！請輸入原密碼解鎖。" : "Backup loaded! Enter password to unlock.");
             } else setErrorMsg(lang === 'zh' ? "無效的備份檔案。" : "Invalid backup file.");
           } catch (err) { setErrorMsg("File error."); }
@@ -674,6 +881,11 @@
                   <button type="submit" className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl active:bg-blue-700 shadow-md">
                     {l.unlock}
                   </button>
+                  {biometricEnabled && (
+                    <button onClick={handleBiometricUnlock} type="button" className="mt-3 w-full bg-emerald-50 text-emerald-700 font-bold py-4 rounded-2xl active:bg-emerald-100 border border-emerald-100">
+                      👆 {l.biometricUnlock}
+                    </button>
+                  )}
                 </form>
                 
                 <div className="mt-8 flex flex-col gap-3 text-center">
@@ -1013,6 +1225,16 @@
                     </div>
                     <span className="text-xl">💾</span>
                   </button>
+
+                  {isNativeApp() && (
+                    <button onClick={toggleBiometric} className="p-4 flex items-center justify-between text-left active:bg-gray-50 rounded-b-3xl">
+                      <div>
+                        <div className="font-bold text-gray-800 text-sm">{biometricEnabled ? l.biometricDisable : l.biometricEnable}</div>
+                        <div className="text-xs text-gray-400 mt-0.5 pr-4">{biometricAvailable ? l.biometricDesc : l.biometricUnavailable}</div>
+                      </div>
+                      <span className="text-xl">👆</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}

@@ -79,6 +79,13 @@
   }
   #canvasWrap:active { cursor: grabbing; }
   #threeCanvas { display: block; width: 100%; height: 100%; }
+  #resetViewBtn {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    font-size: 12px; font-weight: 600; padding: 6px 12px;
+    background: var(--panel); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; cursor: pointer;
+  }
+  #resetViewBtn:hover { border-color: var(--accent); }
   .hint {
     position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
     font-size: 11px; color: var(--text-dim); font-family: var(--mono);
@@ -126,6 +133,11 @@
   .checkbox-field { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
   .checkbox-field input { width: 16px; height: 16px; accent-color: var(--accent); }
   .checkbox-field label { margin: 0; font-size: 14px; color: var(--text); }
+  .specs + details {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
   .detect-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
   #detectFontsBtn {
     background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
@@ -156,6 +168,7 @@
   <div class="panel">
     <div id="canvasWrap">
       <canvas id="threeCanvas"></canvas>
+      <button id="resetViewBtn" type="button">Reset view</button>
       <div class="hint">drag to rotate &middot; scroll to zoom</div>
     </div>
     <div class="actions">
@@ -165,8 +178,14 @@
   </div>
 
   <div class="panel">
+    <div class="specs">
+      <div class="spec"><div class="k">LENGTH</div><div class="v">211.2 mm</div></div>
+      <div class="spec"><div class="k">ENGRAVE DEPTH</div><div class="v" id="depthSpec">0.9 mm</div></div>
+      <div class="spec"><div class="k">FONT</div><div class="v" id="fontSpec">Bold Arial</div></div>
+      <div class="spec"><div class="k">TRIANGLES</div><div class="v" id="triCount">&mdash;</div></div>
+    </div>
     <details id="settingsDetails">
-      <summary>Appearance settings</summary>
+      <summary>Change appearance settings</summary>
       <div class="settings-grid">
         <div class="field">
           <label for="fontSelect">Font</label>
@@ -190,15 +209,6 @@
         <span id="fontDetectStatus"></span>
       </div>
     </details>
-  </div>
-
-  <div class="panel">
-    <div class="specs">
-      <div class="spec"><div class="k">LENGTH</div><div class="v">211.2 mm</div></div>
-      <div class="spec"><div class="k">ENGRAVE DEPTH</div><div class="v" id="depthSpec">0.9 mm</div></div>
-      <div class="spec"><div class="k">FONT</div><div class="v" id="fontSpec">Bold Arial</div></div>
-      <div class="spec"><div class="k">TRIANGLES</div><div class="v" id="triCount">&mdash;</div></div>
-    </div>
   </div>
 
   <footer>
@@ -233,23 +243,50 @@ const CURATED_FONTS = [
   'Ubuntu', 'Droid Sans', 'Roboto', 'Open Sans', 'PT Sans', 'Impact',
   'Georgia', 'Times New Roman', 'Palatino', 'Garamond', 'Baskerville',
   'Cambria', 'Constantia', 'Book Antiqua', 'Rockwell', 'Copperplate',
-  'Courier New', 'Consolas', 'Monaco', 'Menlo', 'Comic Sans MS', 'Papyrus'
+  'Courier New', 'Consolas', 'Monaco', 'Menlo', 'Comic Sans MS', 'Papyrus',
+  // CJK / Unicode-capable system fonts (detected via non-Latin probes below)
+  'Microsoft YaHei', 'Microsoft YaHei UI', 'SimSun', 'NSimSun', 'SimHei',
+  'KaiTi', 'FangSong', 'Microsoft JhengHei', 'Microsoft JhengHei UI',
+  'MingLiU', 'PMingLiU', 'DFKai-SB', 'Malgun Gothic', 'Gulim', 'Dotum',
+  'Batang', 'Gungsuh', 'Yu Gothic', 'Yu Gothic UI', 'Meiryo', 'Meiryo UI',
+  'MS Gothic', 'MS PGothic', 'MS Mincho', 'Yu Mincho',
+  'PingFang SC', 'PingFang TC', 'PingFang HK', 'Hiragino Sans',
+  'Hiragino Sans GB', 'Hiragino Mincho ProN', 'Apple SD Gothic Neo',
+  'Songti SC', 'Songti TC', 'Heiti SC', 'Heiti TC', 'STSong', 'STHeiti',
+  'Noto Sans CJK SC', 'Noto Sans CJK TC', 'Noto Sans CJK JP', 'Noto Sans CJK KR',
+  'Noto Sans SC', 'Noto Sans TC', 'Noto Sans JP', 'Noto Sans KR',
+  'Source Han Sans', 'Source Han Sans SC', 'WenQuanYi Micro Hei',
+  'Noto Sans Arabic', 'Traditional Arabic', 'Arabic Typesetting',
+  'Nirmala UI', 'Mangal', 'Latha', 'Gautami', 'Leelawadee UI', 'Leelawadee',
+  'Ebrima', 'Gadugi', 'Myanmar Text', 'Noto Serif', 'Noto Sans Hebrew'
 ];
 
 function isFontAvailable(fontName) {
-  const testString = 'mmmmmmmmmmlli0123';
-  const testSize = 100;
+  // Latin-only probes miss CJK/Arabic/etc. fonts whose Latin metrics match the
+  // fallback. Probe several scripts so Unicode-capable families are detected.
+  const probes = [
+    'mmmmmmmmmmlli0123Ww',
+    '漢字カナ한글',
+    'العربية',
+    'ไทย',
+    'אבגד',
+    'ΑΒΓΔαβγδ',
+    'АБВГДабвгд',
+    'देवनागरी'
+  ];
+  const testSize = 72;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   const baselineFamilies = ['monospace', 'sans-serif', 'serif'];
-  const baselineWidths = baselineFamilies.map(f => {
-    ctx.font = `${testSize}px ${f}`;
-    return ctx.measureText(testString).width;
-  });
-  return baselineFamilies.some((f, i) => {
-    ctx.font = `${testSize}px "${fontName}", ${f}`;
-    return ctx.measureText(testString).width !== baselineWidths[i];
-  });
+  for (const probe of probes) {
+    for (const base of baselineFamilies) {
+      ctx.font = `${testSize}px ${base}`;
+      const baseline = ctx.measureText(probe).width;
+      ctx.font = `${testSize}px "${fontName}", ${base}`;
+      if (ctx.measureText(probe).width !== baseline) return true;
+    }
+  }
+  return false;
 }
 function detectAvailableFonts(list) {
   const found = list.filter(isFontAvailable);
@@ -433,8 +470,15 @@ function buildMeshForName(name) {
 // direction -- confirmed by rendering an asymmetric test glyph and checking
 // it did not come out mirrored.
 let scene, camera, renderer, meshObj, group;
-let rotY = -0.35, rotX = 0.25, dist = 230;
+const DEFAULT_ROTY = -0.35, DEFAULT_ROTX = 0.25, DEFAULT_DIST = 185;
+let rotY = DEFAULT_ROTY, rotX = DEFAULT_ROTX, dist = DEFAULT_DIST;
 let dragging = false, lastX = 0, lastY = 0;
+
+function resetView() {
+  rotY = DEFAULT_ROTY;
+  rotX = DEFAULT_ROTX;
+  dist = DEFAULT_DIST;
+}
 
 function initThree() {
   const canvas = document.getElementById('threeCanvas');
@@ -459,7 +503,10 @@ function initThree() {
   window.addEventListener('resize', resizeRenderer);
 
   const wrap = document.getElementById('canvasWrap');
-  wrap.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.setPointerCapture(e.pointerId); });
+  wrap.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('#resetViewBtn')) return;
+    dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.setPointerCapture(e.pointerId);
+  });
   wrap.addEventListener('pointerup', () => dragging = false);
   wrap.addEventListener('pointercancel', () => dragging = false);
   wrap.addEventListener('pointermove', (e) => {
@@ -474,6 +521,11 @@ function initThree() {
     dist *= (1 + e.deltaY * 0.001);
     dist = Math.max(60, Math.min(700, dist));
   }, { passive: false });
+
+  document.getElementById('resetViewBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetView();
+  });
 
   animate();
 }
