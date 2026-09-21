@@ -104,6 +104,8 @@
     font-size: 11px; color: var(--text-dim); font-family: var(--mono);
     background: rgba(0,0,0,0.25); padding: 3px 8px; border-radius: 4px;
     pointer-events: none;
+    width: max-content; max-width: calc(100% - 16px);
+    white-space: nowrap; text-align: center;
   }
   .actions { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
   button {
@@ -182,10 +184,10 @@
     <div id="canvasWrap">
       <canvas id="threeCanvas"></canvas>
       <div id="viewControls">
-        <button type="button" class="viewNudge" data-dir="left" aria-label="Rotate left">&larr;</button>
-        <button type="button" class="viewNudge" data-dir="right" aria-label="Rotate right">&rarr;</button>
-        <button type="button" class="viewNudge" data-dir="up" aria-label="Rotate up">&uarr;</button>
-        <button type="button" class="viewNudge" data-dir="down" aria-label="Rotate down">&darr;</button>
+        <button type="button" class="viewNudge" data-dir="left" aria-label="Slide left">&larr;</button>
+        <button type="button" class="viewNudge" data-dir="right" aria-label="Slide right">&rarr;</button>
+        <button type="button" class="viewNudge" data-dir="up" aria-label="Slide up">&uarr;</button>
+        <button type="button" class="viewNudge" data-dir="down" aria-label="Slide down">&darr;</button>
         <button id="resetViewBtn" type="button">Reset view</button>
       </div>
       <div class="hint">drag to rotate &middot; pinch or scroll to zoom</div>
@@ -558,12 +560,14 @@ function buildMeshForName(name) {
 let scene, camera, renderer, meshObj, group;
 const DEFAULT_ROTY = -0.35, DEFAULT_ROTX = 0.25, DEFAULT_DIST = 185;
 let rotY = DEFAULT_ROTY, rotX = DEFAULT_ROTX, dist = DEFAULT_DIST;
+let panX = 0, panY = 0, panZ = 0;
 let dragging = false, lastX = 0, lastY = 0;
 
 function resetView() {
   rotY = DEFAULT_ROTY;
   rotX = DEFAULT_ROTX;
   dist = DEFAULT_DIST;
+  panX = 0; panY = 0; panZ = 0;
 }
 
 function initThree() {
@@ -653,19 +657,43 @@ function initThree() {
     resetView();
   });
 
-  const NUDGE = 0.18;
-  const NUDGE_DIR = {
-    left: [-NUDGE, 0],
-    right: [NUDGE, 0],
-    up: [0, -NUDGE],
-    down: [0, NUDGE]
-  };
+  const NUDGE = 0.08;
+  const PAN_MAX = 140;
+  const _fwd = new THREE.Vector3();
+  const _right = new THREE.Vector3();
+  const _camUp = new THREE.Vector3();
+  const _worldUp = new THREE.Vector3(0, 0, -1);
   let holdTimer = 0, holdInterval = 0;
+  function panAxes() {
+    _fwd.set(
+      -Math.cos(rotX) * Math.sin(rotY),
+      -Math.cos(rotX) * Math.cos(rotY),
+      Math.sin(rotX)
+    ).normalize();
+    _right.crossVectors(_fwd, _worldUp);
+    if (_right.lengthSq() < 1e-8) _right.set(1, 0, 0);
+    else _right.normalize();
+    _camUp.crossVectors(_right, _fwd).normalize();
+    return { right: _right, up: _camUp };
+  }
   function nudgeView(dir) {
-    const step = NUDGE_DIR[dir];
-    if (!step) return;
-    rotY += step[0];
-    rotX = Math.max(-1.4, Math.min(1.4, rotX + step[1]));
+    const { right, up } = panAxes();
+    const step = Math.max(8, dist * NUDGE);
+    // Camera/target move opposite the arrow so the model slides with it.
+    let dx = 0, dy = 0, dz = 0;
+    if (dir === 'left') { dx = right.x; dy = right.y; dz = right.z; }
+    else if (dir === 'right') { dx = -right.x; dy = -right.y; dz = -right.z; }
+    else if (dir === 'up') { dx = -up.x; dy = -up.y; dz = -up.z; }
+    else if (dir === 'down') { dx = up.x; dy = up.y; dz = up.z; }
+    else return;
+    panX += dx * step;
+    panY += dy * step;
+    panZ += dz * step;
+    const mag = Math.hypot(panX, panY, panZ);
+    if (mag > PAN_MAX) {
+      const s = PAN_MAX / mag;
+      panX *= s; panY *= s; panZ *= s;
+    }
   }
   function stopNudgeHold() {
     clearTimeout(holdTimer);
@@ -703,12 +731,12 @@ function resizeRenderer() {
 function animate() {
   requestAnimationFrame(animate);
   camera.position.set(
-    dist * Math.cos(rotX) * Math.sin(rotY),
-    dist * Math.cos(rotX) * Math.cos(rotY),
-    -dist * Math.sin(rotX)
+    dist * Math.cos(rotX) * Math.sin(rotY) + panX,
+    dist * Math.cos(rotX) * Math.cos(rotY) + panY,
+    -dist * Math.sin(rotX) + panZ
   );
   camera.up.set(0, 0, -1);
-  camera.lookAt(0, 0, 0);
+  camera.lookAt(panX, panY, panZ);
   renderer.render(scene, camera);
 }
 
