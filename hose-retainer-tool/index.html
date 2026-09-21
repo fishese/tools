@@ -83,13 +83,22 @@
   }
   #canvasWrap:active { cursor: grabbing; }
   #threeCanvas { display: block; width: 100%; height: 100%; }
-  #resetViewBtn {
+  #viewControls {
     position: absolute; top: 10px; right: 10px; z-index: 2;
-    font-size: 12px; font-weight: 600; padding: 6px 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  #viewControls button {
+    box-sizing: border-box; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; padding: 0 10px;
+    min-width: 32px; line-height: 1;
     background: var(--panel); color: var(--text); border: 1px solid var(--line);
     border-radius: 6px; cursor: pointer;
+    touch-action: manipulation; user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
-  #resetViewBtn:hover { border-color: var(--accent); }
+  #viewControls .viewNudge { padding: 0 8px; font-size: 16px; }
+  #viewControls button:hover { border-color: var(--accent); }
   .hint {
     position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
     font-size: 11px; color: var(--text-dim); font-family: var(--mono);
@@ -172,7 +181,13 @@
   <div class="panel">
     <div id="canvasWrap">
       <canvas id="threeCanvas"></canvas>
-      <button id="resetViewBtn" type="button">Reset view</button>
+      <div id="viewControls">
+        <button type="button" class="viewNudge" data-dir="left" aria-label="Rotate left">&larr;</button>
+        <button type="button" class="viewNudge" data-dir="right" aria-label="Rotate right">&rarr;</button>
+        <button type="button" class="viewNudge" data-dir="up" aria-label="Rotate up">&uarr;</button>
+        <button type="button" class="viewNudge" data-dir="down" aria-label="Rotate down">&darr;</button>
+        <button id="resetViewBtn" type="button">Reset view</button>
+      </div>
       <div class="hint">drag to rotate &middot; pinch or scroll to zoom</div>
     </div>
     <div class="actions">
@@ -595,7 +610,7 @@ function initThree() {
   }
 
   wrap.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('#resetViewBtn')) return;
+    if (e.target.closest('#viewControls')) return;
     e.preventDefault();
     pointers.set(e.pointerId, pointerXY(e));
     try { wrap.setPointerCapture(e.pointerId); } catch (_) {}
@@ -636,6 +651,42 @@ function initThree() {
   document.getElementById('resetViewBtn').addEventListener('click', (e) => {
     e.stopPropagation();
     resetView();
+  });
+
+  const NUDGE = 0.18;
+  const NUDGE_DIR = {
+    left: [-NUDGE, 0],
+    right: [NUDGE, 0],
+    up: [0, -NUDGE],
+    down: [0, NUDGE]
+  };
+  let holdTimer = 0, holdInterval = 0;
+  function nudgeView(dir) {
+    const step = NUDGE_DIR[dir];
+    if (!step) return;
+    rotY += step[0];
+    rotX = Math.max(-1.4, Math.min(1.4, rotX + step[1]));
+  }
+  function stopNudgeHold() {
+    clearTimeout(holdTimer);
+    clearInterval(holdInterval);
+    holdTimer = 0;
+    holdInterval = 0;
+  }
+  document.querySelectorAll('#viewControls .viewNudge').forEach((btn) => {
+    const dir = btn.getAttribute('data-dir');
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+      nudgeView(dir);
+      holdTimer = setTimeout(() => {
+        holdInterval = setInterval(() => nudgeView(dir), 70);
+      }, 280);
+    });
+    btn.addEventListener('pointerup', stopNudgeHold);
+    btn.addEventListener('pointercancel', stopNudgeHold);
+    btn.addEventListener('lostpointercapture', stopNudgeHold);
   });
 
   animate();
