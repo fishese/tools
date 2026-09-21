@@ -229,6 +229,7 @@ const PX_PER_MM = 14;
 let ENGRAVE_DEPTH = 0.9;     // mm
 let TEXT_INSET = 3.0;        // mm, keeps letters clear of the reserved-window edge
 let FONT_FAMILY = 'Arial';
+let FONT_LANG = '';
 let FONT_BOLD = true;
 
 // ---- Font list: a cross-platform curated set, narrowed down to whichever of
@@ -292,6 +293,21 @@ function detectAvailableFonts(list) {
   const found = list.filter(isFontAvailable);
   return found.length ? found : ['Arial', 'Helvetica', 'sans-serif'];
 }
+
+// Chrome on Android does not match CSS font-family against installed Noto CJK
+// (and similar) files, so canvas name-detection never sees them. Language
+// presets use generic sans-serif + a lang tag, which is how Android actually
+// selects the right system CJK/script font.
+const SCRIPT_FONTS = [
+  { value: '__script_zh-Hans', label: '中文简体  Chinese Simplified', family: 'sans-serif', lang: 'zh-Hans' },
+  { value: '__script_zh-Hant', label: '中文繁體  Chinese Traditional', family: 'sans-serif', lang: 'zh-Hant' },
+  { value: '__script_ja', label: '日本語  Japanese', family: 'sans-serif', lang: 'ja' },
+  { value: '__script_ko', label: '한국어  Korean', family: 'sans-serif', lang: 'ko' },
+  { value: '__script_ar', label: 'العربية  Arabic', family: 'sans-serif', lang: 'ar' },
+  { value: '__script_th', label: 'ไทย  Thai', family: 'sans-serif', lang: 'th' },
+  { value: '__script_he', label: 'עברית  Hebrew', family: 'sans-serif', lang: 'he' },
+  { value: '__script_hi', label: 'हिन्दी  Hindi', family: 'sans-serif', lang: 'hi' }
+];
 
 // ---------------- base64 -> ArrayBuffer ----------------
 function base64ToArrayBuffer(b64) {
@@ -364,7 +380,9 @@ function getCarrier() {
 // ---------------- text rasterization ----------------
 function fontString(sz) {
   const weight = FONT_BOLD ? 'bold ' : '';
-  return `${weight}${sz}px "${FONT_FAMILY}", Arial, sans-serif`;
+  const generic = /^(serif|sans-serif|monospace|cursive|fantasy|system-ui)$/i.test(FONT_FAMILY);
+  const family = generic ? FONT_FAMILY : `"${FONT_FAMILY}"`;
+  return `${weight}${sz}px ${family}, Arial, sans-serif`;
 }
 
 function rasterizeName(name) {
@@ -372,7 +390,9 @@ function rasterizeName(name) {
   const cw = Math.round(rectW * PX_PER_MM), ch = Math.round(rectH * PX_PER_MM);
   const canvas = document.createElement('canvas');
   canvas.width = cw; canvas.height = ch;
+  canvas.lang = FONT_LANG || 'en';
   const ctx = canvas.getContext('2d');
+  if ('lang' in ctx) ctx.lang = FONT_LANG || 'en';
   ctx.clearRect(0, 0, cw, ch);
 
   const availW = cw - 2 * TEXT_INSET * PX_PER_MM;
@@ -596,17 +616,43 @@ const fontSpec = document.getElementById('fontSpec');
 const detectFontsBtn = document.getElementById('detectFontsBtn');
 const fontDetectStatus = document.getElementById('fontDetectStatus');
 
+function applySelectedFont() {
+  const opt = fontSelect.selectedOptions[0];
+  if (!opt) return;
+  FONT_FAMILY = opt.dataset.family || opt.value;
+  FONT_LANG = opt.dataset.lang || '';
+}
+
 function populateFontSelect(fonts, selected) {
   const prev = selected || fontSelect.value || FONT_FAMILY;
   fontSelect.innerHTML = '';
+
+  const installed = document.createElement('optgroup');
+  installed.label = 'Installed fonts';
   fonts.forEach(f => {
     const opt = document.createElement('option');
     opt.value = f; opt.textContent = f;
+    opt.dataset.family = f;
     opt.style.fontFamily = `"${f}"`;
-    fontSelect.appendChild(opt);
+    installed.appendChild(opt);
   });
-  fontSelect.value = fonts.includes(prev) ? prev : fonts[0];
-  FONT_FAMILY = fontSelect.value;
+  fontSelect.appendChild(installed);
+
+  const scripts = document.createElement('optgroup');
+  scripts.label = 'Other languages';
+  SCRIPT_FONTS.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.value;
+    opt.textContent = s.label;
+    opt.dataset.family = s.family;
+    opt.dataset.lang = s.lang;
+    scripts.appendChild(opt);
+  });
+  fontSelect.appendChild(scripts);
+
+  const values = [...fontSelect.options].map(o => o.value);
+  fontSelect.value = values.includes(prev) ? prev : (fonts[0] || SCRIPT_FONTS[0].value);
+  applySelectedFont();
 }
 populateFontSelect(detectAvailableFonts(CURATED_FONTS), 'Arial');
 
@@ -619,7 +665,7 @@ detectFontsBtn.addEventListener('click', async () => {
   try {
     const fonts = await window.queryLocalFonts();
     const families = [...new Set(fonts.map(f => f.family))].sort();
-    populateFontSelect(families, FONT_FAMILY);
+    populateFontSelect(families, fontSelect.value);
     fontDetectStatus.textContent = `Loaded ${families.length} installed fonts`;
     refresh();
   } catch (e) {
@@ -627,7 +673,7 @@ detectFontsBtn.addEventListener('click', async () => {
   }
 });
 
-fontSelect.addEventListener('change', () => { FONT_FAMILY = fontSelect.value; refresh(); });
+fontSelect.addEventListener('change', () => { applySelectedFont(); refresh(); });
 boldCheckbox.addEventListener('change', () => { FONT_BOLD = boldCheckbox.checked; refresh(); });
 depthInput.addEventListener('input', () => {
   const v = parseFloat(depthInput.value);
@@ -656,7 +702,8 @@ function refresh() {
       updateMesh(currentMesh.vertices, currentMesh.faces);
       fitWarning.textContent = lastRaster.tooSmall ? 'small font at this length' : '';
       fitWarning.className = lastRaster.tooSmall ? 'warn' : '';
-      fontSpec.textContent = (FONT_BOLD ? 'Bold ' : '') + FONT_FAMILY;
+      const fontLabel = (fontSelect.selectedOptions[0] && fontSelect.selectedOptions[0].textContent) || FONT_FAMILY;
+      fontSpec.textContent = (FONT_BOLD ? 'Bold ' : '') + fontLabel;
       statusText.textContent = 'Ready';
       downloadBtn.disabled = !name.trim();
     } catch (err) {
