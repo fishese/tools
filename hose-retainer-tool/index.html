@@ -85,6 +85,8 @@
   #viewControls {
     position: absolute; top: 10px; right: 10px; z-index: 2;
     display: flex; align-items: center; gap: 6px;
+    flex-wrap: wrap; justify-content: flex-end;
+    max-width: calc(100% - 20px);
   }
   #viewControls button {
     box-sizing: border-box; height: 32px;
@@ -302,7 +304,14 @@ const CURATED_FONTS = [
   'Ebrima', 'Gadugi', 'Myanmar Text', 'Noto Serif', 'Noto Sans Hebrew'
 ];
 
-function isFontAvailable(fontName) {
+const WEB_FONTS = [
+  'Noto Sans JP', 'Noto Sans TC', 'Klee One', 'LXGW WenKai TC',
+  'Signika', 'Nunito'
+];
+// Klee One has no 700 cut; SemiBold (600) is the boldest Google Fonts file.
+const WEB_FONT_BOLD_WEIGHT = { 'Klee One': 600 };
+
+function detectInstalledFonts(list) {
   // Latin-only probes miss CJK/Arabic/etc. fonts whose Latin metrics match the
   // fallback. Probe several scripts so Unicode-capable families are detected.
   const probes = [
@@ -316,29 +325,30 @@ function isFontAvailable(fontName) {
     'देवनागरी'
   ];
   const testSize = 72;
+  const baselineFamilies = ['monospace', 'sans-serif', 'serif'];
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  const baselineFamilies = ['monospace', 'sans-serif', 'serif'];
-  for (const probe of probes) {
-    for (const base of baselineFamilies) {
-      ctx.font = `${testSize}px ${base}`;
-      const baseline = ctx.measureText(probe).width;
-      ctx.font = `${testSize}px "${fontName}", ${base}`;
-      if (ctx.measureText(probe).width !== baseline) return true;
+
+  // Baseline widths depend only on (probe, generic family), never on the
+  // candidate font, so compute each one once up front rather than
+  // recomputing it inside the per-candidate loop below (this list runs to
+  // 100+ fonts, so that was ~2400 redundant measureText calls on load).
+  const baselines = probes.map(probe => baselineFamilies.map(base => {
+    ctx.font = `${testSize}px ${base}`;
+    return ctx.measureText(probe).width;
+  }));
+
+  function isAvailable(fontName) {
+    for (let p = 0; p < probes.length; p++) {
+      for (let b = 0; b < baselineFamilies.length; b++) {
+        ctx.font = `${testSize}px "${fontName}", ${baselineFamilies[b]}`;
+        if (ctx.measureText(probes[p]).width !== baselines[p][b]) return true;
+      }
     }
+    return false;
   }
-  return false;
-}
 
-const WEB_FONTS = [
-  'Noto Sans JP', 'Noto Sans TC', 'Klee One', 'LXGW WenKai TC',
-  'Signika', 'Nunito'
-];
-// Klee One has no 700 cut; SemiBold (600) is the boldest Google Fonts file.
-const WEB_FONT_BOLD_WEIGHT = { 'Klee One': 600 };
-
-function detectInstalledFonts(list) {
-  const found = list.filter(f => !WEB_FONTS.includes(f) && isFontAvailable(f));
+  const found = list.filter(f => !WEB_FONTS.includes(f) && isAvailable(f));
   return found.length ? found : ['Arial', 'Helvetica', 'sans-serif'];
 }
 
@@ -413,7 +423,14 @@ function getCarrier() {
 // ---------------- text rasterization ----------------
 function fontString(sz) {
   const weight = FONT_BOLD ? (WEB_FONT_BOLD_WEIGHT[FONT_FAMILY] || 700) : 400;
-  return `${weight} ${sz}px "${FONT_FAMILY}", AdobeBlank`;
+  // Real color-emoji fonts listed explicitly, ahead of AdobeBlank: these are
+  // installed-OS fonts (nothing to download), and naming them here lets the
+  // browser's normal per-character fallback reach them for emoji codepoints
+  // your chosen font doesn't cover. Without this, AdobeBlank -- which maps
+  // nearly every codepoint to an empty glyph, that's its whole job -- would
+  // "claim" emoji first and render them blank before the browser ever tries
+  // its own emoji font.
+  return `${weight} ${sz}px "${FONT_FAMILY}", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", AdobeBlank`;
 }
 
 function glyphPresent(ctx, ch, sz) {
@@ -429,6 +446,29 @@ function nameChars(text) {
     return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)].map(s => s.segment);
   }
   return Array.from(text);
+}
+
+// Scripts where a letter's shape (or position) depends on its neighbors:
+// Arabic-family letters join into initial/medial/final forms, and Indic
+// scripts reorder vowel signs and ligate conjunct consonants. Drawing these
+// one grapheme cluster at a time (like the tracked-spacing path below does)
+// bypasses the browser's shaping engine and breaks exactly those things --
+// Arabic would come out as disconnected isolated letters, Devanagari
+// conjuncts wouldn't ligate. Text using these scripts is measured and drawn
+// as one whole string instead, so real shaping still applies; it just
+// doesn't get the extra manual tracking.
+function needsWholeStringShaping(text) {
+  for (const ch of text) {
+    const cp = ch.codePointAt(0);
+    if ((cp >= 0x0590 && cp <= 0x08FF) ||  // Hebrew, Arabic, Syriac, Thaana, N'Ko, Samaritan, Mandaic
+        (cp >= 0xFB1D && cp <= 0xFDFF) ||  // Hebrew / Arabic presentation forms A
+        (cp >= 0xFE70 && cp <= 0xFEFF) ||  // Arabic presentation forms B
+        (cp >= 0x0900 && cp <= 0x0DFF) ||  // Devanagari .. Sinhala (Indic scripts)
+        (cp >= 0x0F00 && cp <= 0x0FFF)) {  // Tibetan
+      return true;
+    }
+  }
+  return false;
 }
 
 function trackingPx(ch, sz) {
@@ -474,11 +514,18 @@ function rasterizeName(name) {
   ctx.clearRect(0, 0, cw, ch);
 
   const chars = nameChars(name);
+  const complex = needsWholeStringShaping(name);
   const availW = cw - 2 * TEXT_INSET * PX_PER_MM;
   const availH = ch - 2 * TEXT_INSET * PX_PER_MM;
 
   function measureAt(sz) {
     ctx.font = fontString(sz);
+    if (complex) {
+      const wm = ctx.measureText(name);
+      const ascent = (wm.actualBoundingBoxAscent !== undefined && wm.actualBoundingBoxAscent > 0) ? wm.actualBoundingBoxAscent : sz * 0.72;
+      const descent = (wm.actualBoundingBoxDescent !== undefined) ? wm.actualBoundingBoxDescent : sz * 0.2;
+      return { width: wm.width, ascent, descent, height: ascent + descent };
+    }
     const width = measureSpaced(ctx, chars, sz);
     let ascent = 0, descent = 0;
     for (const ch of chars) {
@@ -504,7 +551,11 @@ function rasterizeName(name) {
   ctx.fillStyle = '#fff';
   const x = (cw - m.width) / 2;
   const yBaseline = (ch - m.height) / 2 + m.ascent;
-  fillTextSpaced(ctx, chars, x, yBaseline, size);
+  if (complex) {
+    ctx.fillText(name, x, yBaseline);
+  } else {
+    fillTextSpaced(ctx, chars, x, yBaseline, size);
+  }
 
   const missing = [...new Set(chars.filter(ch => !glyphPresent(ctx, ch, size)))];
   const imgData = ctx.getImageData(0, 0, cw, ch).data;
@@ -874,10 +925,18 @@ let refreshGen = 0;
 function ensureFontLoaded(text) {
   if (!document.fonts || !document.fonts.load) return Promise.resolve();
   const sample = (text && text.trim()) ? text : 'Aa';
-  return Promise.all([
+  const loadPromise = Promise.all([
     document.fonts.load('64px AdobeBlank'),
     document.fonts.load(fontString(64), sample)
   ]);
+  // Render with whatever's available rather than getting stuck: a blocked
+  // font CDN (offline, ad-blocker, corporate proxy) shouldn't leave the
+  // page permanently on "Building..." with the download button disabled --
+  // canvas will fall back to whatever font IS available regardless.
+  const timeout = new Promise((resolve) => setTimeout(resolve, 2500));
+  return Promise.race([loadPromise, timeout]).catch((err) => {
+    console.warn('Font load issue, continuing with fallback font:', err);
+  });
 }
 
 function refresh() {
@@ -907,9 +966,6 @@ function refresh() {
         statusText.textContent = 'Error building preview';
         console.error(err);
       }
-    }).catch((err) => {
-      console.error(err);
-      statusText.textContent = 'Error loading font';
     });
   }, 10);
 }
