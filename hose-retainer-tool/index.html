@@ -6,7 +6,7 @@
 <title>Hose Retainer Model Builder</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@400;700&family=Signika:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Emoji:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+TC:wght@400;700&family=Nunito:wght@400;700&family=Signika:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="adobe-blank.css">
 <script src="three.min.js"></script>
 <script src="carrier-data.js"></script>
@@ -187,9 +187,9 @@
 
   <div class="panel">
     <label for="nameInput">Name to engrave</label>
-    <input id="nameInput" type="text" maxlength="24" value="Fishese" autocomplete="off" spellcheck="false">
+    <input id="nameInput" type="text" maxlength="24" value="Fishese &#x1F41F;" autocomplete="off" spellcheck="false">
     <div class="meta-row">
-      <span id="charCount">6 / 24</span>
+      <span id="charCount">10 / 24</span>
       <span id="fitWarning"></span>
     </div>
   </div>
@@ -423,14 +423,14 @@ function getCarrier() {
 // ---------------- text rasterization ----------------
 function fontString(sz) {
   const weight = FONT_BOLD ? (WEB_FONT_BOLD_WEIGHT[FONT_FAMILY] || 700) : 400;
-  // Real color-emoji fonts listed explicitly, ahead of AdobeBlank: these are
-  // installed-OS fonts (nothing to download), and naming them here lets the
-  // browser's normal per-character fallback reach them for emoji codepoints
-  // your chosen font doesn't cover. Without this, AdobeBlank -- which maps
-  // nearly every codepoint to an empty glyph, that's its whole job -- would
-  // "claim" emoji first and render them blank before the browser ever tries
-  // its own emoji font.
-  return `${weight} ${sz}px "${FONT_FAMILY}", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", AdobeBlank`;
+  // Noto Emoji (monochrome webfont) sits between the chosen font and
+  // AdobeBlank so emoji reach a real glyph instead of being blanked. The OS
+  // emoji fonts can't be used here: Android declares its emoji font as an
+  // unnamed fallback family, so "Noto Color Emoji" resolves to nothing there
+  // and AdobeBlank swallows the codepoint. A downloaded family resolves the
+  // same everywhere. Monochrome also engraves better -- a color emoji's
+  // alpha is one solid silhouette, losing all interior detail.
+  return `${weight} ${sz}px "${FONT_FAMILY}", "Noto Emoji", AdobeBlank`;
 }
 
 function glyphPresent(ctx, ch, sz) {
@@ -925,8 +925,13 @@ let refreshGen = 0;
 function ensureFontLoaded(text) {
   if (!document.fonts || !document.fonts.load) return Promise.resolve();
   const sample = (text && text.trim()) ? text : 'Aa';
+  const weight = FONT_BOLD ? (WEB_FONT_BOLD_WEIGHT[FONT_FAMILY] || 700) : 400;
   const loadPromise = Promise.all([
     document.fonts.load('64px AdobeBlank'),
+    // Asked for by name so the emoji subsets the text needs are fetched even
+    // if a browser only resolves the first family in the shorthand. Noto Emoji
+    // is unicode-range split, so plain Latin names download nothing.
+    document.fonts.load(`${weight} 64px "Noto Emoji"`, sample),
     document.fonts.load(fontString(64), sample)
   ]);
   // Render with whatever's available rather than getting stuck: a blocked
