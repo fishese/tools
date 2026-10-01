@@ -94,7 +94,7 @@
     cursor: grab;
   }
   #canvasWrap:active { cursor: grabbing; }
-  #threeCanvas { display: block; width: 100%; height: 100%; }
+  #threeCanvas { display: block; width: 100%; height: 100%; touch-action: none; }
   #viewControls {
     position: absolute; top: 10px; right: 10px; z-index: 2;
     display: flex; align-items: center; gap: 6px;
@@ -699,6 +699,40 @@ function initThree() {
   window.addEventListener('resize', resizeRenderer);
 
   const wrap = document.getElementById('canvasWrap');
+  // A pinch that starts on the preview, or in the padding around it, was
+  // still scrolling the page. Cancel that gesture unless it is on a button.
+  const previewPanel = wrap.parentElement;
+  const scrollLockIds = new Set();
+  function touchBlocksScroll(touch, fallback) {
+    const el = document.elementFromPoint(touch.clientX, touch.clientY) || fallback;
+    if (!el || !previewPanel.contains(el)) return false;
+    if (el.closest('button, a, input, select, textarea, label')) return false;
+    return true;
+  }
+  previewPanel.addEventListener('touchstart', (e) => {
+    let block = false;
+    for (const t of e.changedTouches) {
+      if (touchBlocksScroll(t, e.target)) {
+        scrollLockIds.add(t.identifier);
+        block = true;
+      }
+    }
+    if (block && e.cancelable) e.preventDefault();
+  }, { passive: false });
+  previewPanel.addEventListener('touchmove', (e) => {
+    for (const t of e.touches) {
+      if (scrollLockIds.has(t.identifier)) {
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+    }
+  }, { passive: false });
+  function releaseScrollLock(e) {
+    for (const t of e.changedTouches) scrollLockIds.delete(t.identifier);
+  }
+  previewPanel.addEventListener('touchend', releaseScrollLock);
+  previewPanel.addEventListener('touchcancel', releaseScrollLock);
+
   const pointers = new Map();
   let pinchStartGap = 0, pinchStartDist = 0;
 
