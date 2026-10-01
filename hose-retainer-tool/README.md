@@ -89,4 +89,6 @@ at a glance.
 
 The base geometry this tool customizes is modified from
 [Scuba Long Hose Retainer](https://www.thingiverse.com/thing:5394977) by
-henryci on Thingiverse. The attribution is also shown in the page footer.
+henryci on Thingiverse, licensed under
+[Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+The attribution is also shown in the page footer.
