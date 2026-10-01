@@ -89,7 +89,7 @@
   }
   .warn { color: #e0a339; }
   #canvasWrap {
-    width: 100%; aspect-ratio: 16/7; background: var(--panel-2);
+    width: 100%; aspect-ratio: 5/2; background: var(--panel-2);
     border-radius: 8px; overflow: hidden; position: relative; touch-action: none;
     cursor: grab;
   }
@@ -642,17 +642,39 @@ function buildMeshForName(name) {
 // direction -- confirmed by rendering an asymmetric test glyph and checking
 // it did not come out mirrored.
 let scene, camera, renderer, meshObj, group;
-const DEFAULT_ROTY = -0.35, DEFAULT_ROTX = 0.25, DEFAULT_DIST = 185;
+const DEFAULT_ROTY = 0.62, DEFAULT_ROTX = 0.75, DEFAULT_DIST = 240;
+const NUDGE = 0.08;
 let rotY = DEFAULT_ROTY, rotX = DEFAULT_ROTX, dist = DEFAULT_DIST;
 let panX = 0, panY = 0, panZ = 0;
 let dragging = false, lastX = 0, lastY = 0;
+
+// Same offset as one press of the left arrow and one press of the up arrow.
+function defaultPan() {
+  const fwd = new THREE.Vector3(
+    -Math.cos(DEFAULT_ROTX) * Math.sin(DEFAULT_ROTY),
+    -Math.cos(DEFAULT_ROTX) * Math.cos(DEFAULT_ROTY),
+    Math.sin(DEFAULT_ROTX)
+  ).normalize();
+  const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 0, -1));
+  if (right.lengthSq() < 1e-8) right.set(1, 0, 0);
+  else right.normalize();
+  const up = new THREE.Vector3().crossVectors(right, fwd).normalize();
+  const step = Math.max(8, DEFAULT_DIST * NUDGE);
+  return {
+    x: (right.x - up.x) * step,
+    y: (right.y - up.y) * step,
+    z: (right.z - up.z) * step,
+  };
+}
 
 function resetView() {
   rotY = DEFAULT_ROTY;
   rotX = DEFAULT_ROTX;
   dist = DEFAULT_DIST;
-  panX = 0; panY = 0; panZ = 0;
+  const p = defaultPan();
+  panX = p.x; panY = p.y; panZ = p.z;
 }
+resetView();
 
 function initThree() {
   const canvas = document.getElementById('threeCanvas');
@@ -741,7 +763,6 @@ function initThree() {
     resetView();
   });
 
-  const NUDGE = 0.08;
   const PAN_MAX = 140;
   const _fwd = new THREE.Vector3();
   const _right = new THREE.Vector3();
