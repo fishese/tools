@@ -35,10 +35,16 @@
     a:hover {
       color: #004499;
     }
+    .image-gallery {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
     .preview-image {
       max-width: 100%;
       height: auto;
       border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
       display: block;
       margin: 0 auto;
     }
@@ -55,7 +61,10 @@
       </p>
     </div>
     
-    <img src="photo.jpg" alt="Divevolk Max 4 Protector with modified STL and expansion clamp" class="preview-image">
+    <div class="image-gallery">
+      <img src="photo.jpg" alt="Divevolk Max 4 Protector with modified STL and expansion clamp - views" class="preview-image">
+      <img src="photo2.jpg" alt="Divevolk Max 4 Protector components and layout" class="preview-image">
+    </div>
   </div>
 
 </body>
