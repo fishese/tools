@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>QR Generator · Tools</title>
+  <style>
+    :root {
+      --bg: #e8e6e1; --surface: #f2f0ec; --text: #1a1a1a;
+      --muted: #666; --border: rgba(0, 0, 0, .12); --field: #faf9f6;
+      --focus: #356c7a; --shadow: rgba(0, 0, 0, .07); --accent: #242424;
+      color-scheme: light;
+    }
+    [data-theme="dark"] {
+      --bg: #0f0f0f; --surface: #272727; --text: #f2f2f2;
+      --muted: #aaa; --border: rgba(255, 255, 255, .16); --field: #191919;
+      --focus: #7ed4e7; --shadow: rgba(0, 0, 0, .22); --accent: #ececec;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 18px 54px; background: var(--bg);
+      color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    header, main, footer { max-width: 960px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 30px; }
+    .back { color: var(--muted); text-decoration: none; font-weight: 600; }
+    .back:hover { color: var(--text); }
+    .theme { border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+      color: var(--text); width: 40px; height: 40px; font-size: 19px; cursor: pointer; }
+    h1 { font-size: clamp(1.65rem, 4vw, 2rem); letter-spacing: -.045em; margin: 0 0 5px; }
+    .intro { color: var(--muted); margin: 0 0 25px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.07fr) minmax(280px, .93fr); gap: 22px; align-items: start; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      box-shadow: 0 3px 14px var(--shadow); padding: 24px; min-width: 0; }
+    .tabs { display: flex; gap: 6px; background: var(--bg); border-radius: 11px; padding: 5px; margin: 0 0 24px; }
+    .tab { flex: 1; border: 0; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600;
+      color: var(--muted); background: transparent; cursor: pointer; padding: 10px 8px; }
+    .tab[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px var(--shadow); }
+    [hidden] { display: none !important; }
+    label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 7px; }
+    input:not([type="checkbox"]), textarea, select { width: 100%; min-height: 45px; padding: 11px 12px;
+      font: inherit; border-radius: 9px; border: 1px solid var(--border);
+      background: var(--field); color: var(--text); outline-offset: 2px; }
+    textarea { min-height: 145px; resize: vertical; }
+    input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+      outline: 2px solid var(--focus); outline-offset: 3px; }
+    .field { margin-bottom: 19px; }
+    .help { color: var(--muted); font-size: 12px; margin: 7px 0 0; }
+    .checkrow { display: flex; align-items: center; gap: 9px; cursor: pointer; font-size: 14px; margin: 0; }
+    .checkrow input { width: 17px; height: 17px; accent-color: var(--focus); margin: 0; }
+    .password-wrap { display: flex; gap: 7px; align-items: stretch; }
+    .password-wrap input { min-width: 0; }
+    .password-wrap button { background: var(--field); border: 1px solid var(--border); color: var(--text);
+      padding: 0 12px; border-radius: 9px; cursor: pointer; }
+    .preview-panel { text-align: center; }
+    .preview-title { margin: 0 0 12px; font-size: 16px; font-weight: 700; }
+    .preview { width: 100%; aspect-ratio: 1; max-width: 370px; margin: 0 auto;
+      border: 1px solid var(--border); border-radius: 12px; background: #fff;
+      display: grid; place-items: center; padding: 12px; overflow: hidden; }
+    .preview svg { display: block; width: 100%; height: auto; aspect-ratio: 1; }
+    .empty { padding: 18px; color: #777; font-size: 14px; max-width: 230px; }
+    .status { font-size: 12px; color: var(--muted); min-height: 20px; margin: 13px 0 0; }
+    .status.error { color: #c04a3f; }
+    .actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 18px; }
+    .actions button { flex: 1; min-width: 118px; cursor: pointer; border: 1px solid var(--border);
+      border-radius: 10px; background: var(--accent); color: var(--bg);
+      font: inherit; font-size: 14px; font-weight: 650; padding: 12px 10px; }
+    .actions button.secondary { background: var(--surface); color: var(--text); }
+    .actions button:disabled { opacity: .4; cursor: not-allowed; }
+    .privacy { color: var(--muted); border-top: 1px solid var(--border); margin-top: 23px;
+      padding-top: 15px; text-align: left; font-size: 12px; line-height: 1.6; }
+    .privacy strong { color: var(--text); }
+    footer { margin-top: 32px; font-size: 12px; color: var(--muted); text-align: center; }
+    footer a { color: inherit; }
+    @media (max-width: 700px) {
+      body { padding: 18px 13px 45px; }
+      header { margin-bottom: 22px; }
+      .layout { grid-template-columns: 1fr; gap: 14px; }
+      .panel { padding: 20px; }
+      .preview { max-width: 325px; }
+    }
+  </style>
+  <script defer src="vendor/qrcode.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header>
+    <a class="back" href="../">← All tools</a>
+    <button class="theme" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">🌙</button>
+  </header>
+  <main>
+    <h1>QR Generator</h1>
+    <p class="intro">Make a QR code for a link, any text, or Wi-Fi access. No account, no ads, no uploads.</p>
+    <div class="layout">
+      <section class="panel" aria-label="QR code content">
+        <div class="tabs" role="tablist" aria-label="QR code type">
+          <button class="tab" type="button" role="tab" id="tab-link" aria-selected="true" aria-controls="panel-link" data-type="link">🔗 Link</button>
+          <button class="tab" type="button" role="tab" id="tab-text" aria-selected="false" aria-controls="panel-text" data-type="text" tabindex="-1">📝 Text</button>
+          <button class="tab" type="button" role="tab" id="tab-wifi" aria-selected="false" aria-controls="panel-wifi" data-type="wifi" tabindex="-1">📶 Wi-Fi</button>
+        </div>
+        <div id="panel-link" role="tabpanel" aria-labelledby="tab-link">
+          <label for="link">Website link</label>
+          <input id="link" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://example.com/">
+          <p class="help">Missing https://? I'll add it to a web address for you.</p>
+        </div>
+        <div id="panel-text" role="tabpanel" aria-labelledby="tab-text" hidden>
+          <label for="content">Text to encode</label>
+          <textarea id="content" placeholder="Type or paste text here…" spellcheck="false"></textarea>
+          <p class="help">Supports Chinese, Japanese, emoji, and line breaks.</p>
+        </div>
+        <div id="panel-wifi" role="tabpanel" aria-labelledby="tab-wifi" hidden>
+          <div class="field">
+            <label for="ssid">Network name (SSID)</label>
+            <input id="ssid" type="text" autocomplete="off" spellcheck="false" placeholder="My Wi-Fi">
+          </div>
+          <div class="field">
+            <label for="security">Security</label>
+            <select id="security">
+              <option value="WPA">WPA / WPA2 / WPA3 Personal</option>
+              <option value="SAE">WPA3-only (SAE)</option>
+              <option value="WEP">WEP (legacy)</option>
+              <option value="nopass">Open (no password)</option>
+            </select>
+          </div>
+          <div class="field" id="password-field">
+            <label for="password">Wi-Fi password</label>
+            <div class="password-wrap">
+              <input id="password" type="password" autocomplete="new-password" spellcheck="false" placeholder="Network password">
+              <button id="show-password" type="button" aria-label="Show password" aria-pressed="false">Show</button>
+            </div>
+          </div>
+          <label class="checkrow" for="hidden-network">
+            <input id="hidden-network" type="checkbox">
+            Hidden network
+          </label>
+          <p class="help">The password is readable by anyone who scans the QR code. Share it carefully.</p>
+        </div>
+      </section>
+      <section class="panel preview-panel" aria-label="Generated QR code">
+        <h2 class="preview-title">Your QR code</h2>
+        <div class="preview" id="preview" aria-label="QR code preview">
+          <div class="empty" id="empty">Enter something on the left to generate a QR code.</div>
+        </div>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <div class="actions">
+          <button id="save-png" type="button" disabled>Download PNG</button>
+          <button id="save-svg" type="button" class="secondary" disabled>Download SVG</button>
+        </div>
+        <div class="privacy">
+          <strong>Private by design.</strong> QR codes are generated entirely in this browser.
+          Your content, including Wi-Fi passwords, isn't sent to any server, stored, or added to the URL.
+          Once loaded, this page works offline, even as a local HTML file.
+        </div>
+      </section>
+    </div>
+  </main>
+  <footer>Made for <a href="../">Tools</a> · No external libraries loaded at runtime</footer>
+</body>
+</html>
