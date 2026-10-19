@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="QR Generator">
+  <rect width="512" height="512" rx="106" fill="#f4f2ee"/>
+  <g fill="#181818">
+    <path fill-rule="evenodd" d="M130 130h104v104H130zm22 22v60h60v-60z M278 130h104v104H278zm22 22v60h60v-60z M130 278h104v104H130zm22 22v60h60v-60z"/>
+    <rect x="170" y="170" width="24" height="24"/><rect x="318" y="170" width="24" height="24"/><rect x="170" y="318" width="24" height="24"/>
+    <path d="M278 278h22v22h-22zm44 0h22v22h-22zm44 0h16v22h-16zm-88 44h22v22h-22zm44 0h22v22h-22zm44 0h16v22h-16zm-88 44h22v16h-22zm44 0h60v16h-60z"/>
+  </g>
+</svg>
