@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#181818">
+<title>iPhone Share Sheet · QR Generator</title>
+<style>
+:root{color-scheme:light;--bg:#e8e6e1;--surface:#f2f0ec;--text:#1a1a1a;--muted:#666;--border:rgba(0,0,0,.12)}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#0f0f0f;--surface:#272727;--text:#f2f2f2;--muted:#aaa;--border:rgba(255,255,255,.16)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px 16px 50px}
+main{max-width:680px;margin:auto}a{color:inherit}h1{font-size:1.7rem}h2{font-size:1.1rem;margin-top:25px}
+.panel{padding:24px;border-radius:16px;background:var(--surface);border:1px solid var(--border)}
+li{margin:10px 0}p{color:var(--muted)}code{word-break:break-all;user-select:all;display:block;padding:12px;border:1px solid var(--border);border-radius:9px;background:var(--bg)}
+strong{color:var(--text)}
+</style>
+</head>
+<body>
+<main>
+<p><a href="./">← QR Generator</a></p>
+<div class="panel">
+<h1>QR Generator from the iPhone Share Sheet</h1>
+<p>iOS doesn't support PWA Web Share Targets. You can still add QR Generator to the home screen using Safari's <strong>Add to Home Screen</strong>; to receive shared URLs or text, create a simple Apple Shortcut:</p>
+<ol>
+<li>Open the <strong>Shortcuts</strong> app, tap <strong>+</strong>, and name the shortcut <strong>QR Generator</strong>.</li>
+<li>Open the shortcut's details and enable <strong>Show in Share Sheet</strong>. Set accepted input types to <strong>URLs</strong> and <strong>Text</strong>.</li>
+<li>Add <strong>URL Encode</strong> and set its input to <strong>Shortcut Input</strong> (Encode, not Decode).</li>
+<li>Add a <strong>Text</strong> action. Insert the following prefix, immediately followed by the blue variable for <strong>URL Encoded</strong> output of the previous action:</li>
+</ol>
+<code>https://tools.fishese.cc/qr/#type=text&amp;data=</code>
+<ol start="5">
+<li>Add <strong>URL</strong>, taking its input from the Text action, then add <strong>Open URLs</strong> with the URL result.</li>
+<li>Save. From Safari or another app, choose <strong>Share → QR Generator</strong>.</li>
+</ol>
+<p>A shared link is encoded as text, but QR scanners still recognize the underlying link. Text and URLs never become HTTP query parameters; the generator clears the fragment after reading it.</p>
+<h2>Clipboard alternative</h2>
+<p>To make a second shortcut that runs from your home screen, replace <strong>Shortcut Input</strong> in step 3 with a <strong>Get Clipboard</strong> action. Leave the other actions the same.</p>
+<p><strong>Note:</strong> A preinstalled, signed Shortcut requires creation and sharing from Apple's Shortcuts app; this page provides the exact local steps instead of claiming to offer an unverified iCloud install link.</p>
+</div>
+</main>
+</body>
+</html>
