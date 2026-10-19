@@ -71,6 +71,18 @@
     .privacy { color: var(--muted); border-top: 1px solid var(--border); margin-top: 23px;
       padding-top: 15px; text-align: left; font-size: 12px; line-height: 1.6; }
     .privacy strong { color: var(--text); }
+    .bookmarklets { margin-top: 22px; }
+    .bookmarklets h2 { font-size: 17px; margin: 0 0 6px; }
+    .bookmarklet-list { display: grid; gap: 10px; margin-top: 18px; }
+    .bookmarklet-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+      padding: 11px 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--field); }
+    .bookmarklet-link { display: inline-block; padding: 9px 13px; border-radius: 8px;
+      color: var(--bg); background: var(--accent); font-weight: 650; text-decoration: none;
+      white-space: nowrap; cursor: grab; }
+    .bookmarklet-description { color: var(--muted); font-size: 13px; flex: 1; min-width: 180px; }
+    .bookmarklet-copy { border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+      background: var(--surface); padding: 9px 12px; font: inherit; cursor: pointer; }
+    #bookmarklet-help { min-height: 18px; }
     footer { margin-top: 32px; font-size: 12px; color: var(--muted); text-align: center; }
     footer a { color: inherit; }
     @media (max-width: 700px) {
@@ -149,11 +161,35 @@
         </div>
         <div class="privacy">
           <strong>Private by design.</strong> QR codes are generated entirely in this browser.
-          Your content, including Wi-Fi passwords, isn't sent to any server, stored, or added to the URL.
-          Once loaded, this page works offline, even as a local HTML file.
+          QR content isn't sent to a server or stored by the tool.
+          Bookmarklets briefly transfer the webpage URL or text through a URL fragment (after #),
+          which isn't included in HTTP requests and is removed as soon as this page reads it.
+          Avoid using bookmarklets for secrets. Once loaded, this page also works offline.
         </div>
       </section>
     </div>
+    <section class="panel bookmarklets" aria-labelledby="bookmarklets-title">
+      <h2 id="bookmarklets-title">Quick QR bookmarklets</h2>
+      <p class="help">Drag one of these links to your browser's bookmarks bar. On another webpage, click that bookmark to open a ready-made QR code. If dragging doesn't work, use Copy code and paste it into a bookmark's URL field.</p>
+      <div class="bookmarklet-list">
+        <div class="bookmarklet-row">
+          <a id="bookmarklet-page" class="bookmarklet-link" href="#" draggable="true">🔗 Page → QR</a>
+          <span class="bookmarklet-description">Generate a QR for the current webpage address.</span>
+          <button class="bookmarklet-copy" id="copy-bookmarklet-page" type="button">Copy code</button>
+        </div>
+        <div class="bookmarklet-row">
+          <a id="bookmarklet-clipboard" class="bookmarklet-link" href="#" draggable="true">📋 Clipboard → QR</a>
+          <span class="bookmarklet-description">Use copied text; asks you to paste if the browser blocks clipboard access.</span>
+          <button class="bookmarklet-copy" id="copy-bookmarklet-clipboard" type="button">Copy code</button>
+        </div>
+        <div class="bookmarklet-row">
+          <a id="bookmarklet-choose" class="bookmarklet-link" href="#" draggable="true">✨ Choose → QR</a>
+          <span class="bookmarklet-description">Pick current URL, selected webpage text, or clipboard contents.</span>
+          <button class="bookmarklet-copy" id="copy-bookmarklet-choose" type="button">Copy code</button>
+        </div>
+      </div>
+      <p class="help" id="bookmarklet-help" role="status" aria-live="polite">Browser security settings can restrict bookmarklets or automatic clipboard reading. Pasting manually is always an option.</p>
+    </section>
   </main>
   <footer>Made for <a href="../">Tools</a> · No external libraries loaded at runtime</footer>
 </body>
