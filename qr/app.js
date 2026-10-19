@@ -205,5 +205,92 @@
     }, 'image/png');
   });
 
-  clear('Enter something on the left to generate a QR code.');
+
+  // Bookmarklets transfer content via a fragment, never via an HTTP request.
+  // Remove it from the visible URL/history as soon as we have parsed it.
+  function loadBookmarkletData() {
+    const fragment = window.location.hash;
+    if (!fragment) return false;
+    const params = new URLSearchParams(fragment.slice(1));
+    const type = params.get('type');
+    const data = params.get('data');
+    if ((type !== 'link' && type !== 'text') || data === null) return false;
+    try {
+      history.replaceState(null, '', location.pathname + location.search);
+    } catch (_) { /* Some file:// browsers restrict history updates. */ }
+    $(type === 'link' ? 'link' : 'content').value = data;
+    changeType(type);
+    return true;
+  }
+
+  // Each bookmarklet is self-contained: it runs on the source website, then
+  // opens this static generator. No external scripts or APIs are loaded.
+  const bookmarkletTemplate = [
+    'javascript:(function(){',
+    'var action="__ACTION__",base="https://tools.fishese.cc/qr/#";',
+    'function target(type,data){return base+new URLSearchParams({type:type,data:data}).toString();}',
+    'function send(type,data,tab){',
+      'if(!data){if(tab)tab.close();return;}',
+      'var url=target(type,data);',
+      'if(tab){tab.location.replace(url);}',
+      'else{window.open(url,"_blank","noopener,noreferrer");}',
+    '}',
+    'function clipboard(){',
+      'var tab=window.open("about:blank","_blank");',
+      'if(tab){try{tab.opener=null;}catch(e){}}',
+      'function finish(value){',
+        'if(!value)value=window.prompt("Paste clipboard text for the QR code:","");',
+        'if(value){if(tab)send("text",value,tab);else window.location.assign(target("text",value));}',
+        'else if(tab)tab.close();',
+      '}',
+      'try{if(navigator.clipboard&&navigator.clipboard.readText){',
+        'navigator.clipboard.readText().then(finish,function(){finish("");});',
+      '}else finish("");}catch(e){finish("");}',
+    '}',
+    'if(action==="page"){send("link",window.location.href);return;}',
+    'if(action==="clipboard"){clipboard();return;}',
+    'var selection=window.getSelection?String(window.getSelection()).trim():"";',
+    'var answer=window.prompt("Make a QR from:\\n1 - Current page URL\\n2 - Selected text\\n3 - Clipboard text\\n\\nEnter 1, 2 or 3:",selection?"2":"1");',
+    'if(answer===null)return;',
+    'answer=answer.trim();',
+    'if(answer==="1"){send("link",window.location.href);}',
+    'else if(answer==="2"){send("text",selection||window.prompt("No text selected. Paste text here:",""));}',
+    'else if(answer==="3"){clipboard();}',
+    'else window.alert("Please choose 1, 2 or 3.");',
+    '})()'
+  ].join('');
+
+  for (const action of ['page', 'clipboard', 'choose']) {
+    const source = bookmarkletTemplate.replace('__ACTION__', action);
+    const link = $('bookmarklet-' + action);
+    const copy = $('copy-bookmarklet-' + action);
+    link.href = source;
+    // Bookmarklets should be dragged into the bookmarks bar, not clicked here.
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      $('bookmarklet-help').textContent = 'Drag the link to your bookmarks bar, or use Copy code to create a bookmark manually.';
+    });
+    copy.addEventListener('click', async () => {
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(source);
+        copied = true;
+      } catch (_) {
+        // Supports local-file mode or browsers where Clipboard API is unavailable.
+        const input = document.createElement('textarea');
+        input.value = source;
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.append(input);
+        input.select();
+        try { copied = document.execCommand('copy'); } catch (_) { /* optional */ }
+        input.remove();
+      }
+      $('bookmarklet-help').textContent = copied
+        ? 'Bookmarklet code copied. Add a bookmark and paste it into its URL/address field.'
+        : 'Could not copy automatically. Drag the bookmarklet link into your bookmarks bar instead.';
+    });
+  }
+
+  if (!loadBookmarkletData()) clear('Enter something on the left to generate a QR code.');
 })();
