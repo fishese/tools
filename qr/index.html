@@ -4,7 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="theme-color" content="#181818">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="QR Generator">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; worker-src 'self'; manifest-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>QR Generator · Tools</title>
   <style>
     :root {
@@ -71,6 +77,12 @@
     .privacy { color: var(--muted); border-top: 1px solid var(--border); margin-top: 23px;
       padding-top: 15px; text-align: left; font-size: 12px; line-height: 1.6; }
     .privacy strong { color: var(--text); }
+    .pwa-install { margin-top: 22px; }
+    .pwa-install h2 { font-size: 17px; margin: 0 0 10px; }
+    .pwa-install p { color: var(--muted); font-size: 13px; margin: 10px 0; }
+    .pwa-install a { color: var(--text); text-underline-offset: 2px; }
+    .install-btn { font: inherit; font-weight: 650; color: var(--bg); background: var(--accent);
+      border: 1px solid var(--border); border-radius: 9px; padding: 10px 15px; cursor: pointer; }
     .bookmarklets { margin-top: 22px; }
     .bookmarklets h2 { font-size: 17px; margin: 0 0 6px; }
     .bookmarklet-list { display: grid; gap: 10px; margin-top: 18px; }
@@ -161,13 +173,21 @@
         </div>
         <div class="privacy">
           <strong>Private by design.</strong> QR codes are generated entirely in this browser.
-          QR content isn't sent to a server or stored by the tool.
-          Bookmarklets briefly transfer the webpage URL or text through a URL fragment (after #),
-          which isn't included in HTTP requests and is removed as soon as this page reads it.
-          Avoid using bookmarklets for secrets. Once loaded, this page also works offline.
+          QR content is generated and handled on your device; the tool doesn't upload it or save it.
+          Bookmarklets and PWA shares briefly use URL fragments (after #), which aren't sent with HTTP requests,
+          and the page clears the fragment after reading it. Shared data is intercepted locally by the
+          installed service worker. Avoid sharing secrets via bookmarklets or share sheets.
+          After installation, QR Generator can work offline.
         </div>
       </section>
     </div>
+    <section class="panel pwa-install" aria-labelledby="pwa-title">
+      <h2 id="pwa-title">Install &amp; share</h2>
+      <p>Install QR Generator for offline use. On supported Android browsers, the installed app can receive links or text directly from the system Share menu.</p>
+      <button id="install-pwa" class="install-btn" type="button" hidden>Install QR Generator</button>
+      <p id="pwa-status" role="status" aria-live="polite">On Android, use your browser's menu → Install app or Add to Home screen if no install button appears. Install it before looking for QR Generator in the Share menu.</p>
+      <p>On iPhone, use Safari → Share → Add to Home Screen. For receiving links and text from the iOS Share Sheet, <a href="./ios-shortcut.html">set up an Apple Shortcut</a>.</p>
+    </section>
     <section class="panel bookmarklets" aria-labelledby="bookmarklets-title">
       <h2 id="bookmarklets-title">Quick QR bookmarklets</h2>
       <p class="help">Drag one of these links to your browser's bookmarks bar. On another webpage, click that bookmark to open a ready-made QR code. If dragging doesn't work, use Copy code and paste it into a bookmark's URL field.</p>
