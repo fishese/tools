@@ -206,6 +206,34 @@
   });
 
 
+  // Register only within /qr/. The separate site-root service worker is unaffected.
+  // On file:// the standalone HTML tool continues to work without a service worker.
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('./sw.js', {scope: './'}).catch(() => {
+      $('pwa-status').textContent = 'Offline installation is unavailable here. The QR generator still works online.';
+    });
+  }
+
+  // The install prompt is only available when the browser decides the PWA qualifies.
+  let installPrompt = null;
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    installPrompt = event;
+    $('install-pwa').hidden = false;
+  });
+  $('install-pwa').addEventListener('click', async () => {
+    if (!installPrompt) return;
+    const prompt = installPrompt;
+    installPrompt = null;
+    $('install-pwa').hidden = true;
+    try { await prompt.prompt(); } catch (_) { /* Browser may cancel; menu install still works. */ }
+  });
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    $('install-pwa').hidden = true;
+    $('pwa-status').textContent = 'QR Generator installed. On supported Android devices, choose it from the Share menu.';
+  });
+
   // Bookmarklets transfer content via a fragment, never via an HTTP request.
   // Remove it from the visible URL/history as soon as we have parsed it.
   function loadBookmarkletData() {
