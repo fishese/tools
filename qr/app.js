@@ -220,6 +220,10 @@
     } catch (_) { /* Some file:// browsers restrict history updates. */ }
     $(type === 'link' ? 'link' : 'content').value = data;
     changeType(type);
+    if (type === 'text' && !data) {
+      $('content').focus();
+      status.textContent = 'Clipboard access was blocked. Paste your text here to generate the QR code.';
+    }
     return true;
   }
 
@@ -239,9 +243,10 @@
       'var tab=window.open("about:blank","_blank");',
       'if(tab){try{tab.opener=null;}catch(e){}}',
       'function finish(value){',
-        'if(!value)value=window.prompt("Paste clipboard text for the QR code:","");',
         'if(value){if(tab)send("text",value,tab);else window.location.assign(target("text",value));}',
-        'else if(tab)tab.close();',
+        'else if(tab)tab.location.replace(target("text",""));',
+        'else{var pasted=window.prompt("Paste clipboard text for the QR code:","");',
+          'if(pasted)window.location.assign(target("text",pasted));}',
       '}',
       'try{if(navigator.clipboard&&navigator.clipboard.readText){',
         'navigator.clipboard.readText().then(finish,function(){finish("");});',
