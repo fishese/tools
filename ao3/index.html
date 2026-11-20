@@ -425,12 +425,17 @@
 
     .modal-body.no-blank-row p {
       margin-top: 0;
-      margin-bottom: 0.15em;
+      margin-bottom: 0;
     }
 
     .modal-body.blank-row p {
       margin-top: 0;
-      margin-bottom: 1em;
+      margin-bottom: 1.15em;
+    }
+
+    .modal-body.blank-row p.blank-spacer {
+      height: 1.15em;
+      margin: 0;
     }
 
     .modal-body.indent-para p {
@@ -1128,10 +1133,48 @@
         return outEl;
       }
 
-      function serializeInnerXhtml(container) {
+      // Normalize <br><br> runs inside <p>/<div> into separate <p> elements
+      // and strip empty/whitespace-only filler paragraphs so CSS paragraph
+      // spacing & indentation work consistently across all EPUB readers.
+      function normalizeParagraphStructure(container) {
+        // 1. Split paragraphs containing double <br> into distinct <p> blocks
+        const blocks = Array.from(container.querySelectorAll("p, div"));
+        for (const blk of blocks) {
+          if (blk.querySelector("p, div, blockquote, ul, ol, table, pre")) continue;
+          const html = blk.innerHTML;
+          if (/(?:<br\s*\/?>\s*){2,}/i.test(html)) {
+            const parts = html.split(/(?:<br\s*\/?>\s*){2,}/i);
+            const frag = container.ownerDocument.createDocumentFragment();
+            for (const part of parts) {
+              const p = container.ownerDocument.createElement("p");
+              p.innerHTML = part.trim();
+              if (normalizeWhitespace(p.textContent.replace(/\u00A0/g, " "))) {
+                frag.appendChild(p);
+              }
+            }
+            blk.replaceWith(frag);
+          }
+        }
+
+        // 2. Remove empty spacer paragraphs (<p>&nbsp;</p>, <p><br></p>, <p></p>)
+        // so blank rows are controlled cleanly by paragraph spacing rather than erratic empty tags
+        for (const p of Array.from(container.querySelectorAll("p"))) {
+          if (p.querySelector("img, hr, table, svg")) continue;
+          const txt = p.textContent.replace(/[\u00A0\u200B\s]+/g, "");
+          if (txt.length === 0) {
+            p.remove();
+          }
+        }
+      }
+
+      function serializeInnerXhtml(container, { normalizeParas = false } = {}) {
+        const working = container.cloneNode(true);
+        if (normalizeParas) {
+          normalizeParagraphStructure(working);
+        }
         const xmlDoc = document.implementation.createDocument("http://www.w3.org/1999/xhtml", "div", null);
         const root = xmlDoc.documentElement;
-        for (const child of Array.from(container.childNodes)) {
+        for (const child of Array.from(working.childNodes)) {
           const cleaned = sanitizeToXhtmlNode(child, xmlDoc);
           if (cleaned) root.appendChild(cleaned);
         }
@@ -1425,7 +1468,7 @@
           if (dedupe) {
             stripDuplicateLeadingHeading(wrapper, ch.title);
           }
-          const bodyXhtml = serializeInnerXhtml(wrapper);
+          const bodyXhtml = serializeInnerXhtml(wrapper, { normalizeParas: true });
           const stats = countUnits(wrapper.textContent);
           return {
             id: `ch_${String(idx + 1).padStart(4, "0")}`,
@@ -1679,9 +1722,12 @@ ${body}
           fontRule = ``;
         }
 
-        const paraMarginRule = blankRow
-          ? `margin-top: 0;\n  margin-bottom: 1em;`
-          : `margin-top: 0;\n  margin-bottom: 0.15em;`;
+        // Many e-readers (Apple Books, Kindle, Kobo, Calibre, KOReader) apply aggressive
+        // default p { margin: 0 } stylesheets or override single-margin rules unless
+        // both margin-top/margin-bottom (or padding-bottom) are explicitly specified.
+        const paraSpacingRule = blankRow
+          ? `margin-top: 0;\n  margin-bottom: 1.15em;\n  padding-bottom: 0.1em;`
+          : `margin-top: 0;\n  margin-bottom: 0;\n  padding-bottom: 0;`;
 
         const paraIndentRule = indentPara
           ? `text-indent: 2em;`
@@ -1743,16 +1789,22 @@ h1.work-title {
   letter-spacing: 0.04em;
   margin-bottom: 0.25em;
 }
-p {
-  ${paraMarginRule}
+p,
+.chapter-body p {
+  ${paraSpacingRule}
   ${paraIndentRule}
+}
+.chapter-body p + p {
+  ${blankRow ? "margin-top: 1.15em;" : "margin-top: 0;"}
 }
 .note-box p,
 blockquote p,
 .meta-box p,
 .chapter-header p {
   text-indent: 0;
+  margin-top: 0;
   margin-bottom: 0.65em;
+  padding-bottom: 0;
 }
 hr {
   border: none;
