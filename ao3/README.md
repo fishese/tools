@@ -4,7 +4,7 @@ A standalone, zero-dependency HTML web app that converts Archive of Our Own (AO3
 
 ## Features
 
-- **Bilingual UI (English / 中文)**: Toggle the interface between English and Chinese at any time (auto-detects browser language on startup).
+- **Bilingual UI (English / 繁體中文)**: Toggle the interface between English and Traditional Chinese (Hong Kong standard written phrasing) at any time.
 - **100% Client-Side & Offline-Ready**: No server, no build step, and no external CDN scripts. All parsing and ZIP packaging happen locally in your browser.
 - **AO3 Structural Parsing**: Automatically extracts work title, author(s), fandoms, tags, language, summary, source URL, chapter headings (`#chapters` / `.meta.group` / `h2.heading`), chapter summaries, beginning/end notes, and afterword.
 - **Multilingual & Unicode Support**:

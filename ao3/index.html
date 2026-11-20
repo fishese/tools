@@ -19,7 +19,7 @@
       --warning: #e0af68;
       --radius: 10px;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", "PingFang HK", "Microsoft JhengHei", "Helvetica Neue", Arial, sans-serif;
     }
 
     * { box-sizing: border-box; }
@@ -417,7 +417,7 @@
     .modal-body {
       padding: 1.2rem;
       overflow-y: auto;
-      font-family: Georgia, "Noto Serif", "Songti SC", serif;
+      font-family: Georgia, "Noto Serif TC", "Songti TC", serif;
       font-size: 0.96rem;
       line-height: 1.7;
       background: #13161c;
@@ -483,7 +483,7 @@
     </div>
     <div class="lang-switch" role="group" aria-label="UI Language">
       <button id="langEnBtn" type="button" class="active">English</button>
-      <button id="langZhBtn" type="button">中文</button>
+      <button id="langZhBtn" type="button">繁體中文</button>
     </div>
   </header>
 
@@ -517,7 +517,7 @@
         <div class="grid-2 field">
           <div>
             <label for="metaLang" data-i18n="labelLang">Language (BCP-47)</label>
-            <input id="metaLang" type="text" value="en" placeholder="en, zh-Hans, ja, ko, ar..." />
+            <input id="metaLang" type="text" value="en" placeholder="en, zh-Hant, ja, ko, ar..." />
           </div>
           <div>
             <label for="metaDir" data-i18n="labelDir">Text Direction</label>
@@ -647,7 +647,7 @@
       "use strict";
 
       // -----------------------------------------------------------------------
-      // UI Internationalization (English / 中文)
+      // UI Internationalization (English / 繁體中文 - 香港書面語)
       // -----------------------------------------------------------------------
       const UI_STRINGS = {
         en: {
@@ -718,71 +718,71 @@
           epubToc: "Table of Contents"
         },
         zh: {
-          appTitle: "AO3 HTML 转 EPUB 转换器",
-          appSubtitle: "纯本地浏览器运行、支持离线使用，完整兼容 Unicode、中日韩文、从右到左排版及多语言分章识别。",
-          dropTitle: "将 AO3 HTML 文件拖放到此处",
-          dropOr: "或点击选择文件",
-          dropHint: "支持多章节 AO3 导出 HTML 及通用单文件 HTML 文本，所有处理均在本地完成，不上传服务器。",
+          appTitle: "AO3 HTML 轉 EPUB 轉換器",
+          appSubtitle: "純本地瀏覽器運作，支援離線使用，完整兼容 Unicode、中日韓文、由右至左排版及多語言分章識別。",
+          dropTitle: "將 AO3 HTML 檔案拖放至此處",
+          dropOr: "或按此瀏覽檔案",
+          dropHint: "支援多章節 AO3 匯出 HTML 及一般單檔 HTML 作品。所有處理均於本地瀏覽器進行，不會上載至伺服器。",
           reparseBtn: "重新解析",
-          metaSettingsTitle: "书籍信息与排版设置",
-          labelTitle: "作品标题",
-          phTitle: "输入作品标题",
+          metaSettingsTitle: "書籍資料與排版設定",
+          labelTitle: "作品標題",
+          phTitle: "輸入作品標題",
           labelAuthor: "作者",
-          phAuthor: "输入作者名",
-          labelLang: "语言代码 (BCP-47)",
-          labelDir: "阅读方向",
-          dirAuto: "自动检测",
-          dirLtr: "从左到右 (LTR)",
-          dirRtl: "从右到左 (RTL)",
-          labelSource: "来源链接（可选）",
-          labelTags: "标签 / 主题（以英文逗号分隔）",
-          phTags: "原作、角色、标签...",
-          labelSummary: "作品简介",
-          phSummary: "输入作品简介",
-          labelCover: "自定义封面图片（可选，JPG/PNG/WebP）",
-          labelDetectMode: "章节识别模式",
-          modeAuto: "自动（AO3 结构优先 + 多语言标题词典回退）",
-          modeAo3: "仅 AO3 结构（#chapters / h2.heading）",
-          modeDict: "仅多语言章节标题词典",
-          modeSingle: "单章模式（不拆分章节）",
-          optBlankRow: "段落之间保留空行",
-          optIndent: "段落开头首行缩进（2字符）",
-          optPreface: "包含扉页与作品元数据页",
-          optChapterMeta: "包含章节简介与作者注",
-          optAfterword: "包含文末注释 / 后记",
-          optDedupeHeading: "移除正文开头重复的章节标题",
-          labelFontStyle: "正文字体样式",
-          fontSerif: "衬线体 / 宋体（默认）",
-          fontSans: "无衬线体 / 黑体",
-          fontInherit: "阅读器默认（不强制指定字体）",
-          dictSummary: "多语言章节关键词词典",
-          dictHelp: "当文件中缺少标准 AO3 章节标记或选择“仅多语言章节标题词典”时生效。可每行添加一个自定义关键词以匹配任意语言标题。",
-          chaptersTocTitle: "章节与目录列表",
-          emptyChapters: "未检测到章节，请尝试切换上方的“章节识别模式”。",
-          statusReady: "就绪。",
-          toggleAllBtn: "全选 / 取消全选",
-          downloadBtn: "下载 EPUB",
-          closeBtn: "关闭",
-          previewBtn: "预览",
-          footerText: "完全在浏览器本地运行，生成符合标准的 EPUB 3 电子书（附带 EPUB 2 NCX 兼容目录）。",
+          phAuthor: "輸入作者名稱",
+          labelLang: "語言代碼 (BCP-47)",
+          labelDir: "閱讀方向",
+          dirAuto: "自動偵測",
+          dirLtr: "由左至右 (LTR)",
+          dirRtl: "由右至左 (RTL)",
+          labelSource: "來源網址（選填）",
+          labelTags: "標籤 / 主題（以半形逗號分隔）",
+          phTags: "原作、角色、標籤...",
+          labelSummary: "作品簡介",
+          phSummary: "輸入作品簡介",
+          labelCover: "自訂封面圖片（選填，JPG/PNG/WebP）",
+          labelDetectMode: "章節識別模式",
+          modeAuto: "自動（AO3 結構優先 + 多語言標題詞典後備）",
+          modeAo3: "僅 AO3 結構（#chapters / h2.heading）",
+          modeDict: "僅多語言章節標題詞典",
+          modeSingle: "單章模式（不拆分章節）",
+          optBlankRow: "段落之間保留空行",
+          optIndent: "段落開首首行縮排（2字元）",
+          optPreface: "包含扉頁與作品資料頁",
+          optChapterMeta: "包含章節簡介與作者註",
+          optAfterword: "包含文末註釋 / 後記",
+          optDedupeHeading: "移除正文開首重複的章節標題",
+          labelFontStyle: "正文字體樣式",
+          fontSerif: "襯線體 / 明體（預設）",
+          fontSans: "無襯線體 / 黑體",
+          fontInherit: "閱讀器預設（不強制指定字體）",
+          dictSummary: "多語言章節關鍵詞詞典",
+          dictHelp: "當檔案缺少標準 AO3 章節標記或選用「僅多語言章節標題詞典」時生效。可每行新增一個自訂關鍵詞以配對任何語言的標題。",
+          chaptersTocTitle: "章節與目錄列表",
+          emptyChapters: "未能偵測到章節，請嘗試切換上方的「章節識別模式」。",
+          statusReady: "準備就緒。",
+          toggleAllBtn: "全選 / 取消全選",
+          downloadBtn: "下載 EPUB",
+          closeBtn: "關閉",
+          previewBtn: "預覽",
+          footerText: "完全於瀏覽器本地運作，匯出符合標準的 EPUB 3 電子書（附帶 EPUB 2 NCX 兼容目錄）。",
           chapterCount: (n) => `共 ${n} 章`,
-          statusReading: (name) => `正在读取 "${name}"...`,
-          statusParsed: (n, mode) => `已解析 ${n} 个章节（识别方式：${mode}）。`,
-          statusSelectOne: "请至少选择一个要导出的章节。",
-          statusBuilding: "正在打包生成 EPUB 文件...",
-          statusExported: (file, kb, n) => `已导出 "${file}"（${kb} KB，共 ${n} 章）。`,
-          statusExportFail: (msg) => `导出失败：${msg}`,
-          statusReadFail: (msg) => `读取文件失败：${msg}`,
+          statusReading: (name) => `正在讀取「${name}」...`,
+          statusParsed: (n, mode) => `已解析 ${n} 個章節（識別方式：${mode}）。`,
+          statusSelectOne: "請至少選取一個要匯出的章節。",
+          statusBuilding: "正在打包生成 EPUB 檔案...",
+          statusExported: (file, kb, n) => `已匯出「${file}」（${kb} KB，共 ${n} 章）。`,
+          statusExportFail: (msg) => `匯出失敗：${msg}`,
+          statusReadFail: (msg) => `讀取檔案失敗：${msg}`,
           epubCover: "封面",
-          epubPreface: "扉页与信息",
-          epubSummary: "简介",
-          epubNotes: "作者注",
-          epubChSummary: "本章简介",
-          epubChNotes: "章节注释",
-          epubChEndNotes: "章末注释",
-          epubAfterword: "后记与注释",
-          epubAfterwordHeading: "后记与文末注释",
-          epubToc: "目录"
+          epubPreface: "扉頁與資料",
+          epubSummary: "簡介",
+          epubNotes: "作者註",
+          epubChSummary: "本章簡介",
+          epubChNotes: "章節註釋",
+          epubChEndNotes: "章末註釋",
+          epubAfterword: "後記與註釋",
+          epubAfterwordHeading: "後記與文末註釋",
+          epubToc: "目錄"
         }
       };
 
@@ -924,7 +924,7 @@
 
       function applyUiLanguage(lang) {
         currentUiLang = lang === "zh" ? "zh" : "en";
-        document.documentElement.lang = currentUiLang === "zh" ? "zh-Hans" : "en";
+        document.documentElement.lang = currentUiLang === "zh" ? "zh-Hant-HK" : "en";
         el.langEnBtn.classList.toggle("active", currentUiLang === "en");
         el.langZhBtn.classList.toggle("active", currentUiLang === "zh");
 
@@ -1672,9 +1672,9 @@ ${body}
       }
 
       function buildCss(fontMode, dir, blankRow, indentPara) {
-        let fontRule = `font-family: Georgia, "Noto Serif", "Songti SC", "Yu Mincho", serif;`;
+        let fontRule = `font-family: Georgia, "Noto Serif TC", "Songti TC", "Yu Mincho", serif;`;
         if (fontMode === "sans") {
-          fontRule = `font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif;`;
+          fontRule = `font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang HK", "Microsoft JhengHei", sans-serif;`;
         } else if (fontMode === "inherit") {
           fontRule = ``;
         }
