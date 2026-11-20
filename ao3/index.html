@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AO3 HTML to EPUB Converter</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --surface: #171a21;
+      --surface-2: #1f242f;
+      --border: #2c3342;
+      --text: #e6e9ef;
+      --muted: #9aa3b2;
+      --accent: #7aa2f7;
+      --accent-hover: #8fb4ff;
+      --danger: #f7768e;
+      --success: #9ece6a;
+      --warning: #e0af68;
+      --radius: 10px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      background: rgba(122, 162, 247, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(122, 162, 247, 0.3);
+    }
+
+    .header-sub {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (min-width: 920px) {
+      .workspace {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 1.25rem;
+        align-items: start;
+      }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+
+    .card h2 {
+      margin: 0 0 0.85rem 0;
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 1.25rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.18s ease, background 0.18s ease;
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(122, 162, 247, 0.06);
+    }
+
+    .dropzone p {
+      margin: 0.35rem 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .dropzone strong {
+      color: var(--text);
+    }
+
+    .file-info {
+      margin-top: 0.85rem;
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .file-info.visible { display: flex; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 560px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="url"],
+    select,
+    textarea {
+      width: 100%;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 0.55rem 0.7rem;
+      font-family: inherit;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 76px;
+    }
+
+    .field { margin-bottom: 0.85rem; }
+    .field:last-child { margin-bottom: 0; }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.55rem;
+      font-size: 0.86rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .checkbox-row input {
+      width: auto;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      background: #272d3b;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0b0e14;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-sm {
+      padding: 0.35rem 0.65rem;
+      font-size: 0.78rem;
+      border-radius: 6px;
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .actions-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .status {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .status.ok { color: var(--success); }
+    .status.err { color: var(--danger); }
+    .status.warn { color: var(--warning); }
+
+    .chapter-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 540px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+
+    .chapter-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.55rem 0.7rem;
+      border-radius: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+
+    .chapter-item input[type="checkbox"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .chapter-title-input {
+      background: transparent !important;
+      border: 1px solid transparent !important;
+      padding: 0.25rem 0.4rem !important;
+      font-size: 0.86rem !important;
+    }
+
+    .chapter-title-input:focus {
+      background: var(--surface) !important;
+      border-color: var(--accent) !important;
+    }
+
+    .chapter-meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+      white-space: nowrap;
+      font-family: var(--mono);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+    }
+
+    details {
+      margin-top: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      background: var(--surface-2);
+    }
+
+    summary {
+      cursor: pointer;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--text);
+      user-select: none;
+    }
+
+    .dict-help {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin: 0.5rem 0;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 100;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      max-width: 780px;
+      width: 100%;
+      max-height: 84vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 0.9rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 0.98rem;
+    }
+
+    .modal-body {
+      padding: 1.2rem;
+      overflow-y: auto;
+      font-family: Georgia, "Noto Serif", serif;
+      font-size: 0.96rem;
+      line-height: 1.7;
+      background: #13161c;
+    }
+
+    .modal-body blockquote {
+      border-left: 3px solid var(--border);
+      margin: 0.75rem 0;
+      padding: 0.25rem 0.9rem;
+      color: var(--muted);
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+
+    .pill {
+      font-size: 0.73rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      padding: 1.5rem 1rem 2rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>AO3 HTML to EPUB Converter <span class="badge">EPUB 3 + NCX</span></h1>
+      <div class="header-sub">100% client-side, offline-capable converter with Unicode, CJK, RTL, and multilingual chapter detection.</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload HTML file">
+        <input id="fileInput" type="file" accept=".html,.htm,.xhtml,text/html" hidden />
+        <p><strong>Drop an AO3 HTML file here</strong> or click to browse</p>
+        <p>Supports multi-chapter AO3 HTML exports and general single-file HTML stories. Everything stays in your browser.</p>
+      </div>
+      <div id="fileInfo" class="file-info">
+        <span id="fileSummary"></span>
+        <button id="reparseBtn" class="btn btn-sm" type="button">Re-parse</button>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <section class="card">
+        <h2>Metadata &amp; Settings</h2>
+
+        <div class="field">
+          <label for="metaTitle">Title</label>
+          <input id="metaTitle" type="text" placeholder="Work title" />
+        </div>
+
+        <div class="field">
+          <label for="metaAuthor">Author(s)</label>
+          <input id="metaAuthor" type="text" placeholder="Author name" />
+        </div>
+
+        <div class="grid-2 field">
+          <div>
+            <label for="metaLang">Language (BCP-47)</label>
+            <input id="metaLang" type="text" value="en" placeholder="en, zh-Hans, ja, ko, ar..." />
+          </div>
+          <div>
+            <label for="metaDir">Text Direction</label>
+            <select id="metaDir">
+              <option value="auto">Auto-detect</option>
+              <option value="ltr">Left-to-Right (LTR)</option>
+              <option value="rtl">Right-to-Left (RTL)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="metaSource">Source URL (optional)</label>
+          <input id="metaSource" type="url" placeholder="https://archiveofourown.org/works/..." />
+        </div>
+
+        <div class="field">
+          <label for="metaTags">Tags / Subjects (comma-separated)</label>
+          <input id="metaTags" type="text" placeholder="Fandom, Character, Tag..." />
+        </div>
+
+        <div class="field">
+          <label for="metaSummary">Summary / Description</label>
+          <textarea id="metaSummary" placeholder="Work summary"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="coverInput">Optional Cover Image (JPG/PNG/WebP)</label>
+          <input id="coverInput" type="file" accept="image/jpeg,image/png,image/webp" />
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0;" />
+
+        <div class="field">
+          <label for="detectMode">Chapter Detection Mode</label>
+          <select id="detectMode">
+            <option value="auto">Auto (AO3 DOM Structure + Multilingual Fallback)</option>
+            <option value="ao3">AO3 DOM Structure Only (#chapters / h2.heading)</option>
+            <option value="dictionary">Multilingual Heading Dictionary Only</option>
+            <option value="single">Single Chapter (No Splitting)</option>
+          </select>
+        </div>
+
+        <label class="checkbox-row">
+          <input id="optPreface" type="checkbox" checked />
+          Include Preface &amp; Metadata Page
+        </label>
+        <label class="checkbox-row">
+          <input id="optChapterMeta" type="checkbox" checked />
+          Include Chapter Summaries &amp; Notes
+        </label>
+        <label class="checkbox-row">
+          <input id="optAfterword" type="checkbox" checked />
+          Include Work Endnotes / Afterword
+        </label>
+        <label class="checkbox-row">
+          <input id="optDedupeHeading" type="checkbox" checked />
+          Remove duplicate in-body chapter title
+        </label>
+
+        <div class="field" style="margin-top:0.75rem;">
+          <label for="fontStyle">Reader Typography</label>
+          <select id="fontStyle">
+            <option value="serif">Serif (Default)</option>
+            <option value="sans">Sans-serif</option>
+            <option value="inherit">Reader Default (No font override)</option>
+          </select>
+        </div>
+
+        <details>
+          <summary>Multilingual Chapter Dictionary</summary>
+          <p class="dict-help">
+            Used when standard AO3 chapter containers are absent or when "Multilingual Heading Dictionary" is selected. Add extra keywords (one per line) to match headings in any language.
+          </p>
+          <textarea id="customKeywords" placeholder="e.g.&#10;Act&#10;Volume&#10;幕&#10;부"></textarea>
+          <div class="pill-row" id="builtInLangPills"></div>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2>
+          <span>Chapters &amp; Table of Contents</span>
+          <span id="chapterCountBadge" class="badge">0 chapters</span>
+        </h2>
+
+        <div id="chapterList" class="chapter-list">
+          <div class="empty-state">
+            Upload an HTML file to inspect its detected structure, edit chapter titles, and build an EPUB.
+          </div>
+        </div>
+
+        <div class="actions-bar">
+          <div id="statusText" class="status">Ready.</div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button id="selectAllBtn" class="btn btn-sm" type="button" disabled>Toggle All</button>
+            <button id="exportBtn" class="btn btn-primary" type="button" disabled>Download EPUB</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="previewModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="previewTitle">Chapter Preview</h3>
+        <button id="closePreviewBtn" class="btn btn-sm" type="button">Close</button>
+      </div>
+      <div id="previewBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <footer>
+    Runs completely locally in your browser. Generates standard EPUB 3 packages with EPUB 2 NCX fallback.
+  </footer>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // -----------------------------------------------------------------------
+      // Language & Script Helpers
+      // -----------------------------------------------------------------------
+      const LANGUAGE_MAP = {
+        "english": "en",
+        "中文": "zh",
+        "中文-普通话": "zh-Hans",
+        "中文-國語": "zh-Hant",
+        "chinese": "zh",
+        "日本語": "ja",
+        "japanese": "ja",
+        "한국어": "ko",
+        "korean": "ko",
+        "español": "es",
+        "spanish": "es",
+        "français": "fr",
+        "french": "fr",
+        "deutsch": "de",
+        "german": "de",
+        "italiano": "it",
+        "italian": "it",
+        "português": "pt",
+        "portuguese": "pt",
+        "português brasileiro": "pt-BR",
+        "português europeu": "pt-PT",
+        "русский": "ru",
+        "russian": "ru",
+        "українська": "uk",
+        "ukrainian": "uk",
+        "polski": "pl",
+        "polish": "pl",
+        "nederlands": "nl",
+        "dutch": "nl",
+        "svenska": "sv",
+        "swedish": "sv",
+        "türkçe": "tr",
+        "turkish": "tr",
+        "العربية": "ar",
+        "arabic": "ar",
+        "فارسی": "fa",
+        "persian": "fa",
+        "עברית": "he",
+        "hebrew": "he",
+        "اردو": "ur",
+        "urdu": "ur",
+        "हिन्दी": "hi",
+        "hindi": "hi",
+        "tiếng việt": "vi",
+        "vietnamese": "vi",
+        "ไทย": "th",
+        "thai": "th",
+        "bahasa indonesia": "id",
+        "indonesian": "id",
+        "čeština": "cs",
+        "czech": "cs",
+        "ελληνικά": "el",
+        "greek": "el"
+      };
+
+      const RTL_LANGS = new Set(["ar", "fa", "he", "ur", "yi", "ps", "sd", "dv"]);
+
+      const BUILTIN_HEADING_PATTERNS = [
+        { label: "EN", regex: /^(?:chapter|ch\.?|part|book|prologue|epilogue|interlude|afterword|preface)\b[\s:.\-–—0-9ivxlcdm]*/i },
+        { label: "CJK", regex: /^(?:第\s*[0-9０-９一二三四五六七八九十百千万零〇兩两]+\s*[章話话回節节卷部篇幕集]|序章|終章|终章|尾聲|尾声|番外|後記|后记|楔子)/u },
+        { label: "KO", regex: /^(?:제?\s*[0-9０-９]+\s*[화장부편막회]|프롤로그|에필로그|외전|후기)/u },
+        { label: "ES/PT", regex: /^(?:cap[ií]tulo|parte|pr[oó]logo|ep[ií]logo|interludio)\b/iu },
+        { label: "FR", regex: /^(?:chapitre|partie|prologue|[eé]pilogue|interlude)\b/iu },
+        { label: "DE/NL", regex: /^(?:kapitel|teil|hoofdstuk|deel|prolog|epilog)\b/iu },
+        { label: "IT", regex: /^(?:capitolo|parte|prologo|epilogo)\b/iu },
+        { label: "RU/UK", regex: /^(?:глава|часть|пролог|эпилог|розд[іi]л|частина)\b/iu },
+        { label: "PL", regex: /^(?:rozdzia[łl]|cz[ęe][śs][ćc]|prolog|epilog)\b/iu },
+        { label: "AR/FA", regex: /^(?:الفصل|فصل|الباب|باب|الجزء|مقدمة|خاتمة)\b/u },
+        { label: "HE", regex: /^(?:פרק|חלק|פרולוג|אפילוג)\b/u },
+        { label: "TR", regex: /^(?:b[öo]l[üu]m|k[ıi]s[ıi]m|[öo]ns[öo]z|sons[öo]z)\b/iu },
+        { label: "VI", regex: /^(?:ch[ươ]ơ?ng|ph[ầa]n|m[ởo]\s*đ[ầa]u|k[ếe]t)\b/iu },
+        { label: "HI", regex: /^(?:अध्याय|भाग|प्रस्तावना|उपसंहार)/u }
+      ];
+
+      // -----------------------------------------------------------------------
+      // State & DOM Refs
+      // -----------------------------------------------------------------------
+      const state = {
+        rawHtml: "",
+        fileName: "",
+        parsed: null,
+        coverFile: null,
+        coverData: null,
+        coverMime: null
+      };
+
+      const el = {
+        dropzone: document.getElementById("dropzone"),
+        fileInput: document.getElementById("fileInput"),
+        fileInfo: document.getElementById("fileInfo"),
+        fileSummary: document.getElementById("fileSummary"),
+        reparseBtn: document.getElementById("reparseBtn"),
+        metaTitle: document.getElementById("metaTitle"),
+        metaAuthor: document.getElementById("metaAuthor"),
+        metaLang: document.getElementById("metaLang"),
+        metaDir: document.getElementById("metaDir"),
+        metaSource: document.getElementById("metaSource"),
+        metaTags: document.getElementById("metaTags"),
+        metaSummary: document.getElementById("metaSummary"),
+        coverInput: document.getElementById("coverInput"),
+        detectMode: document.getElementById("detectMode"),
+        optPreface: document.getElementById("optPreface"),
+        optChapterMeta: document.getElementById("optChapterMeta"),
+        optAfterword: document.getElementById("optAfterword"),
+        optDedupeHeading: document.getElementById("optDedupeHeading"),
+        fontStyle: document.getElementById("fontStyle"),
+        customKeywords: document.getElementById("customKeywords"),
+        builtInLangPills: document.getElementById("builtInLangPills"),
+        chapterCountBadge: document.getElementById("chapterCountBadge"),
+        chapterList: document.getElementById("chapterList"),
+        statusText: document.getElementById("statusText"),
+        selectAllBtn: document.getElementById("selectAllBtn"),
+        exportBtn: document.getElementById("exportBtn"),
+        previewModal: document.getElementById("previewModal"),
+        previewTitle: document.getElementById("previewTitle"),
+        previewBody: document.getElementById("previewBody"),
+        closePreviewBtn: document.getElementById("closePreviewBtn")
+      };
+
+      // Populate built-in dictionary badges
+      BUILTIN_HEADING_PATTERNS.forEach(p => {
+        const span = document.createElement("span");
+        span.className = "pill";
+        span.textContent = p.label;
+        el.builtInLangPills.appendChild(span);
+      });
+
+      function setStatus(msg, type = "") {
+        el.statusText.textContent = msg;
+        el.statusText.className = "status" + (type ? " " + type : "");
+      }
+
+      function normalizeWhitespace(str) {
+        return (str || "").replace(/\s+/g, " ").trim();
+      }
+
+      function escapeXml(str) {
+        return String(str ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+      }
+
+      function sanitizeFilename(name) {
+        const cleaned = (name || "book")
+          .replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 120);
+        return cleaned || "book";
+      }
+
+      function mapLanguageToBcp47(rawLang, fallbackLang = "en") {
+        if (!rawLang) return fallbackLang;
+        const clean = normalizeWhitespace(rawLang).toLowerCase();
+        if (LANGUAGE_MAP[clean]) return LANGUAGE_MAP[clean];
+        for (const [k, v] of Object.entries(LANGUAGE_MAP)) {
+          if (clean.includes(k)) return v;
+        }
+        if (/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i.test(clean)) return clean;
+        return fallbackLang;
+      }
+
+      function detectDirection(langCode, sampleText = "") {
+        const base = (langCode || "").split("-")[0].toLowerCase();
+        if (RTL_LANGS.has(base)) return "rtl";
+        const rtlMatches = (sampleText.match(/[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/g) || []).length;
+        const ltrMatches = (sampleText.match(/[A-Za-z\u00C0-\u024F\u0400-\u04FF\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/g) || []).length;
+        if (rtlMatches > 40 && rtlMatches > ltrMatches) return "rtl";
+        return "ltr";
+      }
+
+      function countUnits(text) {
+        const clean = normalizeWhitespace(text);
+        if (!clean) return { count: 0, label: "0w" };
+        const cjkChars = (clean.match(/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/g) || []).length;
+        if (cjkChars > clean.length * 0.25) {
+          const nonSpace = clean.replace(/\s+/g, "").length;
+          return { count: nonSpace, label: `${nonSpace.toLocaleString()} chars` };
+        }
+        const words = clean.split(/\s+/).filter(Boolean).length;
+        return { count: words, label: `${words.toLocaleString()}w` };
+      }
+
+      function buildHeadingRegexes() {
+        const list = BUILTIN_HEADING_PATTERNS.map(p => p.regex);
+        const customLines = (el.customKeywords.value || "")
+          .split(/\r?\n/)
+          .map(s => s.trim())
+          .filter(Boolean);
+        for (const kw of customLines) {
+          const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          list.push(new RegExp(`^${escaped}(?:\\b|\\s|[0-9０-９:.\\-–—]|$)`, "iu"));
+        }
+        return list;
+      }
+
+      function looksLikeChapterHeading(node, regexes) {
+        const text = normalizeWhitespace(node.textContent);
+        if (!text || text.length > 140) return false;
+        const tag = node.tagName ? node.tagName.toLowerCase() : "";
+
+        if (/^h[1-6]$/.test(tag)) {
+          if (node.classList.contains("toc-heading")) return false;
+          return true;
+        }
+
+        if (tag === "p" || tag === "div") {
+          const matchesDict = regexes.some(rx => rx.test(text));
+          if (!matchesDict) return false;
+          // Prefer short standalone paragraphs or bold/strong paragraphs
+          if (text.length <= 90) return true;
+        }
+        return false;
+      }
+
+      // -----------------------------------------------------------------------
+      // Strict XHTML Sanitizer
+      // -----------------------------------------------------------------------
+      const ALLOWED_TAGS = new Set([
+        "p", "br", "hr", "div", "span", "blockquote", "pre", "code",
+        "em", "i", "strong", "b", "u", "s", "del", "ins", "sub", "sup", "small", "abbr", "cite", "q",
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        "ul", "ol", "li", "dl", "dt", "dd",
+        "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption",
+        "a", "figure", "figcaption", "ruby", "rt", "rp"
+      ]);
+
+      const ALLOWED_ATTRS = {
+        "*": new Set(["id", "class", "lang", "dir", "title"]),
+        "a": new Set(["href"]),
+        "td": new Set(["colspan", "rowspan"]),
+        "th": new Set(["colspan", "rowspan", "scope"]),
+        "ol": new Set(["start"])
+      };
+
+      function sanitizeToXhtmlNode(sourceNode, xmlDoc) {
+        if (sourceNode.nodeType === Node.TEXT_NODE) {
+          return xmlDoc.createTextNode(sourceNode.nodeValue);
+        }
+        if (sourceNode.nodeType !== Node.ELEMENT_NODE) {
+          return null;
+        }
+
+        const tag = sourceNode.tagName.toLowerCase();
+        if (tag === "script" || tag === "style" || tag === "iframe" || tag === "object" || tag === "embed" || tag === "noscript") {
+          return null;
+        }
+
+        if (tag === "img") {
+          const alt = sourceNode.getAttribute("alt");
+          if (alt) {
+            const span = xmlDoc.createElementNS("http://www.w3.org/1999/xhtml", "span");
+            span.setAttribute("class", "img-alt");
+            span.textContent = `[Image: ${alt}]`;
+            return span;
+          }
+          return null;
+        }
+
+        if (!ALLOWED_TAGS.has(tag)) {
+          const frag = xmlDoc.createDocumentFragment();
+          for (const child of Array.from(sourceNode.childNodes)) {
+            const cleanChild = sanitizeToXhtmlNode(child, xmlDoc);
+            if (cleanChild) frag.appendChild(cleanChild);
+          }
+          return frag;
+        }
+
+        const outEl = xmlDoc.createElementNS("http://www.w3.org/1999/xhtml", tag);
+        const tagAllowed = ALLOWED_ATTRS[tag] || new Set();
+        const globalAllowed = ALLOWED_ATTRS["*"];
+
+        for (const attr of Array.from(sourceNode.attributes)) {
+          const name = attr.name.toLowerCase();
+          if (!globalAllowed.has(name) && !tagAllowed.has(name)) continue;
+          let val = attr.value;
+          if (name === "href") {
+            const trimmed = val.trim();
+            if (/^javascript:/i.test(trimmed)) continue;
+            // Convert internal anchor links cleanly
+            val = trimmed;
+          }
+          if (name === "id") {
+            val = val.replace(/[^A-Za-z0-9_\-:.]/g, "_");
+            if (!/^[A-Za-z_]/.test(val)) val = "id_" + val;
+          }
+          outEl.setAttribute(name, val);
+        }
+
+        for (const child of Array.from(sourceNode.childNodes)) {
+          const cleanChild = sanitizeToXhtmlNode(child, xmlDoc);
+          if (cleanChild) outEl.appendChild(cleanChild);
+        }
+        return outEl;
+      }
+
+      function serializeInnerXhtml(container) {
+        const xmlDoc = document.implementation.createDocument("http://www.w3.org/1999/xhtml", "div", null);
+        const root = xmlDoc.documentElement;
+        for (const child of Array.from(container.childNodes)) {
+          const cleaned = sanitizeToXhtmlNode(child, xmlDoc);
+          if (cleaned) root.appendChild(cleaned);
+        }
+        const serializer = new XMLSerializer();
+        let xml = serializer.serializeToString(root);
+        // Strip outer <div xmlns="..."> and </div>
+        xml = xml.replace(/^<div[^>]*>/, "").replace(/<\/div>$/, "");
+        return xml;
+      }
+
+      function stripDuplicateLeadingHeading(container, chapterTitle) {
+        const normTitle = normalizeWhitespace(chapterTitle).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+        if (!normTitle) return;
+
+        for (const child of Array.from(container.children)) {
+          const txt = normalizeWhitespace(child.textContent);
+          if (!txt) continue;
+          const normTxt = txt.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+          if (normTxt === normTitle || (normTxt.length > 4 && (normTitle.includes(normTxt) || normTxt.includes(normTitle)) && Math.abs(normTxt.length - normTitle.length) <= 8)) {
+            child.remove();
+          }
+          break;
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // AO3 & General HTML Parser
+      // -----------------------------------------------------------------------
+      function parseDocument(rawHtml, mode) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(rawHtml, "text/html");
+
+        const htmlLang = doc.documentElement.getAttribute("lang") || doc.documentElement.getAttribute("xml:lang") || "en";
+        const meta = {
+          title: normalizeWhitespace(doc.querySelector("#preface .meta h1")?.textContent || doc.querySelector("h1")?.textContent || doc.title || "Untitled"),
+          author: normalizeWhitespace(
+            Array.from(doc.querySelectorAll("#preface .byline a[rel='author'], #preface .byline a")).map(a => a.textContent.trim()).join(", ") ||
+            doc.querySelector("#preface .byline")?.textContent.replace(/^by\s+/i, "") ||
+            "Unknown Author"
+          ),
+          lang: mapLanguageToBcp47(htmlLang, "en"),
+          sourceUrl: "",
+          tags: [],
+          metaPairs: [],
+          summaryHtml: "",
+          summaryText: "",
+          beginNotesHtml: "",
+          afterwordHtml: ""
+        };
+
+        // Extract source URL from AO3 preface message
+        const prefaceLinks = Array.from(doc.querySelectorAll("#preface p.message a"));
+        const workLink = prefaceLinks.find(a => /\/works\/\d+/i.test(a.getAttribute("href") || ""));
+        if (workLink) meta.sourceUrl = workLink.getAttribute("href") || "";
+
+        // Extract dl.tags metadata pairs
+        const tagDl = doc.querySelector("#preface dl.tags");
+        if (tagDl) {
+          const dts = Array.from(tagDl.querySelectorAll("dt"));
+          for (const dt of dts) {
+            const key = normalizeWhitespace(dt.textContent).replace(/:$/, "");
+            const dd = dt.nextElementSibling;
+            if (!dd || dd.tagName.toLowerCase() !== "dd") continue;
+            const valText = normalizeWhitespace(dd.textContent);
+            meta.metaPairs.push({ key, value: valText });
+
+            if (/^language$/i.test(key)) {
+              meta.lang = mapLanguageToBcp47(valText, meta.lang);
+            }
+            if (/^(fandom|fandoms|additional tags|relationships?|characters?|categories|rating)/i.test(key)) {
+              const items = Array.from(dd.querySelectorAll("a")).map(a => normalizeWhitespace(a.textContent)).filter(Boolean);
+              meta.tags.push(...(items.length ? items : valText.split(",").map(s => s.trim()).filter(Boolean)));
+            }
+          }
+        }
+
+        // Extract work summary & beginning notes from #preface .meta
+        const prefaceMeta = doc.querySelector("#preface .meta");
+        if (prefaceMeta) {
+          const children = Array.from(prefaceMeta.children);
+          for (let i = 0; i < children.length; i++) {
+            const c = children[i];
+            if (c.tagName.toLowerCase() === "p") {
+              const label = normalizeWhitespace(c.textContent).toLowerCase();
+              const next = children[i + 1];
+              if (label === "summary" && next && next.tagName.toLowerCase() === "blockquote") {
+                meta.summaryHtml = serializeInnerXhtml(next);
+                meta.summaryText = normalizeWhitespace(next.textContent);
+              } else if (label === "notes" && next && next.tagName.toLowerCase() === "blockquote") {
+                meta.beginNotesHtml = serializeInnerXhtml(next);
+              }
+            }
+          }
+        }
+
+        // Extract afterword / work endnotes
+        const afterwordEl = doc.querySelector("#afterword");
+        if (afterwordEl) {
+          const clone = afterwordEl.cloneNode(true);
+          clone.querySelectorAll(".toc-heading").forEach(n => n.remove());
+          meta.afterwordHtml = serializeInnerXhtml(clone);
+        }
+
+        // Extract chapters
+        let chapters = [];
+        let detectionUsed = "";
+
+        const tryAo3Structure = () => {
+          const chaptersRoot = doc.querySelector("#chapters");
+          if (!chaptersRoot) return [];
+
+          const found = [];
+          const children = Array.from(chaptersRoot.children);
+          let current = null;
+
+          const flush = () => {
+            if (current && (current.bodyNodes.length || current.summaryHtml || current.beginNotesHtml)) {
+              found.push(current);
+            }
+            current = null;
+          };
+
+          for (const node of children) {
+            const cls = node.classList;
+            if (cls.contains("meta") && cls.contains("group")) {
+              flush();
+              const headingText = normalizeWhitespace(node.querySelector("h2.heading, h2, h3")?.textContent || `Chapter ${found.length + 1}`);
+              let chSummary = "";
+              let chNotes = "";
+              const mChildren = Array.from(node.children);
+              for (let i = 0; i < mChildren.length; i++) {
+                if (mChildren[i].tagName.toLowerCase() === "p") {
+                  const lbl = normalizeWhitespace(mChildren[i].textContent).toLowerCase();
+                  const nxt = mChildren[i + 1];
+                  if (lbl.includes("summary") && nxt && nxt.tagName.toLowerCase() === "blockquote") {
+                    chSummary = serializeInnerXhtml(nxt);
+                  } else if (lbl.includes("notes") && nxt && nxt.tagName.toLowerCase() === "blockquote") {
+                    chNotes = serializeInnerXhtml(nxt);
+                  }
+                }
+              }
+              current = {
+                title: headingText,
+                summaryHtml: chSummary,
+                beginNotesHtml: chNotes,
+                endNotesHtml: "",
+                bodyNodes: [],
+                included: true
+              };
+            } else if (cls.contains("meta") && /^endnotes/i.test(node.id || "")) {
+              const bq = node.querySelector("blockquote");
+              if (current && bq) {
+                current.endNotesHtml = serializeInnerXhtml(bq);
+              }
+            } else if (cls.contains("userstuff")) {
+              if (!current) {
+                current = {
+                  title: meta.title || "Chapter 1",
+                  summaryHtml: "",
+                  beginNotesHtml: "",
+                  endNotesHtml: "",
+                  bodyNodes: [],
+                  included: true
+                };
+              }
+              current.bodyNodes.push(node.cloneNode(true));
+            }
+          }
+          flush();
+
+          // Handle single-chapter AO3 export where #chapters itself has class="userstuff" and direct <p> children
+          if (found.length === 0 && chaptersRoot.classList.contains("userstuff")) {
+            const clone = chaptersRoot.cloneNode(true);
+            clone.querySelectorAll(".toc-heading").forEach(n => n.remove());
+            if (normalizeWhitespace(clone.textContent).length > 0) {
+              found.push({
+                title: meta.title || "Chapter 1",
+                summaryHtml: "",
+                beginNotesHtml: "",
+                endNotesHtml: "",
+                bodyNodes: [clone],
+                included: true
+              });
+            }
+          }
+          return found;
+        };
+
+        const tryDictionarySplit = () => {
+          const regexes = buildHeadingRegexes();
+          const root = (doc.querySelector("#chapters") || doc.body).cloneNode(true);
+          root.querySelectorAll("#preface, #afterword, .toc-heading, script, style").forEach(n => n.remove());
+
+          // Flatten single wrapper divs like .userstuff
+          const blocks = [];
+          const collectBlocks = (parent) => {
+            for (const child of Array.from(parent.children)) {
+              const tag = child.tagName.toLowerCase();
+              if ((tag === "div" || tag === "section" || tag === "article" || tag === "main") &&
+                  !looksLikeChapterHeading(child, regexes) &&
+                  child.children.length > 0) {
+                collectBlocks(child);
+              } else {
+                blocks.push(child);
+              }
+            }
+          };
+          collectBlocks(root);
+
+          const found = [];
+          let current = null;
+
+          for (const block of blocks) {
+            if (looksLikeChapterHeading(block, regexes)) {
+              if (current && current.bodyNodes.length > 0) {
+                found.push(current);
+              }
+              current = {
+                title: normalizeWhitespace(block.textContent),
+                summaryHtml: "",
+                beginNotesHtml: "",
+                endNotesHtml: "",
+                bodyNodes: [],
+                included: true
+              };
+            } else {
+              if (!current) {
+                if (!normalizeWhitespace(block.textContent)) continue;
+                current = {
+                  title: meta.title || "Chapter 1",
+                  summaryHtml: "",
+                  beginNotesHtml: "",
+                  endNotesHtml: "",
+                  bodyNodes: [],
+                  included: true
+                };
+              }
+              current.bodyNodes.push(block.cloneNode(true));
+            }
+          }
+          if (current && current.bodyNodes.length > 0) found.push(current);
+          return found;
+        };
+
+        const buildSingleChapter = () => {
+          const root = (doc.querySelector("#chapters") || doc.body).cloneNode(true);
+          root.querySelectorAll("#preface, #afterword, .toc-heading, script, style").forEach(n => n.remove());
+          return [{
+            title: meta.title || "Chapter 1",
+            summaryHtml: "",
+            beginNotesHtml: "",
+            endNotesHtml: "",
+            bodyNodes: [root],
+            included: true
+          }];
+        };
+
+        if (mode === "ao3") {
+          chapters = tryAo3Structure();
+          detectionUsed = "AO3 DOM structure";
+        } else if (mode === "dictionary") {
+          chapters = tryDictionarySplit();
+          detectionUsed = "Multilingual heading dictionary";
+        } else if (mode === "single") {
+          chapters = buildSingleChapter();
+          detectionUsed = "Single chapter";
+        } else {
+          // Auto: try AO3 structure first; if only 1 chapter is found, check if multilingual dictionary finds multiple
+          const ao3Chapters = tryAo3Structure();
+          if (ao3Chapters.length > 1) {
+            chapters = ao3Chapters;
+            detectionUsed = "AO3 DOM structure";
+          } else {
+            const dictChapters = tryDictionarySplit();
+            if (dictChapters.length > 1) {
+              chapters = dictChapters;
+              detectionUsed = "Multilingual heading dictionary (fallback)";
+            } else if (ao3Chapters.length === 1) {
+              chapters = ao3Chapters;
+              detectionUsed = "AO3 single-chapter structure";
+            } else {
+              chapters = buildSingleChapter();
+              detectionUsed = "Single chapter fallback";
+            }
+          }
+        }
+
+        // Finalize chapters into clean XHTML + word counts
+        const dedupe = el.optDedupeHeading.checked;
+        const finalized = chapters.map((ch, idx) => {
+          const wrapper = doc.createElement("div");
+          for (const bn of ch.bodyNodes) {
+            if (bn.classList && bn.classList.contains("userstuff")) {
+              for (const inner of Array.from(bn.childNodes)) {
+                wrapper.appendChild(inner.cloneNode(true));
+              }
+            } else {
+              wrapper.appendChild(bn.cloneNode(true));
+            }
+          }
+          if (dedupe) {
+            stripDuplicateLeadingHeading(wrapper, ch.title);
+          }
+          const bodyXhtml = serializeInnerXhtml(wrapper);
+          const stats = countUnits(wrapper.textContent);
+          return {
+            id: `ch_${String(idx + 1).padStart(4, "0")}`,
+            title: ch.title || `Chapter ${idx + 1}`,
+            summaryHtml: ch.summaryHtml || "",
+            beginNotesHtml: ch.beginNotesHtml || "",
+            endNotesHtml: ch.endNotesHtml || "",
+            bodyXhtml,
+            unitLabel: stats.label,
+            included: true
+          };
+        });
+
+        // Sample text for RTL auto-detection
+        const sampleText = finalized.slice(0, 2).map(c => c.bodyXhtml.replace(/<[^>]+>/g, " ")).join(" ").slice(0, 2000);
+        meta.detectedDir = detectDirection(meta.lang, sampleText);
+        meta.tags = Array.from(new Set(meta.tags)).slice(0, 40);
+
+        return { meta, chapters: finalized, detectionUsed };
+      }
+
+      // -----------------------------------------------------------------------
+      // UI Rendering
+      // -----------------------------------------------------------------------
+      function populateUIFromParsed(parsed) {
+        state.parsed = parsed;
+        el.metaTitle.value = parsed.meta.title;
+        el.metaAuthor.value = parsed.meta.author;
+        el.metaLang.value = parsed.meta.lang;
+        el.metaSource.value = parsed.meta.sourceUrl;
+        el.metaTags.value = parsed.meta.tags.join(", ");
+        el.metaSummary.value = parsed.meta.summaryText;
+
+        renderChapterList();
+        el.selectAllBtn.disabled = parsed.chapters.length === 0;
+        el.exportBtn.disabled = parsed.chapters.length === 0;
+        setStatus(`Parsed ${parsed.chapters.length} chapter(s) via ${parsed.detectionUsed}.`, "ok");
+      }
+
+      function renderChapterList() {
+        const chapters = state.parsed ? state.parsed.chapters : [];
+        el.chapterCountBadge.textContent = `${chapters.length} chapter${chapters.length === 1 ? "" : "s"}`;
+        el.chapterList.innerHTML = "";
+
+        if (!chapters.length) {
+          el.chapterList.innerHTML = `<div class="empty-state">No chapters detected. Try switching the detection mode.</div>`;
+          return;
+        }
+
+        chapters.forEach((ch, idx) => {
+          const row = document.createElement("div");
+          row.className = "chapter-item";
+
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.checked = ch.included;
+          cb.addEventListener("change", () => {
+            ch.included = cb.checked;
+          });
+
+          const titleInput = document.createElement("input");
+          titleInput.type = "text";
+          titleInput.className = "chapter-title-input";
+          titleInput.value = ch.title;
+          titleInput.setAttribute("aria-label", `Chapter ${idx + 1} title`);
+          titleInput.addEventListener("input", () => {
+            ch.title = titleInput.value;
+          });
+
+          const metaSpan = document.createElement("span");
+          metaSpan.className = "chapter-meta";
+          metaSpan.textContent = ch.unitLabel;
+
+          const previewBtn = document.createElement("button");
+          previewBtn.type = "button";
+          previewBtn.className = "btn btn-sm";
+          previewBtn.textContent = "Preview";
+          previewBtn.addEventListener("click", () => openPreview(ch));
+
+          row.append(cb, titleInput, metaSpan, previewBtn);
+          el.chapterList.appendChild(row);
+        });
+      }
+
+      function openPreview(ch) {
+        el.previewTitle.textContent = ch.title;
+        let html = "";
+        if (el.optChapterMeta.checked && ch.summaryHtml) {
+          html += `<h4>Summary</h4><blockquote>${ch.summaryHtml}</blockquote>`;
+        }
+        if (el.optChapterMeta.checked && ch.beginNotesHtml) {
+          html += `<h4>Notes</h4><blockquote>${ch.beginNotesHtml}</blockquote>`;
+        }
+        html += ch.bodyXhtml;
+        if (el.optChapterMeta.checked && ch.endNotesHtml) {
+          html += `<hr/><h4>End Notes</h4><blockquote>${ch.endNotesHtml}</blockquote>`;
+        }
+        el.previewBody.innerHTML = html;
+        el.previewModal.classList.add("open");
+      }
+
+      // -----------------------------------------------------------------------
+      // Pure-JS ZIP Builder (EPUB OCF Compliant, Zero Dependencies)
+      // -----------------------------------------------------------------------
+      const CRC_TABLE = (() => {
+        const tbl = new Uint32Array(256);
+        for (let n = 0; n < 256; n++) {
+          let c = n;
+          for (let k = 0; k < 8; k++) {
+            c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+          }
+          tbl[n] = c >>> 0;
+        }
+        return tbl;
+      })();
+
+      function crc32(bytes) {
+        let c = 0xffffffff;
+        for (let i = 0; i < bytes.length; i++) {
+          c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+        }
+        return (c ^ 0xffffffff) >>> 0;
+      }
+
+      async function deflateRaw(bytes) {
+        if (typeof CompressionStream === "undefined") {
+          return { data: bytes, method: 0 };
+        }
+        try {
+          const cs = new CompressionStream("deflate-raw");
+          const writer = cs.writable.getWriter();
+          writer.write(bytes);
+          writer.close();
+          const buf = await new Response(cs.readable).arrayBuffer();
+          const compressed = new Uint8Array(buf);
+          if (compressed.length < bytes.length) {
+            return { data: compressed, method: 8 };
+          }
+          return { data: bytes, method: 0 };
+        } catch {
+          return { data: bytes, method: 0 };
+        }
+      }
+
+      async function buildZip(entries) {
+        const encoder = new TextEncoder();
+        const localParts = [];
+        const centralParts = [];
+        let offset = 0;
+
+        for (const entry of entries) {
+          const nameBytes = encoder.encode(entry.name);
+          const rawBytes = typeof entry.content === "string"
+            ? encoder.encode(entry.content)
+            : entry.content;
+
+          const crc = crc32(rawBytes);
+          const { data: payload, method } = entry.storeOnly
+            ? { data: rawBytes, method: 0 }
+            : await deflateRaw(rawBytes);
+
+          // Local file header (30 bytes + name)
+          const lh = new ArrayBuffer(30);
+          const lv = new DataView(lh);
+          lv.setUint32(0, 0x04034b50, true);
+          lv.setUint16(4, 20, true); // version needed
+          lv.setUint16(6, 0x0800, true); // UTF-8 filename flag
+          lv.setUint16(8, method, true);
+          lv.setUint16(10, 0, true); // mod time
+          lv.setUint16(12, 0, true); // mod date
+          lv.setUint32(14, crc, true);
+          lv.setUint32(18, payload.length, true);
+          lv.setUint32(22, rawBytes.length, true);
+          lv.setUint16(26, nameBytes.length, true);
+          lv.setUint16(28, 0, true); // extra length
+
+          localParts.push(new Uint8Array(lh), nameBytes, payload);
+
+          // Central directory header (46 bytes + name)
+          const ch = new ArrayBuffer(46);
+          const cv = new DataView(ch);
+          cv.setUint32(0, 0x02014b50, true);
+          cv.setUint16(4, 20, true); // version made by
+          cv.setUint16(6, 20, true); // version needed
+          cv.setUint16(8, 0x0800, true); // UTF-8 flag
+          cv.setUint16(10, method, true);
+          cv.setUint16(12, 0, true);
+          cv.setUint16(14, 0, true);
+          cv.setUint32(16, crc, true);
+          cv.setUint32(20, payload.length, true);
+          cv.setUint32(24, rawBytes.length, true);
+          cv.setUint16(28, nameBytes.length, true);
+          cv.setUint16(30, 0, true);
+          cv.setUint16(32, 0, true);
+          cv.setUint16(34, 0, true);
+          cv.setUint16(36, 0, true);
+          cv.setUint32(38, 0, true);
+          cv.setUint32(42, offset, true);
+
+          centralParts.push(new Uint8Array(ch), nameBytes);
+          offset += 30 + nameBytes.length + payload.length;
+        }
+
+        const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+
+        // End of central directory (22 bytes)
+        const eocd = new ArrayBuffer(22);
+        const ev = new DataView(eocd);
+        ev.setUint32(0, 0x06054b50, true);
+        ev.setUint16(4, 0, true);
+        ev.setUint16(6, 0, true);
+        ev.setUint16(8, entries.length, true);
+        ev.setUint16(10, entries.length, true);
+        ev.setUint32(12, centralSize, true);
+        ev.setUint32(16, offset, true);
+        ev.setUint16(20, 0, true);
+
+        return new Blob([...localParts, ...centralParts, new Uint8Array(eocd)], {
+          type: "application/epub+zip"
+        });
+      }
+
+      // -----------------------------------------------------------------------
+      // EPUB 3 + EPUB 2 (NCX) Generator
+      // -----------------------------------------------------------------------
+      function makeXhtmlPage({ title, lang, dir, body }) {
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${escapeXml(lang)}" lang="${escapeXml(lang)}" dir="${escapeXml(dir)}">
+<head>
+  <meta charset="UTF-8" />
+  <title>${escapeXml(title)}</title>
+  <link rel="stylesheet" type="text/css" href="styles.css" />
+</head>
+<body>
+${body}
+</body>
+</html>`;
+      }
+
+      function buildCss(fontMode, dir) {
+        let fontRule = `font-family: Georgia, "Noto Serif", "Songti SC", "Yu Mincho", serif;`;
+        if (fontMode === "sans") {
+          fontRule = `font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;`;
+        } else if (fontMode === "inherit") {
+          fontRule = ``;
+        }
+        return `body {
+  ${fontRule}
+  line-height: 1.65;
+  margin: 1.2em;
+  direction: ${dir};
+  word-wrap: break-word;
+}
+h1, h2, h3 {
+  line-height: 1.3;
+  margin-top: 1.4em;
+  margin-bottom: 0.6em;
+  page-break-after: avoid;
+}
+h1.work-title {
+  text-align: center;
+  font-size: 1.8em;
+  margin-bottom: 0.25em;
+}
+.byline {
+  text-align: center;
+  font-style: italic;
+  margin-bottom: 1.5em;
+}
+.meta-box {
+  border: 1px solid #999;
+  padding: 0.9em 1.1em;
+  margin: 1em 0 1.5em;
+  font-size: 0.9em;
+}
+.meta-box dt {
+  font-weight: bold;
+  margin-top: 0.45em;
+}
+.meta-box dd {
+  margin-left: 1em;
+  margin-bottom: 0.25em;
+}
+.chapter-header {
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.5em;
+  margin-bottom: 1.2em;
+}
+.note-box {
+  border-left: 3px solid #999;
+  padding: 0.3em 0.9em;
+  margin: 1em 0;
+  font-size: 0.92em;
+}
+.note-label {
+  font-weight: bold;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25em;
+}
+p {
+  margin: 0.65em 0;
+}
+hr {
+  border: none;
+  border-top: 1px solid #aaa;
+  margin: 1.5em auto;
+  width: 45%;
+}
+blockquote {
+  margin: 0.9em 1.2em;
+  padding-left: 0.8em;
+  border-left: 2px solid #bbb;
+}
+.cover-page {
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+.cover-page img {
+  max-width: 100%;
+  max-height: 95vh;
+}
+`;
+      }
+
+      async function generateEpub() {
+        if (!state.parsed) return;
+        const selectedChapters = state.parsed.chapters.filter(c => c.included);
+        if (!selectedChapters.length) {
+          setStatus("Select at least one chapter to export.", "warn");
+          return;
+        }
+
+        el.exportBtn.disabled = true;
+        setStatus("Building EPUB package...");
+
+        try {
+          const title = normalizeWhitespace(el.metaTitle.value) || "Untitled";
+          const author = normalizeWhitespace(el.metaAuthor.value) || "Unknown Author";
+          const lang = normalizeWhitespace(el.metaLang.value) || "en";
+          const dir = el.metaDir.value === "auto"
+            ? (state.parsed.meta.detectedDir || detectDirection(lang))
+            : el.metaDir.value;
+          const sourceUrl = normalizeWhitespace(el.metaSource.value);
+          const tags = el.metaTags.value.split(",").map(s => s.trim()).filter(Boolean);
+          const summaryText = el.metaSummary.value.trim();
+          const bookId = "urn:uuid:" + (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+          const modified = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+
+          const entries = [];
+          // 1. mimetype MUST be first and uncompressed
+          entries.push({ name: "mimetype", content: "application/epub+zip", storeOnly: true });
+
+          // 2. META-INF/container.xml
+          entries.push({
+            name: "META-INF/container.xml",
+            content: `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`
+          });
+
+          // 3. CSS
+          entries.push({
+            name: "OEBPS/styles.css",
+            content: buildCss(el.fontStyle.value, dir)
+          });
+
+          const manifestItems = [
+            `<item id="css" href="styles.css" media-type="text/css"/>`,
+            `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
+            `<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>`
+          ];
+          const spineItems = [];
+          const tocEntries = [];
+
+          // Optional Cover
+          let coverMetaTag = "";
+          if (state.coverData && state.coverMime) {
+            const ext = state.coverMime === "image/png" ? "png" : state.coverMime === "image/webp" ? "webp" : "jpg";
+            const coverHref = `cover.${ext}`;
+            entries.push({ name: `OEBPS/${coverHref}`, content: state.coverData, storeOnly: true });
+            manifestItems.push(`<item id="cover-image" href="${coverHref}" media-type="${state.coverMime}" properties="cover-image"/>`);
+            coverMetaTag = `<meta name="cover" content="cover-image"/>`;
+
+            const coverPage = makeXhtmlPage({
+              title: "Cover",
+              lang,
+              dir,
+              body: `<div class="cover-page"><img src="${coverHref}" alt="${escapeXml(title)}" /></div>`
+            });
+            entries.push({ name: "OEBPS/cover.xhtml", content: coverPage });
+            manifestItems.push(`<item id="cover-page" href="cover.xhtml" media-type="application/xhtml+xml"/>`);
+            spineItems.push(`<itemref idref="cover-page"/>`);
+          }
+
+          // Optional Preface Page
+          if (el.optPreface.checked) {
+            let prefBody = `<h1 class="work-title">${escapeXml(title)}</h1>\n<p class="byline">${escapeXml(author)}</p>`;
+            if (sourceUrl) {
+              prefBody += `\n<p class="byline"><a href="${escapeXml(sourceUrl)}">${escapeXml(sourceUrl)}</a></p>`;
+            }
+            if (state.parsed.meta.metaPairs.length) {
+              prefBody += `\n<dl class="meta-box">`;
+              for (const pair of state.parsed.meta.metaPairs) {
+                prefBody += `\n  <dt>${escapeXml(pair.key)}</dt><dd>${escapeXml(pair.value)}</dd>`;
+              }
+              prefBody += `\n</dl>`;
+            }
+            if (summaryText) {
+              const summaryMarkup = state.parsed.meta.summaryHtml && summaryText === state.parsed.meta.summaryText
+                ? state.parsed.meta.summaryHtml
+                : `<p>${escapeXml(summaryText).replace(/\n+/g, "</p><p>")}</p>`;
+              prefBody += `\n<div class="note-box"><div class="note-label">Summary</div>${summaryMarkup}</div>`;
+            }
+            if (state.parsed.meta.beginNotesHtml) {
+              prefBody += `\n<div class="note-box"><div class="note-label">Notes</div>${state.parsed.meta.beginNotesHtml}</div>`;
+            }
+
+            entries.push({
+              name: "OEBPS/preface.xhtml",
+              content: makeXhtmlPage({ title: "Preface", lang, dir, body: prefBody })
+            });
+            manifestItems.push(`<item id="preface" href="preface.xhtml" media-type="application/xhtml+xml"/>`);
+            spineItems.push(`<itemref idref="preface"/>`);
+            tocEntries.push({ id: "preface", href: "preface.xhtml", title: "Preface" });
+          }
+
+          // Chapters
+          selectedChapters.forEach((ch, idx) => {
+            const href = `chapter_${String(idx + 1).padStart(4, "0")}.xhtml`;
+            const itemId = `chapter_${idx + 1}`;
+            const chTitle = normalizeWhitespace(ch.title) || `Chapter ${idx + 1}`;
+
+            let body = `<div class="chapter-header"><h2>${escapeXml(chTitle)}</h2></div>\n`;
+            if (el.optChapterMeta.checked && ch.summaryHtml) {
+              body += `<div class="note-box"><div class="note-label">Chapter Summary</div>${ch.summaryHtml}</div>\n`;
+            }
+            if (el.optChapterMeta.checked && ch.beginNotesHtml) {
+              body += `<div class="note-box"><div class="note-label">Chapter Notes</div>${ch.beginNotesHtml}</div>\n`;
+            }
+            body += `<div class="chapter-body">${ch.bodyXhtml}</div>\n`;
+            if (el.optChapterMeta.checked && ch.endNotesHtml) {
+              body += `<div class="note-box"><div class="note-label">Chapter End Notes</div>${ch.endNotesHtml}</div>\n`;
+            }
+
+            entries.push({
+              name: `OEBPS/${href}`,
+              content: makeXhtmlPage({ title: chTitle, lang, dir, body })
+            });
+            manifestItems.push(`<item id="${itemId}" href="${href}" media-type="application/xhtml+xml"/>`);
+            spineItems.push(`<itemref idref="${itemId}"/>`);
+            tocEntries.push({ id: itemId, href, title: chTitle });
+          });
+
+          // Optional Afterword
+          if (el.optAfterword.checked && state.parsed.meta.afterwordHtml) {
+            const awBody = `<div class="chapter-header"><h2>Afterword &amp; End Notes</h2></div>\n${state.parsed.meta.afterwordHtml}`;
+            entries.push({
+              name: "OEBPS/afterword.xhtml",
+              content: makeXhtmlPage({ title: "Afterword", lang, dir, body: awBody })
+            });
+            manifestItems.push(`<item id="afterword" href="afterword.xhtml" media-type="application/xhtml+xml"/>`);
+            spineItems.push(`<itemref idref="afterword"/>`);
+            tocEntries.push({ id: "afterword", href: "afterword.xhtml", title: "Afterword" });
+          }
+
+          // EPUB 3 Navigation Document (nav.xhtml)
+          const navList = tocEntries
+            .map(t => `      <li><a href="${escapeXml(t.href)}">${escapeXml(t.title)}</a></li>`)
+            .join("\n");
+          const navXhtml = makeXhtmlPage({
+            title: "Table of Contents",
+            lang,
+            dir,
+            body: `  <nav epub:type="toc" id="toc">
+    <h1>Table of Contents</h1>
+    <ol>
+${navList}
+    </ol>
+  </nav>`
+          });
+          entries.push({ name: "OEBPS/nav.xhtml", content: navXhtml });
+
+          // EPUB 2 NCX (toc.ncx)
+          const navPoints = tocEntries
+            .map((t, i) => `    <navPoint id="navPoint-${i + 1}" playOrder="${i + 1}">
+      <navLabel><text>${escapeXml(t.title)}</text></navLabel>
+      <content src="${escapeXml(t.href)}"/>
+    </navPoint>`)
+            .join("\n");
+          const ncxXml = `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head>
+    <meta name="dtb:uid" content="${escapeXml(bookId)}"/>
+    <meta name="dtb:depth" content="1"/>
+    <meta name="dtb:totalPageCount" content="0"/>
+    <meta name="dtb:maxPageNumber" content="0"/>
+  </head>
+  <docTitle><text>${escapeXml(title)}</text></docTitle>
+  <navMap>
+${navPoints}
+  </navMap>
+</ncx>`;
+          entries.push({ name: "OEBPS/toc.ncx", content: ncxXml });
+
+          // Package Document (content.opf)
+          const subjectsXml = tags.map(t => `    <dc:subject>${escapeXml(t)}</dc:subject>`).join("\n");
+          const descXml = summaryText ? `    <dc:description>${escapeXml(summaryText)}</dc:description>` : "";
+          const sourceXml = sourceUrl ? `    <dc:source>${escapeXml(sourceUrl)}</dc:source>` : "";
+          const pageProg = dir === "rtl" ? ` page-progression-direction="rtl"` : "";
+
+          const opfXml = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id" xml:lang="${escapeXml(lang)}">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="pub-id">${escapeXml(bookId)}</dc:identifier>
+    <dc:title>${escapeXml(title)}</dc:title>
+    <dc:creator>${escapeXml(author)}</dc:creator>
+    <dc:language>${escapeXml(lang)}</dc:language>
+    <meta property="dcterms:modified">${modified}</meta>
+${descXml}
+${sourceXml}
+${subjectsXml}
+${coverMetaTag}
+  </metadata>
+  <manifest>
+    ${manifestItems.join("\n    ")}
+  </manifest>
+  <spine toc="ncx"${pageProg}>
+    ${spineItems.join("\n    ")}
+  </spine>
+</package>`;
+          entries.push({ name: "OEBPS/content.opf", content: opfXml });
+
+          const blob = await buildZip(entries);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${sanitizeFilename(title)}.epub`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+          const kb = (blob.size / 1024).toFixed(1);
+          setStatus(`Exported "${a.download}" (${kb} KB, ${selectedChapters.length} chapter${selectedChapters.length === 1 ? "" : "s"}).`, "ok");
+        } catch (err) {
+          console.error(err);
+          setStatus(`Export failed: ${err.message}`, "err");
+        } finally {
+          el.exportBtn.disabled = false;
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Event Wiring
+      // -----------------------------------------------------------------------
+      async function handleFile(file) {
+        if (!file) return;
+        state.fileName = file.name;
+        setStatus(`Reading "${file.name}"...`);
+        try {
+          state.rawHtml = await file.text();
+          el.fileSummary.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+          el.fileInfo.classList.add("visible");
+          const parsed = parseDocument(state.rawHtml, el.detectMode.value);
+          populateUIFromParsed(parsed);
+        } catch (err) {
+          console.error(err);
+          setStatus(`Failed to read file: ${err.message}`, "err");
+        }
+      }
+
+      el.dropzone.addEventListener("click", () => el.fileInput.click());
+      el.dropzone.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          el.fileInput.click();
+        }
+      });
+
+      el.fileInput.addEventListener("change", e => {
+        if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+      });
+
+      ["dragenter", "dragover"].forEach(ev => {
+        el.dropzone.addEventListener(ev, e => {
+          e.preventDefault();
+          el.dropzone.classList.add("dragover");
+        });
+      });
+
+      ["dragleave", "drop"].forEach(ev => {
+        el.dropzone.addEventListener(ev, e => {
+          e.preventDefault();
+          el.dropzone.classList.remove("dragover");
+        });
+      });
+
+      el.dropzone.addEventListener("drop", e => {
+        const file = e.dataTransfer?.files?.[0];
+        if (file) handleFile(file);
+      });
+
+      el.reparseBtn.addEventListener("click", () => {
+        if (!state.rawHtml) return;
+        populateUIFromParsed(parseDocument(state.rawHtml, el.detectMode.value));
+      });
+
+      el.detectMode.addEventListener("change", () => {
+        if (state.rawHtml) populateUIFromParsed(parseDocument(state.rawHtml, el.detectMode.value));
+      });
+
+      el.optDedupeHeading.addEventListener("change", () => {
+        if (state.rawHtml) populateUIFromParsed(parseDocument(state.rawHtml, el.detectMode.value));
+      });
+
+      el.coverInput.addEventListener("change", async e => {
+        const file = e.target.files?.[0];
+        if (!file) {
+          state.coverFile = null;
+          state.coverData = null;
+          state.coverMime = null;
+          return;
+        }
+        state.coverFile = file;
+        state.coverMime = file.type || "image/jpeg";
+        state.coverData = new Uint8Array(await file.arrayBuffer());
+      });
+
+      el.selectAllBtn.addEventListener("click", () => {
+        if (!state.parsed) return;
+        const allChecked = state.parsed.chapters.every(c => c.included);
+        state.parsed.chapters.forEach(c => { c.included = !allChecked; });
+        renderChapterList();
+      });
+
+      el.exportBtn.addEventListener("click", generateEpub);
+
+      el.closePreviewBtn.addEventListener("click", () => el.previewModal.classList.remove("open"));
+      el.previewModal.addEventListener("click", e => {
+        if (e.target === el.previewModal) el.previewModal.classList.remove("open");
+      });
+    })();
+  </script>
+</body>
+</html>
