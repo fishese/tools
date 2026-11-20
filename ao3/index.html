@@ -19,7 +19,7 @@
       --warning: #e0af68;
       --radius: 10px;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
     }
 
     * { box-sizing: border-box; }
@@ -69,6 +69,30 @@
       font-size: 0.85rem;
     }
 
+    .lang-switch {
+      display: inline-flex;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--surface-2);
+    }
+
+    .lang-switch button {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 0.35rem 0.7rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .lang-switch button.active {
+      background: var(--accent);
+      color: #0b0e14;
+    }
+
     main {
       max-width: 1180px;
       margin: 0 auto;
@@ -78,12 +102,20 @@
       gap: 1.25rem;
     }
 
+    .workspace {
+      display: none;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    .workspace.visible {
+      display: grid;
+    }
+
     @media (min-width: 920px) {
-      .workspace {
-        display: grid;
+      .workspace.visible {
         grid-template-columns: 380px 1fr;
-        gap: 1.25rem;
-        align-items: start;
       }
     }
 
@@ -272,7 +304,7 @@
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      max-height: 540px;
+      max-height: 620px;
       overflow-y: auto;
       padding-right: 0.25rem;
     }
@@ -385,10 +417,24 @@
     .modal-body {
       padding: 1.2rem;
       overflow-y: auto;
-      font-family: Georgia, "Noto Serif", serif;
+      font-family: Georgia, "Noto Serif", "Songti SC", serif;
       font-size: 0.96rem;
       line-height: 1.7;
       background: #13161c;
+    }
+
+    .modal-body.no-blank-row p {
+      margin-top: 0;
+      margin-bottom: 0.15em;
+    }
+
+    .modal-body.blank-row p {
+      margin-top: 0;
+      margin-bottom: 1em;
+    }
+
+    .modal-body.indent-para p {
+      text-indent: 2em;
     }
 
     .modal-body blockquote {
@@ -396,6 +442,10 @@
       margin: 0.75rem 0;
       padding: 0.25rem 0.9rem;
       color: var(--muted);
+    }
+
+    .modal-body blockquote p {
+      text-indent: 0 !important;
     }
 
     .pill-row {
@@ -425,8 +475,15 @@
 <body>
   <header>
     <div>
-      <h1>AO3 HTML to EPUB Converter <span class="badge">EPUB 3 + NCX</span></h1>
-      <div class="header-sub">100% client-side, offline-capable converter with Unicode, CJK, RTL, and multilingual chapter detection.</div>
+      <h1>
+        <span data-i18n="appTitle">AO3 HTML to EPUB Converter</span>
+        <span class="badge">EPUB 3 + NCX</span>
+      </h1>
+      <div class="header-sub" data-i18n="appSubtitle">100% client-side, offline-capable converter with Unicode, CJK, RTL, and multilingual chapter detection.</div>
+    </div>
+    <div class="lang-switch" role="group" aria-label="UI Language">
+      <button id="langEnBtn" type="button" class="active">English</button>
+      <button id="langZhBtn" type="button">中文</button>
     </div>
   </header>
 
@@ -434,105 +491,113 @@
     <section class="card">
       <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload HTML file">
         <input id="fileInput" type="file" accept=".html,.htm,.xhtml,text/html" hidden />
-        <p><strong>Drop an AO3 HTML file here</strong> or click to browse</p>
-        <p>Supports multi-chapter AO3 HTML exports and general single-file HTML stories. Everything stays in your browser.</p>
+        <p><strong data-i18n="dropTitle">Drop an AO3 HTML file here</strong> <span data-i18n="dropOr">or click to browse</span></p>
+        <p data-i18n="dropHint">Supports multi-chapter AO3 HTML exports and general single-file HTML works. Everything stays in your browser.</p>
       </div>
       <div id="fileInfo" class="file-info">
         <span id="fileSummary"></span>
-        <button id="reparseBtn" class="btn btn-sm" type="button">Re-parse</button>
+        <button id="reparseBtn" class="btn btn-sm" type="button" data-i18n="reparseBtn">Re-parse</button>
       </div>
     </section>
 
-    <div class="workspace">
+    <div id="workspace" class="workspace">
       <section class="card">
-        <h2>Metadata &amp; Settings</h2>
+        <h2 data-i18n="metaSettingsTitle">Metadata &amp; Settings</h2>
 
         <div class="field">
-          <label for="metaTitle">Title</label>
-          <input id="metaTitle" type="text" placeholder="Work title" />
+          <label for="metaTitle" data-i18n="labelTitle">Title</label>
+          <input id="metaTitle" type="text" placeholder="Work title" data-i18n-ph="phTitle" />
         </div>
 
         <div class="field">
-          <label for="metaAuthor">Author(s)</label>
-          <input id="metaAuthor" type="text" placeholder="Author name" />
+          <label for="metaAuthor" data-i18n="labelAuthor">Author(s)</label>
+          <input id="metaAuthor" type="text" placeholder="Author name" data-i18n-ph="phAuthor" />
         </div>
 
         <div class="grid-2 field">
           <div>
-            <label for="metaLang">Language (BCP-47)</label>
+            <label for="metaLang" data-i18n="labelLang">Language (BCP-47)</label>
             <input id="metaLang" type="text" value="en" placeholder="en, zh-Hans, ja, ko, ar..." />
           </div>
           <div>
-            <label for="metaDir">Text Direction</label>
+            <label for="metaDir" data-i18n="labelDir">Text Direction</label>
             <select id="metaDir">
-              <option value="auto">Auto-detect</option>
-              <option value="ltr">Left-to-Right (LTR)</option>
-              <option value="rtl">Right-to-Left (RTL)</option>
+              <option value="auto" data-i18n="dirAuto">Auto-detect</option>
+              <option value="ltr" data-i18n="dirLtr">Left-to-Right (LTR)</option>
+              <option value="rtl" data-i18n="dirRtl">Right-to-Left (RTL)</option>
             </select>
           </div>
         </div>
 
         <div class="field">
-          <label for="metaSource">Source URL (optional)</label>
+          <label for="metaSource" data-i18n="labelSource">Source URL (optional)</label>
           <input id="metaSource" type="url" placeholder="https://archiveofourown.org/works/..." />
         </div>
 
         <div class="field">
-          <label for="metaTags">Tags / Subjects (comma-separated)</label>
-          <input id="metaTags" type="text" placeholder="Fandom, Character, Tag..." />
+          <label for="metaTags" data-i18n="labelTags">Tags / Subjects (comma-separated)</label>
+          <input id="metaTags" type="text" placeholder="Fandom, Character, Tag..." data-i18n-ph="phTags" />
         </div>
 
         <div class="field">
-          <label for="metaSummary">Summary / Description</label>
-          <textarea id="metaSummary" placeholder="Work summary"></textarea>
+          <label for="metaSummary" data-i18n="labelSummary">Summary / Description</label>
+          <textarea id="metaSummary" placeholder="Work summary" data-i18n-ph="phSummary"></textarea>
         </div>
 
         <div class="field">
-          <label for="coverInput">Optional Cover Image (JPG/PNG/WebP)</label>
+          <label for="coverInput" data-i18n="labelCover">Optional Cover Image (JPG/PNG/WebP)</label>
           <input id="coverInput" type="file" accept="image/jpeg,image/png,image/webp" />
         </div>
 
         <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0;" />
 
         <div class="field">
-          <label for="detectMode">Chapter Detection Mode</label>
+          <label for="detectMode" data-i18n="labelDetectMode">Chapter Detection Mode</label>
           <select id="detectMode">
-            <option value="auto">Auto (AO3 DOM Structure + Multilingual Fallback)</option>
-            <option value="ao3">AO3 DOM Structure Only (#chapters / h2.heading)</option>
-            <option value="dictionary">Multilingual Heading Dictionary Only</option>
-            <option value="single">Single Chapter (No Splitting)</option>
+            <option value="auto" data-i18n="modeAuto">Auto (AO3 DOM Structure + Multilingual Fallback)</option>
+            <option value="ao3" data-i18n="modeAo3">AO3 DOM Structure Only (#chapters / h2.heading)</option>
+            <option value="dictionary" data-i18n="modeDict">Multilingual Heading Dictionary Only</option>
+            <option value="single" data-i18n="modeSingle">Single Chapter (No Splitting)</option>
           </select>
         </div>
 
         <label class="checkbox-row">
+          <input id="optBlankRow" type="checkbox" checked />
+          <span data-i18n="optBlankRow">Blank row between paragraphs</span>
+        </label>
+        <label class="checkbox-row">
+          <input id="optIndent" type="checkbox" />
+          <span data-i18n="optIndent">Indent at start of paragraph (2em)</span>
+        </label>
+        <label class="checkbox-row">
           <input id="optPreface" type="checkbox" checked />
-          Include Preface &amp; Metadata Page
+          <span data-i18n="optPreface">Include Preface &amp; Metadata Page</span>
         </label>
         <label class="checkbox-row">
           <input id="optChapterMeta" type="checkbox" checked />
-          Include Chapter Summaries &amp; Notes
+          <span data-i18n="optChapterMeta">Include Chapter Summaries &amp; Notes</span>
         </label>
         <label class="checkbox-row">
           <input id="optAfterword" type="checkbox" checked />
-          Include Work Endnotes / Afterword
+          <span data-i18n="optAfterword">Include Work Endnotes / Afterword</span>
         </label>
         <label class="checkbox-row">
           <input id="optDedupeHeading" type="checkbox" checked />
-          Remove duplicate in-body chapter title
+          <span data-i18n="optDedupeHeading">Remove duplicate in-body chapter title</span>
         </label>
 
         <div class="field" style="margin-top:0.75rem;">
-          <label for="fontStyle">Reader Typography</label>
+          <label for="fontStyle" data-i18n="labelFontStyle">Reader Typography</label>
           <select id="fontStyle">
-            <option value="serif">Serif (Default)</option>
-            <option value="sans">Sans-serif</option>
-            <option value="inherit">Reader Default (No font override)</option>
+            <option value="serif" data-i18n="fontSerif">Serif (Default)</option>
+            <option value="sans" data-i18n="fontSans">Sans-serif</option>
+            <option value="inherit" data-i18n="fontInherit">Reader Default (No font override)</option>
           </select>
         </div>
 
         <details>
-          <summary>Multilingual Chapter Dictionary</summary>
-          <p class="dict-help">
+          <summary data-i18n="dictSummary">Multilingual Chapter Dictionary</summary>
+          <p class="dict-help" data-i18n="dictHelp">
             Used when standard AO3 chapter containers are absent or when "Multilingual Heading Dictionary" is selected. Add extra keywords (one per line) to match headings in any language.
           </p>
           <textarea id="customKeywords" placeholder="e.g.&#10;Act&#10;Volume&#10;幕&#10;부"></textarea>
@@ -542,21 +607,21 @@
 
       <section class="card">
         <h2>
-          <span>Chapters &amp; Table of Contents</span>
+          <span data-i18n="chaptersTocTitle">Chapters &amp; Table of Contents</span>
           <span id="chapterCountBadge" class="badge">0 chapters</span>
         </h2>
 
         <div id="chapterList" class="chapter-list">
-          <div class="empty-state">
-            Upload an HTML file to inspect its detected structure, edit chapter titles, and build an EPUB.
+          <div class="empty-state" data-i18n="emptyChapters">
+            No chapters detected. Try switching the detection mode.
           </div>
         </div>
 
         <div class="actions-bar">
-          <div id="statusText" class="status">Ready.</div>
+          <div id="statusText" class="status" data-i18n="statusReady">Ready.</div>
           <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-            <button id="selectAllBtn" class="btn btn-sm" type="button" disabled>Toggle All</button>
-            <button id="exportBtn" class="btn btn-primary" type="button" disabled>Download EPUB</button>
+            <button id="selectAllBtn" class="btn btn-sm" type="button" disabled data-i18n="toggleAllBtn">Toggle All</button>
+            <button id="exportBtn" class="btn btn-primary" type="button" disabled data-i18n="downloadBtn">Download EPUB</button>
           </div>
         </div>
       </section>
@@ -567,19 +632,167 @@
     <div class="modal">
       <div class="modal-header">
         <h3 id="previewTitle">Chapter Preview</h3>
-        <button id="closePreviewBtn" class="btn btn-sm" type="button">Close</button>
+        <button id="closePreviewBtn" class="btn btn-sm" type="button" data-i18n="closeBtn">Close</button>
       </div>
       <div id="previewBody" class="modal-body"></div>
     </div>
   </div>
 
-  <footer>
+  <footer data-i18n="footerText">
     Runs completely locally in your browser. Generates standard EPUB 3 packages with EPUB 2 NCX fallback.
   </footer>
 
   <script>
     (() => {
       "use strict";
+
+      // -----------------------------------------------------------------------
+      // UI Internationalization (English / 中文)
+      // -----------------------------------------------------------------------
+      const UI_STRINGS = {
+        en: {
+          appTitle: "AO3 HTML to EPUB Converter",
+          appSubtitle: "100% client-side, offline-capable converter with Unicode, CJK, RTL, and multilingual chapter detection.",
+          dropTitle: "Drop an AO3 HTML file here",
+          dropOr: "or click to browse",
+          dropHint: "Supports multi-chapter AO3 HTML exports and general single-file HTML works. Everything stays in your browser.",
+          reparseBtn: "Re-parse",
+          metaSettingsTitle: "Metadata & Settings",
+          labelTitle: "Title",
+          phTitle: "Work title",
+          labelAuthor: "Author(s)",
+          phAuthor: "Author name",
+          labelLang: "Language (BCP-47)",
+          labelDir: "Text Direction",
+          dirAuto: "Auto-detect",
+          dirLtr: "Left-to-Right (LTR)",
+          dirRtl: "Right-to-Left (RTL)",
+          labelSource: "Source URL (optional)",
+          labelTags: "Tags / Subjects (comma-separated)",
+          phTags: "Fandom, Character, Tag...",
+          labelSummary: "Summary / Description",
+          phSummary: "Work summary",
+          labelCover: "Optional Cover Image (JPG/PNG/WebP)",
+          labelDetectMode: "Chapter Detection Mode",
+          modeAuto: "Auto (AO3 DOM Structure + Multilingual Fallback)",
+          modeAo3: "AO3 DOM Structure Only (#chapters / h2.heading)",
+          modeDict: "Multilingual Heading Dictionary Only",
+          modeSingle: "Single Chapter (No Splitting)",
+          optBlankRow: "Blank row between paragraphs",
+          optIndent: "Indent at start of paragraph (2em)",
+          optPreface: "Include Preface & Metadata Page",
+          optChapterMeta: "Include Chapter Summaries & Notes",
+          optAfterword: "Include Work Endnotes / Afterword",
+          optDedupeHeading: "Remove duplicate in-body chapter title",
+          labelFontStyle: "Reader Typography",
+          fontSerif: "Serif (Default)",
+          fontSans: "Sans-serif",
+          fontInherit: "Reader Default (No font override)",
+          dictSummary: "Multilingual Chapter Dictionary",
+          dictHelp: "Used when standard AO3 chapter containers are absent or when \"Multilingual Heading Dictionary\" is selected. Add extra keywords (one per line) to match headings in any language.",
+          chaptersTocTitle: "Chapters & Table of Contents",
+          emptyChapters: "No chapters detected. Try switching the detection mode.",
+          statusReady: "Ready.",
+          toggleAllBtn: "Toggle All",
+          downloadBtn: "Download EPUB",
+          closeBtn: "Close",
+          previewBtn: "Preview",
+          footerText: "Runs completely locally in your browser. Generates standard EPUB 3 packages with EPUB 2 NCX fallback.",
+          chapterCount: (n) => `${n} chapter${n === 1 ? "" : "s"}`,
+          statusReading: (name) => `Reading "${name}"...`,
+          statusParsed: (n, mode) => `Parsed ${n} chapter(s) via ${mode}.`,
+          statusSelectOne: "Select at least one chapter to export.",
+          statusBuilding: "Building EPUB package...",
+          statusExported: (file, kb, n) => `Exported "${file}" (${kb} KB, ${n} chapter${n === 1 ? "" : "s"}).`,
+          statusExportFail: (msg) => `Export failed: ${msg}`,
+          statusReadFail: (msg) => `Failed to read file: ${msg}`,
+          epubCover: "Cover",
+          epubPreface: "Preface",
+          epubSummary: "Summary",
+          epubNotes: "Notes",
+          epubChSummary: "Chapter Summary",
+          epubChNotes: "Chapter Notes",
+          epubChEndNotes: "Chapter End Notes",
+          epubAfterword: "Afterword",
+          epubAfterwordHeading: "Afterword & End Notes",
+          epubToc: "Table of Contents"
+        },
+        zh: {
+          appTitle: "AO3 HTML 转 EPUB 转换器",
+          appSubtitle: "纯本地浏览器运行、支持离线使用，完整兼容 Unicode、中日韩文、从右到左排版及多语言分章识别。",
+          dropTitle: "将 AO3 HTML 文件拖放到此处",
+          dropOr: "或点击选择文件",
+          dropHint: "支持多章节 AO3 导出 HTML 及通用单文件 HTML 文本，所有处理均在本地完成，不上传服务器。",
+          reparseBtn: "重新解析",
+          metaSettingsTitle: "书籍信息与排版设置",
+          labelTitle: "作品标题",
+          phTitle: "输入作品标题",
+          labelAuthor: "作者",
+          phAuthor: "输入作者名",
+          labelLang: "语言代码 (BCP-47)",
+          labelDir: "阅读方向",
+          dirAuto: "自动检测",
+          dirLtr: "从左到右 (LTR)",
+          dirRtl: "从右到左 (RTL)",
+          labelSource: "来源链接（可选）",
+          labelTags: "标签 / 主题（以英文逗号分隔）",
+          phTags: "原作、角色、标签...",
+          labelSummary: "作品简介",
+          phSummary: "输入作品简介",
+          labelCover: "自定义封面图片（可选，JPG/PNG/WebP）",
+          labelDetectMode: "章节识别模式",
+          modeAuto: "自动（AO3 结构优先 + 多语言标题词典回退）",
+          modeAo3: "仅 AO3 结构（#chapters / h2.heading）",
+          modeDict: "仅多语言章节标题词典",
+          modeSingle: "单章模式（不拆分章节）",
+          optBlankRow: "段落之间保留空行",
+          optIndent: "段落开头首行缩进（2字符）",
+          optPreface: "包含扉页与作品元数据页",
+          optChapterMeta: "包含章节简介与作者注",
+          optAfterword: "包含文末注释 / 后记",
+          optDedupeHeading: "移除正文开头重复的章节标题",
+          labelFontStyle: "正文字体样式",
+          fontSerif: "衬线体 / 宋体（默认）",
+          fontSans: "无衬线体 / 黑体",
+          fontInherit: "阅读器默认（不强制指定字体）",
+          dictSummary: "多语言章节关键词词典",
+          dictHelp: "当文件中缺少标准 AO3 章节标记或选择“仅多语言章节标题词典”时生效。可每行添加一个自定义关键词以匹配任意语言标题。",
+          chaptersTocTitle: "章节与目录列表",
+          emptyChapters: "未检测到章节，请尝试切换上方的“章节识别模式”。",
+          statusReady: "就绪。",
+          toggleAllBtn: "全选 / 取消全选",
+          downloadBtn: "下载 EPUB",
+          closeBtn: "关闭",
+          previewBtn: "预览",
+          footerText: "完全在浏览器本地运行，生成符合标准的 EPUB 3 电子书（附带 EPUB 2 NCX 兼容目录）。",
+          chapterCount: (n) => `共 ${n} 章`,
+          statusReading: (name) => `正在读取 "${name}"...`,
+          statusParsed: (n, mode) => `已解析 ${n} 个章节（识别方式：${mode}）。`,
+          statusSelectOne: "请至少选择一个要导出的章节。",
+          statusBuilding: "正在打包生成 EPUB 文件...",
+          statusExported: (file, kb, n) => `已导出 "${file}"（${kb} KB，共 ${n} 章）。`,
+          statusExportFail: (msg) => `导出失败：${msg}`,
+          statusReadFail: (msg) => `读取文件失败：${msg}`,
+          epubCover: "封面",
+          epubPreface: "扉页与信息",
+          epubSummary: "简介",
+          epubNotes: "作者注",
+          epubChSummary: "本章简介",
+          epubChNotes: "章节注释",
+          epubChEndNotes: "章末注释",
+          epubAfterword: "后记与注释",
+          epubAfterwordHeading: "后记与文末注释",
+          epubToc: "目录"
+        }
+      };
+
+      let currentUiLang = (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
+
+      function t(key, ...args) {
+        const dict = UI_STRINGS[currentUiLang] || UI_STRINGS.en;
+        const val = dict[key] !== undefined ? dict[key] : UI_STRINGS.en[key];
+        return typeof val === "function" ? val(...args) : val;
+      }
 
       // -----------------------------------------------------------------------
       // Language & Script Helpers
@@ -672,11 +885,14 @@
       };
 
       const el = {
+        langEnBtn: document.getElementById("langEnBtn"),
+        langZhBtn: document.getElementById("langZhBtn"),
         dropzone: document.getElementById("dropzone"),
         fileInput: document.getElementById("fileInput"),
         fileInfo: document.getElementById("fileInfo"),
         fileSummary: document.getElementById("fileSummary"),
         reparseBtn: document.getElementById("reparseBtn"),
+        workspace: document.getElementById("workspace"),
         metaTitle: document.getElementById("metaTitle"),
         metaAuthor: document.getElementById("metaAuthor"),
         metaLang: document.getElementById("metaLang"),
@@ -686,6 +902,8 @@
         metaSummary: document.getElementById("metaSummary"),
         coverInput: document.getElementById("coverInput"),
         detectMode: document.getElementById("detectMode"),
+        optBlankRow: document.getElementById("optBlankRow"),
+        optIndent: document.getElementById("optIndent"),
         optPreface: document.getElementById("optPreface"),
         optChapterMeta: document.getElementById("optChapterMeta"),
         optAfterword: document.getElementById("optAfterword"),
@@ -704,7 +922,35 @@
         closePreviewBtn: document.getElementById("closePreviewBtn")
       };
 
-      // Populate built-in dictionary badges
+      function applyUiLanguage(lang) {
+        currentUiLang = lang === "zh" ? "zh" : "en";
+        document.documentElement.lang = currentUiLang === "zh" ? "zh-Hans" : "en";
+        el.langEnBtn.classList.toggle("active", currentUiLang === "en");
+        el.langZhBtn.classList.toggle("active", currentUiLang === "zh");
+
+        document.querySelectorAll("[data-i18n]").forEach(node => {
+          const key = node.getAttribute("data-i18n");
+          if (UI_STRINGS[currentUiLang][key] !== undefined) {
+            node.textContent = t(key);
+          }
+        });
+
+        document.querySelectorAll("[data-i18n-ph]").forEach(node => {
+          const key = node.getAttribute("data-i18n-ph");
+          if (UI_STRINGS[currentUiLang][key] !== undefined) {
+            node.setAttribute("placeholder", t(key));
+          }
+        });
+
+        if (state.parsed) {
+          renderChapterList();
+          setStatus(t("statusParsed", state.parsed.chapters.length, state.parsed.detectionUsed), "ok");
+        }
+      }
+
+      el.langEnBtn.addEventListener("click", () => applyUiLanguage("en"));
+      el.langZhBtn.addEventListener("click", () => applyUiLanguage("zh"));
+
       BUILTIN_HEADING_PATTERNS.forEach(p => {
         const span = document.createElement("span");
         span.className = "pill";
@@ -765,7 +1011,7 @@
         const cjkChars = (clean.match(/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/g) || []).length;
         if (cjkChars > clean.length * 0.25) {
           const nonSpace = clean.replace(/\s+/g, "").length;
-          return { count: nonSpace, label: `${nonSpace.toLocaleString()} chars` };
+          return { count: nonSpace, label: `${nonSpace.toLocaleString()} 字` };
         }
         const words = clean.split(/\s+/).filter(Boolean).length;
         return { count: words, label: `${words.toLocaleString()}w` };
@@ -797,7 +1043,6 @@
         if (tag === "p" || tag === "div") {
           const matchesDict = regexes.some(rx => rx.test(text));
           if (!matchesDict) return false;
-          // Prefer short standalone paragraphs or bold/strong paragraphs
           if (text.length <= 90) return true;
         }
         return false;
@@ -867,7 +1112,6 @@
           if (name === "href") {
             const trimmed = val.trim();
             if (/^javascript:/i.test(trimmed)) continue;
-            // Convert internal anchor links cleanly
             val = trimmed;
           }
           if (name === "id") {
@@ -893,7 +1137,6 @@
         }
         const serializer = new XMLSerializer();
         let xml = serializer.serializeToString(root);
-        // Strip outer <div xmlns="..."> and </div>
         xml = xml.replace(/^<div[^>]*>/, "").replace(/<\/div>$/, "");
         return xml;
       }
@@ -938,12 +1181,10 @@
           afterwordHtml: ""
         };
 
-        // Extract source URL from AO3 preface message
         const prefaceLinks = Array.from(doc.querySelectorAll("#preface p.message a"));
         const workLink = prefaceLinks.find(a => /\/works\/\d+/i.test(a.getAttribute("href") || ""));
         if (workLink) meta.sourceUrl = workLink.getAttribute("href") || "";
 
-        // Extract dl.tags metadata pairs
         const tagDl = doc.querySelector("#preface dl.tags");
         if (tagDl) {
           const dts = Array.from(tagDl.querySelectorAll("dt"));
@@ -964,7 +1205,6 @@
           }
         }
 
-        // Extract work summary & beginning notes from #preface .meta
         const prefaceMeta = doc.querySelector("#preface .meta");
         if (prefaceMeta) {
           const children = Array.from(prefaceMeta.children);
@@ -983,7 +1223,6 @@
           }
         }
 
-        // Extract afterword / work endnotes
         const afterwordEl = doc.querySelector("#afterword");
         if (afterwordEl) {
           const clone = afterwordEl.cloneNode(true);
@@ -991,7 +1230,6 @@
           meta.afterwordHtml = serializeInnerXhtml(clone);
         }
 
-        // Extract chapters
         let chapters = [];
         let detectionUsed = "";
 
@@ -1058,7 +1296,6 @@
           }
           flush();
 
-          // Handle single-chapter AO3 export where #chapters itself has class="userstuff" and direct <p> children
           if (found.length === 0 && chaptersRoot.classList.contains("userstuff")) {
             const clone = chaptersRoot.cloneNode(true);
             clone.querySelectorAll(".toc-heading").forEach(n => n.remove());
@@ -1081,7 +1318,6 @@
           const root = (doc.querySelector("#chapters") || doc.body).cloneNode(true);
           root.querySelectorAll("#preface, #afterword, .toc-heading, script, style").forEach(n => n.remove());
 
-          // Flatten single wrapper divs like .userstuff
           const blocks = [];
           const collectBlocks = (parent) => {
             for (const child of Array.from(parent.children)) {
@@ -1147,35 +1383,33 @@
 
         if (mode === "ao3") {
           chapters = tryAo3Structure();
-          detectionUsed = "AO3 DOM structure";
+          detectionUsed = "AO3 DOM";
         } else if (mode === "dictionary") {
           chapters = tryDictionarySplit();
-          detectionUsed = "Multilingual heading dictionary";
+          detectionUsed = "Dictionary";
         } else if (mode === "single") {
           chapters = buildSingleChapter();
-          detectionUsed = "Single chapter";
+          detectionUsed = "Single";
         } else {
-          // Auto: try AO3 structure first; if only 1 chapter is found, check if multilingual dictionary finds multiple
           const ao3Chapters = tryAo3Structure();
           if (ao3Chapters.length > 1) {
             chapters = ao3Chapters;
-            detectionUsed = "AO3 DOM structure";
+            detectionUsed = "AO3 DOM";
           } else {
             const dictChapters = tryDictionarySplit();
             if (dictChapters.length > 1) {
               chapters = dictChapters;
-              detectionUsed = "Multilingual heading dictionary (fallback)";
+              detectionUsed = "Dictionary";
             } else if (ao3Chapters.length === 1) {
               chapters = ao3Chapters;
-              detectionUsed = "AO3 single-chapter structure";
+              detectionUsed = "AO3 DOM";
             } else {
               chapters = buildSingleChapter();
-              detectionUsed = "Single chapter fallback";
+              detectionUsed = "Single";
             }
           }
         }
 
-        // Finalize chapters into clean XHTML + word counts
         const dedupe = el.optDedupeHeading.checked;
         const finalized = chapters.map((ch, idx) => {
           const wrapper = doc.createElement("div");
@@ -1205,7 +1439,6 @@
           };
         });
 
-        // Sample text for RTL auto-detection
         const sampleText = finalized.slice(0, 2).map(c => c.bodyXhtml.replace(/<[^>]+>/g, " ")).join(" ").slice(0, 2000);
         meta.detectedDir = detectDirection(meta.lang, sampleText);
         meta.tags = Array.from(new Set(meta.tags)).slice(0, 40);
@@ -1218,6 +1451,8 @@
       // -----------------------------------------------------------------------
       function populateUIFromParsed(parsed) {
         state.parsed = parsed;
+        el.workspace.classList.add("visible");
+
         el.metaTitle.value = parsed.meta.title;
         el.metaAuthor.value = parsed.meta.author;
         el.metaLang.value = parsed.meta.lang;
@@ -1228,16 +1463,16 @@
         renderChapterList();
         el.selectAllBtn.disabled = parsed.chapters.length === 0;
         el.exportBtn.disabled = parsed.chapters.length === 0;
-        setStatus(`Parsed ${parsed.chapters.length} chapter(s) via ${parsed.detectionUsed}.`, "ok");
+        setStatus(t("statusParsed", parsed.chapters.length, parsed.detectionUsed), "ok");
       }
 
       function renderChapterList() {
         const chapters = state.parsed ? state.parsed.chapters : [];
-        el.chapterCountBadge.textContent = `${chapters.length} chapter${chapters.length === 1 ? "" : "s"}`;
+        el.chapterCountBadge.textContent = t("chapterCount", chapters.length);
         el.chapterList.innerHTML = "";
 
         if (!chapters.length) {
-          el.chapterList.innerHTML = `<div class="empty-state">No chapters detected. Try switching the detection mode.</div>`;
+          el.chapterList.innerHTML = `<div class="empty-state">${escapeXml(t("emptyChapters"))}</div>`;
           return;
         }
 
@@ -1268,7 +1503,7 @@
           const previewBtn = document.createElement("button");
           previewBtn.type = "button";
           previewBtn.className = "btn btn-sm";
-          previewBtn.textContent = "Preview";
+          previewBtn.textContent = t("previewBtn");
           previewBtn.addEventListener("click", () => openPreview(ch));
 
           row.append(cb, titleInput, metaSpan, previewBtn);
@@ -1276,18 +1511,25 @@
         });
       }
 
+      function syncPreviewTypographyClasses() {
+        el.previewBody.classList.toggle("blank-row", el.optBlankRow.checked);
+        el.previewBody.classList.toggle("no-blank-row", !el.optBlankRow.checked);
+        el.previewBody.classList.toggle("indent-para", el.optIndent.checked);
+      }
+
       function openPreview(ch) {
         el.previewTitle.textContent = ch.title;
+        syncPreviewTypographyClasses();
         let html = "";
         if (el.optChapterMeta.checked && ch.summaryHtml) {
-          html += `<h4>Summary</h4><blockquote>${ch.summaryHtml}</blockquote>`;
+          html += `<h4>${escapeXml(t("epubChSummary"))}</h4><blockquote>${ch.summaryHtml}</blockquote>`;
         }
         if (el.optChapterMeta.checked && ch.beginNotesHtml) {
-          html += `<h4>Notes</h4><blockquote>${ch.beginNotesHtml}</blockquote>`;
+          html += `<h4>${escapeXml(t("epubChNotes"))}</h4><blockquote>${ch.beginNotesHtml}</blockquote>`;
         }
         html += ch.bodyXhtml;
         if (el.optChapterMeta.checked && ch.endNotesHtml) {
-          html += `<hr/><h4>End Notes</h4><blockquote>${ch.endNotesHtml}</blockquote>`;
+          html += `<hr/><h4>${escapeXml(t("epubChEndNotes"))}</h4><blockquote>${ch.endNotesHtml}</blockquote>`;
         }
         el.previewBody.innerHTML = html;
         el.previewModal.classList.add("open");
@@ -1353,30 +1595,28 @@
             ? { data: rawBytes, method: 0 }
             : await deflateRaw(rawBytes);
 
-          // Local file header (30 bytes + name)
           const lh = new ArrayBuffer(30);
           const lv = new DataView(lh);
           lv.setUint32(0, 0x04034b50, true);
-          lv.setUint16(4, 20, true); // version needed
-          lv.setUint16(6, 0x0800, true); // UTF-8 filename flag
+          lv.setUint16(4, 20, true);
+          lv.setUint16(6, 0x0800, true);
           lv.setUint16(8, method, true);
-          lv.setUint16(10, 0, true); // mod time
-          lv.setUint16(12, 0, true); // mod date
+          lv.setUint16(10, 0, true);
+          lv.setUint16(12, 0, true);
           lv.setUint32(14, crc, true);
           lv.setUint32(18, payload.length, true);
           lv.setUint32(22, rawBytes.length, true);
           lv.setUint16(26, nameBytes.length, true);
-          lv.setUint16(28, 0, true); // extra length
+          lv.setUint16(28, 0, true);
 
           localParts.push(new Uint8Array(lh), nameBytes, payload);
 
-          // Central directory header (46 bytes + name)
           const ch = new ArrayBuffer(46);
           const cv = new DataView(ch);
           cv.setUint32(0, 0x02014b50, true);
-          cv.setUint16(4, 20, true); // version made by
-          cv.setUint16(6, 20, true); // version needed
-          cv.setUint16(8, 0x0800, true); // UTF-8 flag
+          cv.setUint16(4, 20, true);
+          cv.setUint16(6, 20, true);
+          cv.setUint16(8, 0x0800, true);
           cv.setUint16(10, method, true);
           cv.setUint16(12, 0, true);
           cv.setUint16(14, 0, true);
@@ -1397,7 +1637,6 @@
 
         const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
 
-        // End of central directory (22 bytes)
         const eocd = new ArrayBuffer(22);
         const ev = new DataView(eocd);
         ev.setUint32(0, 0x06054b50, true);
@@ -1432,13 +1671,22 @@ ${body}
 </html>`;
       }
 
-      function buildCss(fontMode, dir) {
+      function buildCss(fontMode, dir, blankRow, indentPara) {
         let fontRule = `font-family: Georgia, "Noto Serif", "Songti SC", "Yu Mincho", serif;`;
         if (fontMode === "sans") {
-          fontRule = `font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;`;
+          fontRule = `font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif;`;
         } else if (fontMode === "inherit") {
           fontRule = ``;
         }
+
+        const paraMarginRule = blankRow
+          ? `margin-top: 0;\n  margin-bottom: 1em;`
+          : `margin-top: 0;\n  margin-bottom: 0.15em;`;
+
+        const paraIndentRule = indentPara
+          ? `text-indent: 2em;`
+          : `text-indent: 0;`;
+
         return `body {
   ${fontRule}
   line-height: 1.65;
@@ -1461,6 +1709,7 @@ h1.work-title {
   text-align: center;
   font-style: italic;
   margin-bottom: 1.5em;
+  text-indent: 0;
 }
 .meta-box {
   border: 1px solid #999;
@@ -1495,7 +1744,15 @@ h1.work-title {
   margin-bottom: 0.25em;
 }
 p {
-  margin: 0.65em 0;
+  ${paraMarginRule}
+  ${paraIndentRule}
+}
+.note-box p,
+blockquote p,
+.meta-box p,
+.chapter-header p {
+  text-indent: 0;
+  margin-bottom: 0.65em;
 }
 hr {
   border: none;
@@ -1524,12 +1781,12 @@ blockquote {
         if (!state.parsed) return;
         const selectedChapters = state.parsed.chapters.filter(c => c.included);
         if (!selectedChapters.length) {
-          setStatus("Select at least one chapter to export.", "warn");
+          setStatus(t("statusSelectOne"), "warn");
           return;
         }
 
         el.exportBtn.disabled = true;
-        setStatus("Building EPUB package...");
+        setStatus(t("statusBuilding"));
 
         try {
           const title = normalizeWhitespace(el.metaTitle.value) || "Untitled";
@@ -1545,10 +1802,8 @@ blockquote {
           const modified = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 
           const entries = [];
-          // 1. mimetype MUST be first and uncompressed
           entries.push({ name: "mimetype", content: "application/epub+zip", storeOnly: true });
 
-          // 2. META-INF/container.xml
           entries.push({
             name: "META-INF/container.xml",
             content: `<?xml version="1.0" encoding="UTF-8"?>
@@ -1559,10 +1814,9 @@ blockquote {
 </container>`
           });
 
-          // 3. CSS
           entries.push({
             name: "OEBPS/styles.css",
-            content: buildCss(el.fontStyle.value, dir)
+            content: buildCss(el.fontStyle.value, dir, el.optBlankRow.checked, el.optIndent.checked)
           });
 
           const manifestItems = [
@@ -1573,7 +1827,6 @@ blockquote {
           const spineItems = [];
           const tocEntries = [];
 
-          // Optional Cover
           let coverMetaTag = "";
           if (state.coverData && state.coverMime) {
             const ext = state.coverMime === "image/png" ? "png" : state.coverMime === "image/webp" ? "webp" : "jpg";
@@ -1583,7 +1836,7 @@ blockquote {
             coverMetaTag = `<meta name="cover" content="cover-image"/>`;
 
             const coverPage = makeXhtmlPage({
-              title: "Cover",
+              title: t("epubCover"),
               lang,
               dir,
               body: `<div class="cover-page"><img src="${coverHref}" alt="${escapeXml(title)}" /></div>`
@@ -1593,7 +1846,6 @@ blockquote {
             spineItems.push(`<itemref idref="cover-page"/>`);
           }
 
-          // Optional Preface Page
           if (el.optPreface.checked) {
             let prefBody = `<h1 class="work-title">${escapeXml(title)}</h1>\n<p class="byline">${escapeXml(author)}</p>`;
             if (sourceUrl) {
@@ -1610,22 +1862,21 @@ blockquote {
               const summaryMarkup = state.parsed.meta.summaryHtml && summaryText === state.parsed.meta.summaryText
                 ? state.parsed.meta.summaryHtml
                 : `<p>${escapeXml(summaryText).replace(/\n+/g, "</p><p>")}</p>`;
-              prefBody += `\n<div class="note-box"><div class="note-label">Summary</div>${summaryMarkup}</div>`;
+              prefBody += `\n<div class="note-box"><div class="note-label">${escapeXml(t("epubSummary"))}</div>${summaryMarkup}</div>`;
             }
             if (state.parsed.meta.beginNotesHtml) {
-              prefBody += `\n<div class="note-box"><div class="note-label">Notes</div>${state.parsed.meta.beginNotesHtml}</div>`;
+              prefBody += `\n<div class="note-box"><div class="note-label">${escapeXml(t("epubNotes"))}</div>${state.parsed.meta.beginNotesHtml}</div>`;
             }
 
             entries.push({
               name: "OEBPS/preface.xhtml",
-              content: makeXhtmlPage({ title: "Preface", lang, dir, body: prefBody })
+              content: makeXhtmlPage({ title: t("epubPreface"), lang, dir, body: prefBody })
             });
             manifestItems.push(`<item id="preface" href="preface.xhtml" media-type="application/xhtml+xml"/>`);
             spineItems.push(`<itemref idref="preface"/>`);
-            tocEntries.push({ id: "preface", href: "preface.xhtml", title: "Preface" });
+            tocEntries.push({ id: "preface", href: "preface.xhtml", title: t("epubPreface") });
           }
 
-          // Chapters
           selectedChapters.forEach((ch, idx) => {
             const href = `chapter_${String(idx + 1).padStart(4, "0")}.xhtml`;
             const itemId = `chapter_${idx + 1}`;
@@ -1633,14 +1884,14 @@ blockquote {
 
             let body = `<div class="chapter-header"><h2>${escapeXml(chTitle)}</h2></div>\n`;
             if (el.optChapterMeta.checked && ch.summaryHtml) {
-              body += `<div class="note-box"><div class="note-label">Chapter Summary</div>${ch.summaryHtml}</div>\n`;
+              body += `<div class="note-box"><div class="note-label">${escapeXml(t("epubChSummary"))}</div>${ch.summaryHtml}</div>\n`;
             }
             if (el.optChapterMeta.checked && ch.beginNotesHtml) {
-              body += `<div class="note-box"><div class="note-label">Chapter Notes</div>${ch.beginNotesHtml}</div>\n`;
+              body += `<div class="note-box"><div class="note-label">${escapeXml(t("epubChNotes"))}</div>${ch.beginNotesHtml}</div>\n`;
             }
             body += `<div class="chapter-body">${ch.bodyXhtml}</div>\n`;
             if (el.optChapterMeta.checked && ch.endNotesHtml) {
-              body += `<div class="note-box"><div class="note-label">Chapter End Notes</div>${ch.endNotesHtml}</div>\n`;
+              body += `<div class="note-box"><div class="note-label">${escapeXml(t("epubChEndNotes"))}</div>${ch.endNotesHtml}</div>\n`;
             }
 
             entries.push({
@@ -1652,28 +1903,26 @@ blockquote {
             tocEntries.push({ id: itemId, href, title: chTitle });
           });
 
-          // Optional Afterword
           if (el.optAfterword.checked && state.parsed.meta.afterwordHtml) {
-            const awBody = `<div class="chapter-header"><h2>Afterword &amp; End Notes</h2></div>\n${state.parsed.meta.afterwordHtml}`;
+            const awBody = `<div class="chapter-header"><h2>${escapeXml(t("epubAfterwordHeading"))}</h2></div>\n${state.parsed.meta.afterwordHtml}`;
             entries.push({
               name: "OEBPS/afterword.xhtml",
-              content: makeXhtmlPage({ title: "Afterword", lang, dir, body: awBody })
+              content: makeXhtmlPage({ title: t("epubAfterword"), lang, dir, body: awBody })
             });
             manifestItems.push(`<item id="afterword" href="afterword.xhtml" media-type="application/xhtml+xml"/>`);
             spineItems.push(`<itemref idref="afterword"/>`);
-            tocEntries.push({ id: "afterword", href: "afterword.xhtml", title: "Afterword" });
+            tocEntries.push({ id: "afterword", href: "afterword.xhtml", title: t("epubAfterword") });
           }
 
-          // EPUB 3 Navigation Document (nav.xhtml)
           const navList = tocEntries
-            .map(t => `      <li><a href="${escapeXml(t.href)}">${escapeXml(t.title)}</a></li>`)
+            .map(tItem => `      <li><a href="${escapeXml(tItem.href)}">${escapeXml(tItem.title)}</a></li>`)
             .join("\n");
           const navXhtml = makeXhtmlPage({
-            title: "Table of Contents",
+            title: t("epubToc"),
             lang,
             dir,
             body: `  <nav epub:type="toc" id="toc">
-    <h1>Table of Contents</h1>
+    <h1>${escapeXml(t("epubToc"))}</h1>
     <ol>
 ${navList}
     </ol>
@@ -1681,11 +1930,10 @@ ${navList}
           });
           entries.push({ name: "OEBPS/nav.xhtml", content: navXhtml });
 
-          // EPUB 2 NCX (toc.ncx)
           const navPoints = tocEntries
-            .map((t, i) => `    <navPoint id="navPoint-${i + 1}" playOrder="${i + 1}">
-      <navLabel><text>${escapeXml(t.title)}</text></navLabel>
-      <content src="${escapeXml(t.href)}"/>
+            .map((tItem, i) => `    <navPoint id="navPoint-${i + 1}" playOrder="${i + 1}">
+      <navLabel><text>${escapeXml(tItem.title)}</text></navLabel>
+      <content src="${escapeXml(tItem.href)}"/>
     </navPoint>`)
             .join("\n");
           const ncxXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -1703,8 +1951,7 @@ ${navPoints}
 </ncx>`;
           entries.push({ name: "OEBPS/toc.ncx", content: ncxXml });
 
-          // Package Document (content.opf)
-          const subjectsXml = tags.map(t => `    <dc:subject>${escapeXml(t)}</dc:subject>`).join("\n");
+          const subjectsXml = tags.map(tg => `    <dc:subject>${escapeXml(tg)}</dc:subject>`).join("\n");
           const descXml = summaryText ? `    <dc:description>${escapeXml(summaryText)}</dc:description>` : "";
           const sourceXml = sourceUrl ? `    <dc:source>${escapeXml(sourceUrl)}</dc:source>` : "";
           const pageProg = dir === "rtl" ? ` page-progression-direction="rtl"` : "";
@@ -1742,10 +1989,10 @@ ${coverMetaTag}
           setTimeout(() => URL.revokeObjectURL(url), 10000);
 
           const kb = (blob.size / 1024).toFixed(1);
-          setStatus(`Exported "${a.download}" (${kb} KB, ${selectedChapters.length} chapter${selectedChapters.length === 1 ? "" : "s"}).`, "ok");
+          setStatus(t("statusExported", a.download, kb, selectedChapters.length), "ok");
         } catch (err) {
           console.error(err);
-          setStatus(`Export failed: ${err.message}`, "err");
+          setStatus(t("statusExportFail", err.message), "err");
         } finally {
           el.exportBtn.disabled = false;
         }
@@ -1757,7 +2004,7 @@ ${coverMetaTag}
       async function handleFile(file) {
         if (!file) return;
         state.fileName = file.name;
-        setStatus(`Reading "${file.name}"...`);
+        setStatus(t("statusReading", file.name));
         try {
           state.rawHtml = await file.text();
           el.fileSummary.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
@@ -1766,7 +2013,7 @@ ${coverMetaTag}
           populateUIFromParsed(parsed);
         } catch (err) {
           console.error(err);
-          setStatus(`Failed to read file: ${err.message}`, "err");
+          setStatus(t("statusReadFail", err.message), "err");
         }
       }
 
@@ -1814,6 +2061,9 @@ ${coverMetaTag}
         if (state.rawHtml) populateUIFromParsed(parseDocument(state.rawHtml, el.detectMode.value));
       });
 
+      el.optBlankRow.addEventListener("change", syncPreviewTypographyClasses);
+      el.optIndent.addEventListener("change", syncPreviewTypographyClasses);
+
       el.coverInput.addEventListener("change", async e => {
         const file = e.target.files?.[0];
         if (!file) {
@@ -1840,6 +2090,8 @@ ${coverMetaTag}
       el.previewModal.addEventListener("click", e => {
         if (e.target === el.previewModal) el.previewModal.classList.remove("open");
       });
+
+      applyUiLanguage(currentUiLang);
     })();
   </script>
 </body>

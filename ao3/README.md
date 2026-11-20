@@ -4,12 +4,16 @@ A standalone, zero-dependency HTML web app that converts Archive of Our Own (AO3
 
 ## Features
 
+- **Bilingual UI (English / 中文)**: Toggle the interface between English and Chinese at any time (auto-detects browser language on startup).
 - **100% Client-Side & Offline-Ready**: No server, no build step, and no external CDN scripts. All parsing and ZIP packaging happen locally in your browser.
 - **AO3 Structural Parsing**: Automatically extracts work title, author(s), fandoms, tags, language, summary, source URL, chapter headings (`#chapters` / `.meta.group` / `h2.heading`), chapter summaries, beginning/end notes, and afterword.
 - **Multilingual & Unicode Support**:
   - Maps language labels to BCP-47 (`dc:language`) codes.
   - Auto-detects RTL scripts (Arabic, Persian, Hebrew, Urdu, etc.) and sets `dir="rtl"` and `page-progression-direction="rtl"`.
   - Built-in multilingual chapter heading dictionary (English, CJK `第X章/話/回/節`, Korean `제X화/장`, Spanish/Portuguese, French, German/Dutch, Italian, Russian/Ukrainian, Polish, Arabic/Persian, Hebrew, Turkish, Vietnamese, Hindi) plus custom user-defined keywords.
+- **Paragraph Formatting Controls**:
+  - Toggle blank row spacing between paragraphs (on by default).
+  - Toggle `2em` first-line paragraph indentation (off by default).
 - **Strict XHTML Sanitization**: Cleans and serializes chapter content into valid XHTML so e-readers (Calibre, Apple Books, Kindle, Kobo, KOReader) render it cleanly without XML errors.
 - **Customizable Output**: Edit metadata, rename/toggle chapters, preview chapter output, remove duplicate in-body chapter headings, choose typography, and optionally embed a cover image.
 
